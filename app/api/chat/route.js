@@ -53,20 +53,20 @@ function fmtPrecio(p) {
 }
 
 // Construye la respuesta de un producto, con plantilla fija (sin IA).
+// Orden: Código → Nombre (Marca+Modelo) → Specs → Precio → Disponibilidad.
 function lineFor(r) {
   const f = (k) => (r[k] ?? "").toString().trim();
+  const cod = f("Código");
   const nombre = [f("Marca"), f("Modelo")].filter(Boolean).join(" ") || f("Descripción").slice(0, 50) || "Producto";
   const specs = [f("Procesador"), f("Generación") && `gen ${f("Generación")}`, f("RAM"), f("Almacenamiento")]
     .filter(Boolean).join(", ");
-  const specTxt = specs ? ` (${specs})` : "";
-  const stock = parseInt(f("Stock") || "0", 10) || 0;
   const precio = fmtPrecio(f("Precio"));
-  const cod = f("Código");
-  if (stock > 0) {
-    const u = stock === 1 ? "unidad" : "unidades";
-    return `Disponible (${stock} ${u}). ${nombre}${specTxt} — código ${cod} — ${precio}.`;
-  }
-  return `AGOTADO. ${nombre}${specTxt} — código ${cod} — ${precio}.`;
+  const stock = parseInt(f("Stock") || "0", 10) || 0;
+  const disp = stock > 0
+    ? `Disponible (${stock} ${stock === 1 ? "unidad" : "unidades"})`
+    : "AGOTADO";
+  // Cada parte se omite si viene vacía, sin dejar separadores sueltos.
+  return [cod, nombre, specs, precio, disp].filter(Boolean).join(" — ") + ".";
 }
 
 // Patrón de "código" para detectar códigos escritos que no existen (typos).
@@ -111,8 +111,9 @@ export async function POST(request) {
     // ====== CAMINO IA (solo para preguntas conversacionales) ======
     const stats = summarize(rows);
     const context = selectForContext(rows, lastText, 250);
-    const reply = await askGemini(messages, context, stats);
-    return Response.json({ reply, images: [], demo });
+    const modelOverride = typeof body?.model === "string" ? body.model.trim() : "";
+    const reply = await askGemini(messages, context, stats, { model: modelOverride });
+    return Response.json({ reply, images: [], demo, model: modelOverride || undefined });
   } catch (err) {
     return Response.json({ reply: "⚠️ Error del servidor: " + String(err?.message || err) }, { status: 200 });
   }

@@ -27,11 +27,28 @@ export default function Home() {
   const [demo, setDemo] = useState(false);
   const [showChips, setShowChips] = useState(true);
 
+  const [models, setModels] = useState([]);     // modelos locales instalados
+  const [model, setModel] = useState("");        // modelo elegido
+  const [provider, setProvider] = useState("");
+
   const scrollRef = useRef(null);
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [messages, loading]);
+
+  // Al entrar, carga la lista de modelos locales para el selector.
+  useEffect(() => {
+    if (!authed) return;
+    fetch("/api/models")
+      .then((r) => r.json())
+      .then((d) => {
+        setProvider(d.provider || "");
+        setModels(d.models || []);
+        setModel(d.current || (d.models?.[0]?.name ?? ""));
+      })
+      .catch(() => {});
+  }, [authed]);
 
   function enter(e) {
     e.preventDefault();
@@ -50,11 +67,12 @@ export default function Home() {
     setInput("");
     setLoading(true);
 
+    const t0 = performance.now();
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-access-password": password },
-        body: JSON.stringify({ messages: next }),
+        body: JSON.stringify({ messages: next, model }),
       });
 
       if (res.status === 401) {
@@ -67,8 +85,12 @@ export default function Home() {
 
       const data = await res.json();
       if (data.demo) setDemo(true);
+      const secs = ((performance.now() - t0) / 1000).toFixed(1);
       const reply = data.reply || data.error || "No pude responder en este momento.";
-      setMessages((m) => [...m, { role: "assistant", content: reply }]);
+      const meta = data.fast
+        ? `⚡ respuesta directa · ${secs}s`
+        : (provider === "ollama" && model ? `${model} · ${secs}s` : `${secs}s`);
+      setMessages((m) => [...m, { role: "assistant", content: reply, meta }]);
     } catch (err) {
       setMessages((m) => [
         ...m,
@@ -117,6 +139,24 @@ export default function Home() {
           <div className="status"><span className="dot" /> Inventario en línea</div>
         </div>
         <div className="spacer" />
+        {provider === "ollama" && models.length > 0 && (
+          <div className="model-picker">
+            <span className="model-label">Modelo</span>
+            <select
+              className="model-select"
+              value={model}
+              onChange={(e) => setModel(e.target.value)}
+              disabled={loading}
+              title="Elige el modelo local de Ollama para comparar rendimiento"
+            >
+              {models.map((m) => (
+                <option key={m.name} value={m.name}>
+                  {m.name}{m.size ? ` (${(m.size / 1e9).toFixed(1)} GB)` : ""}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
         <button className="linkbtn" onClick={() => { setAuthed(false); setPassword(""); }}>Salir</button>
       </header>
 
@@ -128,6 +168,7 @@ export default function Home() {
         {messages.map((m, i) => (
           <div key={i} className={`row ${m.role}`}>
             <div className="bubble">{m.content}</div>
+            {m.meta && <div className="msg-meta">{m.meta}</div>}
           </div>
         ))}
 

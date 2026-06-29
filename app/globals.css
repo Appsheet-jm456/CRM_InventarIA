@@ -116,6 +116,21 @@ html, body {
 .status { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted); }
 .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); }
 .spacer { flex: 1; }
+.model-picker { display: flex; align-items: center; gap: 6px; margin-right: 8px; }
+.model-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; }
+.model-select {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.model-select:focus { outline: none; border-color: var(--accent, #14b8a6); }
+.msg-meta { font-size: 11px; color: var(--text-muted); margin-top: 4px; padding: 0 4px; }
+.row.assistant .msg-meta { text-align: left; }
+.row.user .msg-meta { text-align: right; }
 .linkbtn {
   background: none;
   border: 1px solid var(--border);
