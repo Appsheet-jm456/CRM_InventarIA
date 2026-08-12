@@ -1,0 +1,952 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Brief del proyecto InventarIA: arquitectura, modulos, embudo de ventas y estado actual.">
+<style>*{margin:0}img,svg{display:block;max-width:100%}</style>
+</head>
+<body>
+<title>InventarIA — Brief del proyecto</title>
+
+<style>
+  :root {
+    --paper:      #EBECF0;
+    --surface:    #FAFAFC;
+    --surface-2:  #F1F2F7;
+    --ink:        #14171F;
+    --ink-2:      #4A5162;
+    --ink-3:      #767D8E;
+    --rule:       #D2D5E0;
+    --rule-soft:  #E1E3EB;
+    --accent:     #1F45CC;
+    --accent-ink: #1F45CC;
+    --accent-bg:  #E2E7FB;
+    --warn:       #9C5A06;
+    --warn-bg:    #F8EAD4;
+    --good:       #106647;
+    --good-bg:    #D9EFE5;
+    --shadow:     0 1px 2px rgba(20,23,31,.05), 0 8px 24px -12px rgba(20,23,31,.18);
+
+    --font-display: "Futura", "Futura PT", "Avenir Next", "Century Gothic", "URW Gothic", "Trebuchet MS", sans-serif;
+    --font-body: "Charter", "Bitstream Charter", "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    --font-mono: "Menlo", "Consolas", "SF Mono", "DejaVu Sans Mono", "Liberation Mono", monospace;
+
+    --step--1: clamp(.72rem, .69rem + .12vw, .78rem);
+    --step-0:  clamp(.94rem, .9rem + .18vw, 1.02rem);
+    --step-1:  clamp(1.1rem, 1.02rem + .35vw, 1.3rem);
+    --step-2:  clamp(1.4rem, 1.22rem + .8vw, 1.9rem);
+    --step-3:  clamp(2rem, 1.5rem + 2.4vw, 3.4rem);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper:      #0E1016;
+      --surface:    #161A23;
+      --surface-2:  #1D222D;
+      --ink:        #E4E7EF;
+      --ink-2:      #A5ACBB;
+      --ink-3:      #7A8190;
+      --rule:       #2B313E;
+      --rule-soft:  #222833;
+      --accent:     #829EFF;
+      --accent-ink: #A8BCFF;
+      --accent-bg:  #1A2340;
+      --warn:       #E5AC57;
+      --warn-bg:    #2C2416;
+      --good:       #55C395;
+      --good-bg:    #12291F;
+      --shadow:     0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.7);
+    }
+  }
+
+  :root[data-theme="light"] {
+    --paper:#EBECF0; --surface:#FAFAFC; --surface-2:#F1F2F7; --ink:#14171F; --ink-2:#4A5162;
+    --ink-3:#767D8E; --rule:#D2D5E0; --rule-soft:#E1E3EB; --accent:#1F45CC; --accent-ink:#1F45CC;
+    --accent-bg:#E2E7FB; --warn:#9C5A06; --warn-bg:#F8EAD4; --good:#106647; --good-bg:#D9EFE5;
+    --shadow: 0 1px 2px rgba(20,23,31,.05), 0 8px 24px -12px rgba(20,23,31,.18);
+  }
+  :root[data-theme="dark"] {
+    --paper:#0E1016; --surface:#161A23; --surface-2:#1D222D; --ink:#E4E7EF; --ink-2:#A5ACBB;
+    --ink-3:#7A8190; --rule:#2B313E; --rule-soft:#222833; --accent:#829EFF; --accent-ink:#A8BCFF;
+    --accent-bg:#1A2340; --warn:#E5AC57; --warn-bg:#2C2416; --good:#55C395; --good-bg:#12291F;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.7);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background-color: var(--paper);
+    background-image:
+      linear-gradient(to right, color-mix(in srgb, var(--rule) 40%, transparent) 1px, transparent 1px),
+      linear-gradient(to bottom, color-mix(in srgb, var(--rule) 40%, transparent) 1px, transparent 1px);
+    background-size: 28px 28px;
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: var(--step-0);
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 clamp(1rem, 4vw, 2.5rem); }
+
+  /* ---------- masthead ---------- */
+
+  .masthead {
+    border-bottom: 1px solid var(--rule);
+    background: color-mix(in srgb, var(--paper) 88%, transparent);
+    backdrop-filter: blur(8px);
+    position: sticky; top: 0; z-index: 50;
+  }
+  .masthead .wrap {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 1rem; padding-block: .7rem; flex-wrap: wrap;
+  }
+  .mast-id { display: flex; align-items: baseline; gap: .6rem; }
+  .mast-id b {
+    font-family: var(--font-display); font-weight: 700;
+    letter-spacing: .06em; text-transform: uppercase; font-size: .95rem;
+  }
+  .mast-id span { font-family: var(--font-mono); font-size: var(--step--1); color: var(--ink-3); }
+  .mast-nav { display: flex; gap: .2rem; flex-wrap: wrap; }
+  .mast-nav a {
+    font-family: var(--font-mono); font-size: var(--step--1);
+    text-transform: uppercase; letter-spacing: .07em;
+    color: var(--ink-2); text-decoration: none;
+    padding: .3rem .55rem; border-radius: 3px;
+  }
+  .mast-nav a:hover { color: var(--accent-ink); background: var(--accent-bg); }
+  .mast-nav a:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+  /* ---------- shared type ---------- */
+
+  h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; margin: 0; }
+
+  .eyebrow {
+    font-family: var(--font-mono); font-size: var(--step--1);
+    text-transform: uppercase; letter-spacing: .12em;
+    color: var(--ink-3); margin: 0;
+  }
+  .eyebrow em { font-style: normal; color: var(--accent-ink); }
+
+  section { border-top: 1px solid var(--rule); padding-block: clamp(2.5rem, 6vw, 4.5rem); }
+  section > .wrap { display: flex; flex-direction: column; gap: 1.6rem; }
+
+  .sec-head { display: flex; flex-direction: column; gap: .45rem; max-width: 62ch; }
+  .sec-head h2 {
+    font-size: var(--step-2); font-weight: 500;
+    letter-spacing: -.01em; line-height: 1.15;
+  }
+  .sec-head p { margin: 0; color: var(--ink-2); max-width: 60ch; }
+
+  /* ---------- hero ---------- */
+
+  .hero { border-top: 0; padding-top: clamp(2.5rem, 7vw, 5rem); }
+  .hero > .wrap { gap: clamp(2rem, 4vw, 3rem); }
+
+  .hero-top { display: flex; flex-direction: column; gap: 1.1rem; }
+  .hero h1 {
+    font-size: var(--step-3); font-weight: 700;
+    letter-spacing: -.02em; line-height: .95; text-transform: uppercase;
+  }
+  .hero h1 i { font-style: normal; color: var(--accent-ink); }
+  .hero-lede { font-size: var(--step-1); line-height: 1.5; color: var(--ink-2); max-width: 56ch; margin: 0; }
+  .hero-lede strong { color: var(--ink); font-weight: 600; }
+
+  .hero-grid { display: grid; gap: clamp(1.5rem, 3vw, 2.5rem); grid-template-columns: 1fr; }
+  @media (min-width: 900px) { .hero-grid { grid-template-columns: 1fr 400px; align-items: start; } }
+
+  /* ---------- stat strip ---------- */
+
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 1px; background: var(--rule); border: 1px solid var(--rule); }
+  .stat { background: var(--surface); padding: .9rem 1rem; display: flex; flex-direction: column; gap: .15rem; }
+  .stat b {
+    font-family: var(--font-display); font-size: 1.7rem; font-weight: 700;
+    line-height: 1; letter-spacing: -.02em; font-variant-numeric: tabular-nums;
+  }
+  .stat span { font-family: var(--font-mono); font-size: var(--step--1); color: var(--ink-3); text-transform: uppercase; letter-spacing: .07em; }
+
+  /* ---------- generic card ---------- */
+
+  .card {
+    background: var(--surface); border: 1px solid var(--rule);
+    padding: 1.1rem 1.2rem; display: flex; flex-direction: column; gap: .55rem;
+  }
+  .card h3 { font-size: var(--step-1); font-weight: 600; letter-spacing: -.005em; }
+  .card p { margin: 0; color: var(--ink-2); font-size: .94rem; }
+  .card .path { font-family: var(--font-mono); font-size: var(--step--1); color: var(--ink-3); }
+
+  .grid-3 { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(255px, 1fr)); }
+
+  .tag {
+    display: inline-flex; align-items: center; gap: .3rem;
+    font-family: var(--font-mono); font-size: var(--step--1);
+    letter-spacing: .04em; padding: .12rem .45rem; border-radius: 2px;
+    background: var(--accent-bg); color: var(--accent-ink);
+  }
+  .tag.warn { background: var(--warn-bg); color: var(--warn); }
+  .tag.good { background: var(--good-bg); color: var(--good); }
+  .tag.mute { background: var(--surface-2); color: var(--ink-3); }
+
+  .tagrow { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: auto; padding-top: .4rem; }
+
+  /* ---------- demo ---------- */
+
+  .demo {
+    background: var(--surface); border: 1px solid var(--rule);
+    display: flex; flex-direction: column; box-shadow: var(--shadow);
+    position: sticky; top: 4.5rem;
+  }
+  @media (max-width: 899px) { .demo { position: static; } }
+
+  .demo-bar {
+    display: flex; align-items: center; justify-content: space-between; gap: .5rem;
+    padding: .55rem .8rem; border-bottom: 1px solid var(--rule); background: var(--surface-2);
+  }
+  .demo-who { display: flex; flex-direction: column; line-height: 1.25; }
+  .demo-who b { font-family: var(--font-display); font-size: .9rem; font-weight: 700; letter-spacing: .02em; }
+  .demo-who span { font-family: var(--font-mono); font-size: .68rem; color: var(--ink-3); }
+  .demo-step { font-family: var(--font-mono); font-size: .68rem; letter-spacing: .06em; padding: .15rem .4rem; background: var(--accent-bg); color: var(--accent-ink); border-radius: 2px; }
+
+  .demo-log {
+    padding: .9rem .8rem; display: flex; flex-direction: column; gap: .5rem;
+    height: 400px; overflow-y: auto; scroll-behavior: smooth;
+  }
+  @media (prefers-reduced-motion: reduce) { .demo-log { scroll-behavior: auto; } }
+
+  .bub {
+    max-width: 85%; padding: .5rem .65rem; font-size: .84rem; line-height: 1.5;
+    border: 1px solid var(--rule-soft); white-space: pre-wrap; word-break: break-word;
+    font-family: var(--font-body);
+  }
+  .bub.bot { align-self: flex-start; background: var(--surface-2); border-radius: 2px 10px 10px 10px; }
+  .bub.me  { align-self: flex-end; background: var(--accent-bg); color: var(--accent-ink); border-color: transparent; border-radius: 10px 2px 10px 10px; }
+  .bub.sys {
+    align-self: center; background: transparent; border: 1px dashed var(--rule);
+    color: var(--ink-3); font-family: var(--font-mono); font-size: .68rem;
+    letter-spacing: .05em; text-transform: uppercase; max-width: 100%; text-align: center;
+  }
+  .bub.att {
+    align-self: flex-start; display: flex; align-items: center; gap: .5rem;
+    background: var(--surface-2); font-family: var(--font-mono); font-size: .72rem; color: var(--ink-2);
+    border-radius: 2px 10px 10px 10px;
+  }
+  .bub strong { font-weight: 700; color: inherit; }
+
+  .demo-in { border-top: 1px solid var(--rule); padding: .6rem .8rem; display: flex; flex-direction: column; gap: .5rem; }
+  .chips { display: flex; flex-wrap: wrap; gap: .3rem; }
+  .chip {
+    font-family: var(--font-mono); font-size: .72rem; letter-spacing: .03em;
+    padding: .25rem .5rem; border: 1px solid var(--rule); background: var(--surface);
+    color: var(--ink-2); border-radius: 2px; cursor: pointer;
+  }
+  .chip:hover { border-color: var(--accent); color: var(--accent-ink); background: var(--accent-bg); }
+  .chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .chip.reset { margin-left: auto; color: var(--ink-3); }
+
+  .demo-form { display: flex; gap: .4rem; }
+  .demo-form input {
+    flex: 1; min-width: 0; font-family: var(--font-body); font-size: .84rem;
+    padding: .4rem .55rem; border: 1px solid var(--rule); background: var(--paper); color: var(--ink); border-radius: 2px;
+  }
+  .demo-form input:focus-visible { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .demo-form button {
+    font-family: var(--font-mono); font-size: .72rem; text-transform: uppercase; letter-spacing: .07em;
+    padding: .4rem .7rem; border: 1px solid var(--accent); background: var(--accent); color: var(--surface);
+    border-radius: 2px; cursor: pointer;
+  }
+  :root[data-theme="dark"] .demo-form button,
+  .demo-form button { color: var(--paper); }
+  .demo-form button:hover { filter: brightness(1.12); }
+  .demo-form button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .demo-foot { font-family: var(--font-mono); font-size: .66rem; color: var(--ink-3); padding: 0 .8rem .7rem; letter-spacing: .04em; }
+
+  /* ---------- pipeline ---------- */
+
+  .pipe { display: flex; gap: 1px; background: var(--rule); border: 1px solid var(--rule); overflow-x: auto; }
+  .pipe-col { background: var(--surface); min-width: 148px; flex: 1; display: flex; flex-direction: column; }
+  .pipe-col > b {
+    font-family: var(--font-mono); font-size: var(--step--1); letter-spacing: .05em;
+    padding: .5rem .6rem; border-bottom: 1px solid var(--rule-soft);
+    display: flex; align-items: center; gap: .4rem; font-weight: 400; color: var(--ink-2);
+  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+  .pipe-col p { margin: 0; padding: .55rem .6rem; font-size: .8rem; color: var(--ink-3); }
+  .pipe-note { font-family: var(--font-mono); font-size: var(--step--1); color: var(--ink-3); }
+
+  /* ---------- flow map ---------- */
+
+  .flowmap { display: grid; gap: .6rem; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+  .node {
+    border: 1px solid var(--rule); background: var(--surface); padding: .6rem .7rem;
+    display: flex; flex-direction: column; gap: .25rem;
+  }
+  .node b { font-family: var(--font-mono); font-size: .78rem; color: var(--accent-ink); letter-spacing: .05em; }
+  .node span { font-size: .82rem; color: var(--ink-2); }
+  .node.exit { border-style: dashed; }
+  .node.exit b { color: var(--warn); }
+
+  /* ---------- timeline ---------- */
+
+  .tl { display: flex; flex-direction: column; border: 1px solid var(--rule); background: var(--surface); }
+  .tl-row { display: grid; grid-template-columns: 120px 1fr; gap: 1rem; padding: .85rem 1rem; border-bottom: 1px solid var(--rule-soft); }
+  .tl-row:last-child { border-bottom: 0; }
+  .tl-row > time { font-family: var(--font-mono); font-size: var(--step--1); color: var(--ink-3); letter-spacing: .04em; padding-top: .15rem; }
+  .tl-body { display: flex; flex-direction: column; gap: .3rem; }
+  .tl-body b { font-family: var(--font-display); font-weight: 600; font-size: 1rem; }
+  .tl-body p { margin: 0; font-size: .88rem; color: var(--ink-2); }
+  .tl-row.now { background: var(--warn-bg); }
+  .tl-row.now .tl-body b { color: var(--warn); }
+  @media (max-width: 620px) { .tl-row { grid-template-columns: 1fr; gap: .3rem; } }
+
+  .alert {
+    border: 1px solid var(--warn); background: var(--warn-bg); color: var(--ink);
+    padding: 1rem 1.2rem; display: flex; flex-direction: column; gap: .5rem;
+  }
+  .alert b { font-family: var(--font-display); font-size: var(--step-1); font-weight: 700; color: var(--warn); letter-spacing: -.005em; }
+  .alert p { margin: 0; font-size: .92rem; max-width: 65ch; }
+  .alert code { font-family: var(--font-mono); font-size: .82rem; background: color-mix(in srgb, var(--warn) 12%, transparent); padding: .05rem .3rem; border-radius: 2px; }
+
+  /* ---------- file list ---------- */
+
+  .files { display: grid; gap: 1px; background: var(--rule); border: 1px solid var(--rule); grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+  .file { background: var(--surface); padding: .55rem .75rem; display: flex; align-items: baseline; gap: .5rem; justify-content: space-between; }
+  .file code { font-family: var(--font-mono); font-size: .78rem; color: var(--ink); word-break: break-all; }
+  .file .tag { flex: none; }
+
+  /* ---------- next steps ---------- */
+
+  .steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 1px; background: var(--rule); border: 1px solid var(--rule); }
+  .steps li { background: var(--surface); padding: .9rem 1.1rem; display: grid; grid-template-columns: auto 1fr; gap: .9rem; align-items: start; }
+  .steps .n { font-family: var(--font-mono); font-size: .78rem; color: var(--accent-ink); background: var(--accent-bg); padding: .1rem .4rem; border-radius: 2px; }
+  .steps b { display: block; font-family: var(--font-display); font-weight: 600; font-size: 1rem; }
+  .steps p { margin: .15rem 0 0; font-size: .89rem; color: var(--ink-2); }
+  .steps code { font-family: var(--font-mono); font-size: .8rem; background: var(--surface-2); padding: .05rem .3rem; border-radius: 2px; }
+
+  footer { border-top: 1px solid var(--rule); padding-block: 2rem 3rem; }
+  footer .wrap { display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; font-family: var(--font-mono); font-size: var(--step--1); color: var(--ink-3); letter-spacing: .04em; }
+</style>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="mast-id">
+      <b>InventarIA</b>
+      <span>brief · 25 jul 2026</span>
+    </div>
+    <nav class="mast-nav">
+      <a href="#bot">Bot</a>
+      <a href="#arquitectura">Arquitectura</a>
+      <a href="#modulos">Módulos</a>
+      <a href="#embudo">Embudo</a>
+      <a href="#estado">Estado</a>
+      <a href="#pasos">Qué sigue</a>
+    </nav>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <div class="hero-top">
+      <p class="eyebrow">Ventas Virtuales Colombia · <em>portátiles usados al por mayor y detal</em></p>
+      <h1>Inventario, chat<br>y <i>embudo de ventas</i><br>en una sola app</h1>
+      <p class="hero-lede">
+        Un Next.js sin dependencias externas que conecta <strong>el inventario en Baserow</strong>,
+        <strong>un bot de WhatsApp de menú fijo</strong> y <strong>un CRM tipo kanban</strong> donde
+        el equipo toma el control de la conversación cuando el cliente pide un asesor.
+      </p>
+    </div>
+
+    <div class="hero-grid">
+      <div style="display:flex; flex-direction:column; gap:1.4rem;">
+        <div class="stats">
+          <div class="stat"><b>3.375</b><span>líneas de código</span></div>
+          <div class="stat"><b>14</b><span>rutas de API</span></div>
+          <div class="stat"><b>4</b><span>proveedores de IA</span></div>
+          <div class="stat"><b>0</b><span>deps fuera de next/react</span></div>
+        </div>
+        <div class="card">
+          <h3>Cómo llega un cliente</h3>
+          <p>
+            Escribe al WhatsApp del local. Evolution API recibe el mensaje y lo pasa al motor de
+            flujo, que responde con un menú numerado — nunca con IA libre, para que el bot no
+            improvise precios. Cada mensaje crea o actualiza una tarjeta en el CRM. Cuando el
+            cliente marca <strong>9</strong>, el bot se pausa solo para ese número y un asesor
+            continúa desde el mismo panel.
+          </p>
+          <div class="tagrow">
+            <span class="tag">Menú determinista</span>
+            <span class="tag">Handoff a humano</span>
+            <span class="tag">Fichas con fotos y video</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="demo" id="bot">
+        <div class="demo-bar">
+          <div class="demo-who">
+            <b>Atlas asiste ventas</b>
+            <span>bot · WhatsApp</span>
+          </div>
+          <span class="demo-step" id="stepBadge">B-00</span>
+        </div>
+        <div class="demo-log" id="log" role="log" aria-live="polite" aria-label="Conversación de demostración"></div>
+        <div class="demo-in">
+          <div class="chips" id="chips"></div>
+          <form class="demo-form" id="form">
+            <label for="msg" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);">Mensaje</label>
+            <input id="msg" type="text" autocomplete="off" placeholder="Escribe como si fueras el cliente…">
+            <button type="submit">Enviar</button>
+          </form>
+        </div>
+        <p class="demo-foot">Réplica del motor real · inventario de ejemplo</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="arquitectura">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="eyebrow">Arquitectura</p>
+      <h2>Dos caminos de entrada, una sola base de datos</h2>
+      <p>
+        El personal entra por el navegador; el cliente entra por WhatsApp. Ambos terminan leyendo
+        y escribiendo en las mismas tablas de Baserow, así que el stock que ve el bot es el mismo
+        que ve el vendedor.
+      </p>
+    </div>
+
+    <div class="grid-3">
+      <div class="card">
+        <h3>Cliente → WhatsApp</h3>
+        <p class="path">Evolution API → n8n → /api/whatsapp-flow</p>
+        <p>
+          Evolution corre el número de WhatsApp y guarda el historial en su propio Postgres.
+          n8n reenvía cada mensaje entrante al motor de flujo con la clave de acceso en la cabecera.
+        </p>
+        <div class="tagrow"><span class="tag mute">lib/evolution.js</span><span class="tag mute">lib/whatsappFlow.js</span></div>
+      </div>
+      <div class="card">
+        <h3>Personal → Navegador</h3>
+        <p class="path">app/page.js · 3 pestañas</p>
+        <p>
+          Dashboard de inventario, chat con IA para consultar stock en lenguaje natural, y el CRM.
+          Una clave para leer, otra distinta para escribir.
+        </p>
+        <div class="tagrow"><span class="tag mute">Dashboard</span><span class="tag mute">Chat</span><span class="tag mute">CRM</span></div>
+      </div>
+      <div class="card">
+        <h3>Datos → Baserow</h3>
+        <p class="path">3 tablas · API por token</p>
+        <p>
+          <strong>Inventario</strong> con código, specs, precio, stock, fotos y video.
+          <strong>CRM_Etapas</strong> con las columnas del kanban. <strong>CRM_Leads</strong> con
+          cada cliente, su etapa y el paso del menú en que quedó.
+        </p>
+        <div class="tagrow"><span class="tag mute">lib/inventory.js</span><span class="tag mute">lib/crm.js</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>La IA es opcional y reemplazable</h3>
+      <p>
+        El chat interno acepta cuatro proveedores tras una sola función: <strong>Ollama</strong> local
+        para no pagar tokens, <strong>Gemini</strong>, cualquier API <strong>compatible con OpenAI</strong>
+        (incluida DeepSeek) y <strong>Anthropic</strong>. El modelo elegido en la interfaz manda sobre la
+        variable de entorno, así que se puede probar uno en la nube sin tocar la configuración.
+        El bot de WhatsApp, en cambio, no usa IA a propósito: responde por menú fijo.
+      </p>
+      <div class="tagrow">
+        <span class="tag">Ollama</span><span class="tag">Gemini</span>
+        <span class="tag">OpenAI-compat</span><span class="tag">Anthropic</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="modulos">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="eyebrow">Módulos</p>
+      <h2>Qué hace cada pieza</h2>
+    </div>
+
+    <div class="grid-3">
+      <div class="card">
+        <h3>CRM</h3>
+        <p class="path">app/components/CRM.js · 835 líneas</p>
+        <p>
+          Kanban con arrastre entre etapas, vista de lista, búsqueda y filtro por atención
+          (bot o humano). Al abrir una tarjeta se ve la conversación real de WhatsApp traída desde
+          Evolution, con botón para tomar el control, responder y adjuntar fotos.
+        </p>
+        <div class="tagrow"><span class="tag good">La pieza más grande</span></div>
+      </div>
+      <div class="card">
+        <h3>Motor de flujo</h3>
+        <p class="path">lib/whatsappFlow.js · 256 líneas</p>
+        <p>
+          Árbol de menús numerados con estados guardados por cliente. Reconoce un código de producto
+          dentro de una frase completa, devuelve la ficha con fotos y video, y arma cotizaciones
+          en cuatro preguntas.
+        </p>
+        <div class="tagrow"><span class="tag mute">B-00 → P-01 → C-03</span></div>
+      </div>
+      <div class="card">
+        <h3>Dashboard</h3>
+        <p class="path">app/components/Dashboard.js · 344 líneas</p>
+        <p>
+          Tabla de inventario con filtros por categoría, marca y procesador, paginación y modal de
+          detalle. Es la vista que usa el vendedor para responder en el mostrador.
+        </p>
+      </div>
+      <div class="card">
+        <h3>Acciones</h3>
+        <p class="path">app/components/Actions.js · 315 líneas</p>
+        <p>
+          Agregar producto, cambiar precio, ajustar stock y registrar venta. Protegido con una
+          segunda clave, separada de la de lectura, para que consultar no implique poder editar.
+        </p>
+        <div class="tagrow"><span class="tag warn">Clave aparte</span></div>
+      </div>
+      <div class="card">
+        <h3>Chat InventarIA</h3>
+        <p class="path">app/components/Chat.js · 117 líneas</p>
+        <p>
+          Pregunta en lenguaje natural sobre el stock, con selector de modelo. Tiene un camino
+          rápido sin IA para consultas por código, que responde al instante y sin gastar tokens.
+        </p>
+      </div>
+      <div class="card">
+        <h3>Capa de datos CRM</h3>
+        <p class="path">lib/crm.js · 311 líneas</p>
+        <p>
+          Etapas creables desde la app sin tocar el esquema de Baserow. Renombrar una etapa arrastra
+          a sus leads; borrarla obliga a reasignarlos antes. El embudo solo avanza: nunca retrocede
+          a una etapa anterior por sí solo.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="embudo">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="eyebrow">Embudo</p>
+      <h2>Del primer «hola» a la transferencia</h2>
+      <p>
+        Un lead nuevo entra siempre en la primera etapa. El flujo lo va empujando solo cuando el
+        cliente hace algo que lo merece: pedir el catálogo, pedir cotización, decir que quiere comprar.
+      </p>
+    </div>
+
+    <div class="pipe">
+      <div class="pipe-col"><b><span class="dot" style="background:#94a3b8"></span>Nuevo</b><p>Escribió por primera vez</p></div>
+      <div class="pipe-col"><b><span class="dot" style="background:#3b82f6"></span>En Conversación</b><p>Pidió catálogo o vio una ficha</p></div>
+      <div class="pipe-col"><b><span class="dot" style="background:#eab308"></span>Cotización</b><p>Está llenando el formulario</p></div>
+      <div class="pipe-col"><b><span class="dot" style="background:#f97316"></span>Negociación</b><p>Quiere comprar · pasa a asesor</p></div>
+      <div class="pipe-col"><b><span class="dot" style="background:#a855f7"></span>Confirmar transfer</b><p>Esperando el pago</p></div>
+      <div class="pipe-col"><b><span class="dot" style="background:#22c55e"></span>Vendido</b><p>Cerrado</p></div>
+      <div class="pipe-col"><b><span class="dot" style="background:#ef4444"></span>Perdido</b><p>Con motivo registrado</p></div>
+    </div>
+    <p class="pipe-note">
+      Las etapas se crean y se renombran desde la app · Motivos de pérdida: precio, sin respuesta,
+      no calificado, compró en otro lado, solo preguntaba, otro.
+    </p>
+
+    <div class="sec-head" style="margin-top:1rem;">
+      <p class="eyebrow">Árbol del bot</p>
+      <h2 style="font-size:var(--step-1); font-weight:600;">Los estados que se guardan por cliente</h2>
+    </div>
+    <div class="flowmap">
+      <div class="node"><b>B-00</b><span>Bienvenida. Solo una opción real: portátiles.</span></div>
+      <div class="node"><b>B-01</b><span>Menú de portátiles.</span></div>
+      <div class="node"><b>B-01B</b><span>Envía el catálogo en PDF y espera un código.</span></div>
+      <div class="node"><b>P-01</b><span>Ya vio una ficha. Menú de cinco salidas.</span></div>
+      <div class="node"><b>C-00 → C-03</b><span>Cotización: nombre, código, cantidad, presupuesto.</span></div>
+      <div class="node exit"><b>9 · asesor</b><span>Pausa el bot para ese número, desde cualquier punto.</span></div>
+    </div>
+  </div>
+</section>
+
+<section id="estado">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="eyebrow">Estado</p>
+      <h2>La última actualización real no está en git</h2>
+    </div>
+
+    <div class="alert">
+      <b>Casi dos semanas de trabajo sin respaldar</b>
+      <p>
+        El último commit es del <strong>30 de junio</strong> (<code>67025b5</code>). Todo el CRM y toda
+        la integración con WhatsApp se escribieron después, el <strong>14 de julio</strong>, y siguen
+        sin commitear: <strong>11 archivos o carpetas nuevos</strong> y <strong>3 modificados</strong>.
+        Si el disco falla, se pierde la mitad del producto.
+      </p>
+    </div>
+
+    <div class="tl">
+      <div class="tl-row">
+        <time>24 jun 2026</time>
+        <div class="tl-body">
+          <b>Base del proyecto</b>
+          <p>Chat de inventario funcionando, más un camino rápido sin IA para consultas por código.</p>
+        </div>
+      </div>
+      <div class="tl-row">
+        <time>29–30 jun 2026</time>
+        <div class="tl-body">
+          <b>Dashboard, multi-modelo y acciones de escritura</b>
+          <p>Último commit registrado. Tabla con filtros, selector de modelos, agregar/precio/stock/venta y tema claro-oscuro.</p>
+        </div>
+      </div>
+      <div class="tl-row now">
+        <time>14 jul 2026</time>
+        <div class="tl-body">
+          <b>CRM completo + bot de WhatsApp · sin commitear</b>
+          <p>Kanban de leads, conversación embebida, envío de fotos, motor de menús, catálogo en PDF y handoff a humano. Es el trabajo más avanzado del proyecto y git no lo tiene.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec-head" style="margin-top:.6rem;">
+      <p class="eyebrow">Sin commitear</p>
+    </div>
+    <div class="files">
+      <div class="file"><code>app/components/CRM.js</code><span class="tag warn">nuevo</span></div>
+      <div class="file"><code>app/api/crm/ (8 rutas)</code><span class="tag warn">nuevo</span></div>
+      <div class="file"><code>app/api/whatsapp-flow/route.js</code><span class="tag warn">nuevo</span></div>
+      <div class="file"><code>app/api/uploads/[name]/route.js</code><span class="tag warn">nuevo</span></div>
+      <div class="file"><code>lib/crm.js</code><span class="tag warn">nuevo</span></div>
+      <div class="file"><code>lib/whatsappFlow.js</code><span class="tag warn">nuevo</span></div>
+      <div class="file"><code>lib/evolution.js</code><span class="tag warn">nuevo</span></div>
+      <div class="file"><code>lib/media.js</code><span class="tag warn">nuevo</span></div>
+      <div class="file"><code>public/ · uploads/</code><span class="tag warn">nuevo</span></div>
+      <div class="file"><code>app/page.js</code><span class="tag">modificado</span></div>
+      <div class="file"><code>app/globals.css</code><span class="tag">modificado</span></div>
+      <div class="file"><code>lib/gemini.js</code><span class="tag">modificado</span></div>
+    </div>
+
+    <div class="grid-3" style="margin-top:.6rem;">
+      <div class="card">
+        <h3>Configuración</h3>
+        <p>Las <strong>21 variables</strong> de <span class="tag mute">.env.local</span> están puestas: Baserow, las dos tablas del CRM, Evolution, las claves de acceso y los cuatro proveedores de IA.</p>
+        <div class="tagrow"><span class="tag good">Completa</span></div>
+      </div>
+      <div class="card">
+        <h3>Servidor</h3>
+        <p>16 núcleos, 32 GB de RAM y 42 GB libres en disco. La carga está en 0,14 — sobra máquina para Ollama local y Evolution al tiempo.</p>
+        <div class="tagrow"><span class="tag good">Holgado</span></div>
+      </div>
+      <div class="card">
+        <h3>Despliegue</h3>
+        <p>El README todavía apunta a Vercel, pero el flujo real usa una URL de red local para servir el catálogo y las fotos. Esa parte de la documentación quedó vieja.</p>
+        <div class="tagrow"><span class="tag warn">README desactualizado</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="pasos">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="eyebrow">Qué sigue</p>
+      <h2>Por dónde seguiría, en orden</h2>
+    </div>
+    <ol class="steps">
+      <li>
+        <span class="n">1</span>
+        <div>
+          <b>Commitear el CRM y el bot</b>
+          <p>Es lo único urgente. Antes de eso, revisar que <code>.gitignore</code> deje fuera <code>uploads/</code> y las fotos de clientes, y confirmar que <code>.env.local</code> no entre al repositorio.</p>
+        </div>
+      </li>
+      <li>
+        <span class="n">2</span>
+        <div>
+          <b>Borrar los <code>.bak</code></b>
+          <p>Quedaron <code>lib/crm.js.bak</code>, <code>lib/gemini.js.bak</code> y <code>.env.local.bak</code> de las últimas ediciones. Con el historial en git dejan de hacer falta — y el <code>.env.local.bak</code> tiene credenciales.</p>
+        </div>
+      </li>
+      <li>
+        <span class="n">3</span>
+        <div>
+          <b>Actualizar el README</b>
+          <p>Hoy describe solo el chat de inventario. No menciona el CRM, el bot de WhatsApp, Evolution ni las dos tablas nuevas, que son más de la mitad del proyecto.</p>
+        </div>
+      </li>
+      <li>
+        <span class="n">4</span>
+        <div>
+          <b>Ampliar el árbol del menú</b>
+          <p>El bot solo ofrece portátiles usados. La estructura ya está lista para colgar más categorías del nodo <code>B-00</code> sin tocar el motor.</p>
+        </div>
+      </li>
+    </ol>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span>/home/atlasjm/chat_bot-inventario</span>
+    <span>Next.js 14 · React 18 · Baserow · Evolution API</span>
+  </div>
+</footer>
+
+<script>
+(function () {
+  "use strict";
+
+  // Producto de ejemplo: el inventario real vive en Baserow.
+  var DEMO = {
+    codigo: "100-102-1013-6",
+    marca: "Lenovo", modelo: "ThinkPad T480",
+    specs: "Core i5-8350U · gen 8 · 16GB · 512GB SSD",
+    estado: "Grado A", precio: 1850000, stock: 2,
+    desc: "Batería doble, teclado retroiluminado, pantalla FHD IPS."
+  };
+
+  var cop = function (n) {
+    return n > 0 ? "$" + Number(n).toLocaleString("es-CO") : "a convenir";
+  };
+
+  var MSG_BIENVENIDA =
+    "¡Hola! 👋 Bienvenido a *Ventas Virtuales Colombia*, distribuidores al por mayor y detal de equipos de cómputo.\n" +
+    "Soy *Atlas asiste ventas*, tu asistente virtual. 😊 ¿En qué te puedo ayudar hoy?\n\n" +
+    "1️⃣ PORTÁTILES\n\n9️⃣ Hablar con un asesor";
+
+  var MSG_PORTATILES =
+    "📦 *PORTÁTILES*\n\n1️⃣ Portátiles Usados\n\n0️⃣ Volver al menú principal\n9️⃣ Hablar con un asesor";
+
+  var MSG_HANDOFF =
+    "👍 Listo, un asesor humano te va a atender en breve. Puedes escribir tu consulta mientras tanto y quedará registrada.";
+
+  var MSG_CATALOGO =
+    "📎 Te envío nuestro *catálogo de Portátiles Usados* de *Ventas Virtuales Colombia*, actualizado al *14 de julio de 2026*.\n\n" +
+    "👉 Si un equipo te interesa, envíame su *código* (ej: " + DEMO.codigo + ") y te mando la *ficha completa con fotos y video*. 📸🎥\n\n" +
+    "0️⃣ Volver al menú   ·   9️⃣ Hablar con un asesor";
+
+  var MENU_POST =
+    "¿Qué deseas hacer? 👇\n\n1️⃣ Consultar otro producto\n2️⃣ Cotización personalizada 📝\n" +
+    "3️⃣ Quiero comprar este equipo 🛒\n4️⃣ Hablar con un asesor 👨‍💼\n5️⃣ Volver al menú principal";
+
+  function fichaProducto() {
+    return "💻 *" + DEMO.marca + " " + DEMO.modelo + "*\n" +
+      "🔖 Código: " + DEMO.codigo + "\n" +
+      "⚙️ " + DEMO.specs + "\n" +
+      "📦 Estado: " + DEMO.estado + "\n" +
+      "💵 *Precio: " + cop(DEMO.precio) + "*\n" +
+      "✅ Disponible: " + DEMO.stock + " unidad(es)\n\n" +
+      DEMO.desc + "\n\n──────────────\n" + MENU_POST;
+  }
+
+  function norm(s) {
+    return String(s == null ? "" : s).toLowerCase()
+      .normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
+  }
+
+  var HANDOFF_WORDS = ["asesor", "humano", "agente", "representante", "persona real", "hablar con alguien"];
+
+  function matchCodigo(texto) {
+    var compact = function (s) { return norm(s).replace(/[\s\-.]/g, ""); };
+    var t = compact(texto);
+    var c = compact(DEMO.codigo);
+    return t.length >= 3 && t.indexOf(c) !== -1;
+  }
+
+  // Réplica del motor de lib/whatsappFlow.js sobre un inventario de ejemplo.
+  function processFlow(texto, step, lead) {
+    var raw = String(texto).trim();
+    var n = norm(raw);
+    var out = { media: [], handoff: false, etapa: null, next: step };
+
+    if (n === "9" || HANDOFF_WORDS.some(function (w) { return n.indexOf(w) !== -1; })) {
+      out.reply = MSG_HANDOFF; out.handoff = true; return out;
+    }
+
+    if (step === "C-00") {
+      if (raw.length < 3) { out.reply = "✍️ Por favor escribe tu *nombre y apellido* para la cotización."; out.next = "C-00"; return out; }
+      lead.nombre = raw;
+      out.reply = "Gracias, *" + raw + "*. 📋\n\n¿Qué equipo te interesa cotizar? Envíame el *código* del producto (ej: " + DEMO.codigo + ").";
+      out.next = "C-01"; return out;
+    }
+    if (step === "C-01") {
+      if (!matchCodigo(raw)) { out.reply = "🤔 No encontré ese código en el catálogo. Revisa el PDF y envíame el *código* tal cual aparece."; out.next = "C-01"; return out; }
+      lead.producto = DEMO.codigo;
+      out.reply = "Perfecto: *" + DEMO.marca + " " + DEMO.modelo + "* (" + DEMO.codigo + ") — " + cop(DEMO.precio) + " c/u.\n\n¿Cuántas *unidades* necesitas? (escribe un número: 1, 2, 3...)";
+      out.next = "C-02"; return out;
+    }
+    if (step === "C-02") {
+      var cant = parseInt(n.replace(/\D/g, ""), 10);
+      if (!cant || cant < 1) { out.reply = "🔢 Indícame la *cantidad* con un número (ej: 1, 2, 3)."; out.next = "C-02"; return out; }
+      lead.cantidad = cant;
+      out.reply = "👍 " + cant + " unidad(es).\n\n¿Cuál es tu *presupuesto* aproximado? (escribe un valor, ej: 3.000.000)";
+      out.next = "C-03"; return out;
+    }
+    if (step === "C-03") {
+      var pres = parseInt(n.replace(/\D/g, ""), 10) || 0;
+      var cantidad = lead.cantidad || 1;
+      var total = DEMO.precio * cantidad;
+      out.reply = "✅ ¡Listo, *" + (lead.nombre || "cliente") + "*! Hemos registrado tu solicitud de cotización.\n\n" +
+        "📋 *Resumen:*\n" +
+        "• Equipo: " + DEMO.marca + " " + DEMO.modelo + " (" + DEMO.codigo + ")\n" +
+        "• Cantidad: " + cantidad + "\n" +
+        "• Precio unitario: " + cop(DEMO.precio) + "\n" +
+        "• Total estimado: *" + cop(total) + "*\n" +
+        "• Tu presupuesto: " + cop(pres) + "\n\n" +
+        "Un *asesor* te contactará en breve para afinar el precio final y coordinar el pago. 🙌";
+      out.next = "P-01"; out.handoff = true; out.etapa = "Negociación"; return out;
+    }
+
+    // Atajo global: un código dentro de cualquier frase muestra la ficha.
+    if (raw.replace(/[\s\-.]/g, "").length >= 3 && !/^[0-9]$/.test(n) && matchCodigo(raw)) {
+      out.reply = fichaProducto();
+      out.media = [{ tipo: "📸", label: "3 fotos del equipo" }, { tipo: "🎥", label: "video de 20 s" }];
+      out.next = "P-01"; out.etapa = "En Conversación"; return out;
+    }
+
+    if (step === "B-01") {
+      if (n === "1") {
+        out.reply = MSG_CATALOGO;
+        out.media = [{ tipo: "📄", label: "Catalogo-Portatiles-Usados-VVC.pdf" }];
+        out.next = "B-01B"; out.etapa = "En Conversación"; return out;
+      }
+      if (n === "0") { out.reply = MSG_BIENVENIDA; out.next = "B-00"; return out; }
+      out.reply = "🤔 No entendí esa opción.\n\n" + MSG_PORTATILES; out.next = "B-01"; return out;
+    }
+
+    if (step === "B-01B") {
+      if (n === "0") { out.reply = MSG_PORTATILES; out.next = "B-01"; return out; }
+      out.reply = "🤔 No encontré ese código en el catálogo. Revisa el PDF que te envié y escríbeme el *código* tal cual aparece (ej: " + DEMO.codigo + ").\n\n0️⃣ Volver   ·   9️⃣ Asesor";
+      out.next = "B-01B"; return out;
+    }
+
+    if (step === "P-01") {
+      if (n === "1") { out.reply = "👍 Perfecto. Escríbeme el *código* del siguiente equipo que quieras ver."; out.next = "B-01B"; return out; }
+      if (n === "2") { out.reply = "📝 ¡Con gusto te armo una *cotización personalizada*!\n\nPara empezar, ¿a nombre de quién la hago? (nombre y apellido)"; out.next = "C-00"; out.etapa = "Cotización"; return out; }
+      if (n === "3") { out.reply = "🛒 ¡Excelente decisión! Un asesor te contactará ya para cerrar la *compra* y coordinar el pago y la entrega. 🙌"; out.next = "P-01"; out.handoff = true; out.etapa = "Negociación"; return out; }
+      if (n === "5") { out.reply = MSG_BIENVENIDA; out.next = "B-00"; return out; }
+      out.reply = "🤔 No entendí. \n\n" + MENU_POST; out.next = "P-01"; return out;
+    }
+
+    if (n === "1") { out.reply = MSG_PORTATILES; out.next = "B-01"; return out; }
+    out.reply = MSG_BIENVENIDA; out.next = "B-00"; return out;
+  }
+
+  var CHIPS = {
+    "B-00":  [["1", "1️⃣ Portátiles"], ["9", "9️⃣ Asesor"]],
+    "B-01":  [["1", "1️⃣ Usados"], ["0", "0️⃣ Volver"], ["9", "9️⃣ Asesor"]],
+    "B-01B": [[DEMO.codigo, "info del " + DEMO.codigo], ["0", "0️⃣ Volver"]],
+    "P-01":  [["1", "1️⃣ Otro producto"], ["2", "2️⃣ Cotización"], ["3", "3️⃣ Comprar"], ["5", "5️⃣ Menú"]],
+    "C-00":  [["Juan Pérez", "Juan Pérez"]],
+    "C-01":  [[DEMO.codigo, DEMO.codigo]],
+    "C-02":  [["2", "2 unidades"]],
+    "C-03":  [["3.000.000", "$3.000.000"]]
+  };
+
+  var log = document.getElementById("log");
+  var chips = document.getElementById("chips");
+  var badge = document.getElementById("stepBadge");
+  var form = document.getElementById("form");
+  var input = document.getElementById("msg");
+
+  var state = { step: "B-00", lead: {}, paused: false };
+
+  // Convierte el *negrita* de WhatsApp en marcado real.
+  function bold(text) {
+    var parts = String(text).split(/\*([^*\n]+)\*/g);
+    var frag = document.createDocumentFragment();
+    for (var i = 0; i < parts.length; i++) {
+      if (i % 2 === 1) {
+        var s = document.createElement("strong");
+        s.textContent = parts[i];
+        frag.appendChild(s);
+      } else if (parts[i]) {
+        frag.appendChild(document.createTextNode(parts[i]));
+      }
+    }
+    return frag;
+  }
+
+  function push(kind, text) {
+    var el = document.createElement("div");
+    el.className = "bub " + kind;
+    if (kind === "bot" || kind === "me") el.appendChild(bold(text));
+    else el.textContent = text;
+    log.appendChild(el);
+    log.scrollTop = log.scrollHeight;
+    return el;
+  }
+
+  function renderChips() {
+    chips.textContent = "";
+    var opts = state.paused ? [] : (CHIPS[state.step] || []);
+    opts.forEach(function (o) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "chip";
+      b.textContent = o[1];
+      b.addEventListener("click", function () { send(o[0]); });
+      chips.appendChild(b);
+    });
+    var r = document.createElement("button");
+    r.type = "button";
+    r.className = "chip reset";
+    r.textContent = "↻ reiniciar";
+    r.addEventListener("click", reset);
+    chips.appendChild(r);
+  }
+
+  function send(text) {
+    var t = String(text).trim();
+    if (!t) return;
+    push("me", t);
+
+    if (state.paused) {
+      push("sys", "Bot pausado · el mensaje queda para el asesor");
+      return;
+    }
+
+    var res = processFlow(t, state.step, state.lead);
+    state.step = res.next;
+
+    res.media.forEach(function (m) {
+      var el = push("att", "");
+      el.textContent = m.tipo + "  " + m.label;
+    });
+    push("bot", res.reply);
+
+    if (res.etapa) push("sys", "CRM · lead movido a " + res.etapa);
+    if (res.handoff) {
+      state.paused = true;
+      push("sys", "Pausar bot = sí · un asesor toma el control");
+    }
+
+    badge.textContent = state.paused ? "HUMANO" : state.step;
+    renderChips();
+  }
+
+  function reset() {
+    state = { step: "B-00", lead: {}, paused: false };
+    log.textContent = "";
+    badge.textContent = "B-00";
+    push("sys", "Nuevo lead · creado en la etapa Nuevo");
+    push("bot", MSG_BIENVENIDA);
+    renderChips();
+  }
+
+  form.addEventListener("submit", function (e) {
+    e.preventDefault();
+    send(input.value);
+    input.value = "";
+  });
+
+  reset();
+})();
+</script>
+</body>
+</html>

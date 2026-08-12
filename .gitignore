@@ -1,6 +1,25 @@
+# Dependencias y build
 node_modules
 .next
+npm-debug.log*
+
+# Credenciales — NUNCA commitear
 .env.local
 .env*.local
+.env.local.bak
+.env
+.env.*
+
+# Copias de seguridad de ediciones
+*.bak
+*.orig
+*~
+
+# Datos de clientes (fotos enviadas desde el CRM) — datos personales
+/uploads/
+
+# Sistema operativo / editores
 .DS_Store
-npm-debug.log*
+Thumbs.db
+.vscode/
+.idea/

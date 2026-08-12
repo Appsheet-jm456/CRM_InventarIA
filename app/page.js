@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Dashboard from "./components/Dashboard";
 import Chat from "./components/Chat";
 import Actions from "./components/Actions";
+import CRM from "./components/CRM";
 
 const EMPTY_CONFIG = { nombre: "", telefono: "", direccion: "", whatsapp: "", nota: "" };
 
@@ -27,6 +28,7 @@ export default function Home() {
   const [actionsOpen, setActionsOpen] = useState(false);
   const [actionPassword, setActionPassword] = useState(""); // se pide 1 vez por sesión
   const [refreshKey, setRefreshKey] = useState(0); // ++ para refrescar el Dashboard
+
 
   const [models, setModels] = useState([]); // [{name, size, provider: "ollama"|"gemini"}]
   const [model, setModel] = useState("");
@@ -143,6 +145,10 @@ export default function Home() {
             className={`tab${view === "chat" ? " active" : ""}`}
             onClick={() => setView("chat")}
           >Chat InventarIA</button>
+          <button
+            className={`tab${view === "crm" ? " active" : ""}`}
+            onClick={() => setView("crm")}
+          >CRM</button>
         </nav>
 
         <div className="spacer" />
@@ -243,6 +249,14 @@ export default function Home() {
         </div>
         <div className={`view-pane${view === "chat" ? " active" : ""}`}>
           <Chat password={password} model={model} provider={selectedProvider} onAuthFail={handleAuthFail} />
+        </div>
+        <div className={`view-pane${view === "crm" ? " active" : ""}`}>
+          <CRM
+            accessPassword={password}
+            actionPassword={actionPassword}
+            setActionPassword={setActionPassword}
+            active={view === "crm"}
+          />
         </div>
       </main>
     </div>
