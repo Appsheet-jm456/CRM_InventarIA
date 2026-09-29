@@ -3,6 +3,8 @@
 `v2` · 29 sep 2026 · validado con el dueño (F1·1 a F1·3) · Fuente: "Árbol de Flujo — Salesbot Kommo" del dueño, adaptado al CRM
 InventarIA (decisiones 0005, 0006, 0010 y 0011)
 
+> Simulación interactiva de este árbol: [SIMULACION-CHAT.md](SIMULACION-CHAT.md).
+>
 > El bot **guía por módulos** con menús numerados y responde con **datos reales del inventario**
 > (tabla `productos`). No usa IA libre. Cada respuesta guarda campos, etiquetas y la etapa del
 > embudo, y el asesor la ve en la bandeja en tiempo real.
@@ -301,4 +303,5 @@ al inicio.
 | P-07 | Servicio al cliente | ⏳ **Lo define el dueño**; mientras tanto → B-ASESOR (tarea F1·7) |
 | P-08 | Reparto de chats | ✅ **Cola compartida**: el primer asesor libre toma el chat |
 | P-09 | SLA | ✅ **Meta 10 min, alerta a los 15 min**, solo en horario |
+| P-11 | Tipo de chat del MVP: guiado, agente o híbrido | ⏳ Pendiente: ver [SIMULACION-CHAT.md](SIMULACION-CHAT.md) (tarea F1·9) |
 | P-10 | Horario | ✅ **L–V 8:00–18:00 · Sáb 9:00–14:00 · festivos cerrado** |

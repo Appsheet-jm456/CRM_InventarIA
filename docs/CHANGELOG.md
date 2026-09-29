@@ -1,5 +1,11 @@
 # Changelog del brief
 
+## v1.0 · 29 sep 2026 (simulación del chat)
+
+- Prototipo `docs/simulacion/simulacion-chat.html`: chat guiado y chat tipo agente sobre el
+  inventario real, documentado en `docs/SIMULACION-CHAT.md`. Aprobado por el dueño.
+- Nuevas P-11 y F1·9 (tipo de chat del MVP) y F2·12 (perfeccionar la simulación).
+
 ## v1.0 · 29 sep 2026 (F1·1 a F1·3)
 
 - Árbol de respuesta guiado (Salesbot) conectado a la base: `docs/ARBOL-DE-RESPUESTA.md` (0012).

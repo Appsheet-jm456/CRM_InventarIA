@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulación del chat · CRM InventarIA</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
+<style>
+:root{--surface-0:#f5f5f3;--surface-1:#ecebe6;--surface-2:#fff;--text-primary:#1f1f1d;--text-secondary:#5f5e5a;--text-muted:#888780;--text-accent:#185fa5;--text-success:#27500a;--text-warning:#854f0b;--text-danger:#a32d2d;--bg-success:#eaf3de;--border:rgba(0,0,0,.12);--border-strong:rgba(0,0,0,.3);--border-accent:#378add;--radius:8px}
+@media (prefers-color-scheme:dark){:root{--surface-0:#1c1c1a;--surface-1:#2a2a27;--surface-2:#333330;--text-primary:#f1efe8;--text-secondary:#b4b2a9;--text-muted:#888780;--text-accent:#85b7eb;--text-success:#c0dd97;--text-warning:#fac775;--text-danger:#f09595;--bg-success:#27500a;--border:rgba(255,255,255,.14);--border-strong:rgba(255,255,255,.35)}}
+body{margin:0;padding:16px;background:var(--surface-0);color:var(--text-primary);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;font-size:16px;line-height:1.6;max-width:760px;margin-inline:auto}
+button{font:inherit;color:var(--text-primary);background:transparent;border:.5px solid var(--border-strong);border-radius:var(--radius);padding:6px 12px;cursor:pointer}
+button:hover{background:var(--surface-1)}
+input{font:inherit;color:var(--text-primary);background:var(--surface-2);border:.5px solid var(--border-strong);border-radius:var(--radius);padding:6px 10px;height:36px;box-sizing:border-box}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.w{display:grid;grid-template-columns:minmax(0,1fr) 210px;gap:12px}
+@media (max-width:640px){.w{grid-template-columns:minmax(0,1fr)}}
+.ph{background:var(--surface-1);border-radius:12px;padding:10px;display:flex;flex-direction:column;height:520px}
+.log{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:6px;padding:4px}
+.b{max-width:82%;padding:7px 10px;border-radius:10px;font-size:13px;line-height:1.5;white-space:pre-wrap}
+.bot{background:var(--surface-2);border:.5px solid var(--border);align-self:flex-start}
+.me{background:var(--bg-success);color:var(--text-success);align-self:flex-end}
+.sys{align-self:center;font-size:11px;color:var(--text-muted)}
+.ops{display:flex;flex-wrap:wrap;gap:6px;padding:6px 4px}
+.ops button{font-size:12px;padding:4px 10px;height:auto}
+.side{font-size:12px;display:flex;flex-direction:column;gap:8px}
+.card{background:var(--surface-1);border-radius:var(--radius);padding:8px 10px}
+.k{color:var(--text-secondary)}
+.tool{font-family:ui-monospace,Menlo,monospace;font-size:11px;color:var(--text-accent);align-self:flex-start}
+</style>
+</head>
+<body>
+<h2 class="sr-only">Simulación de chat de WhatsApp con dos modos, bot guiado por árbol y agente conversacional, ambos respondiendo con el inventario real de 17 portátiles.</h2>
+<div style="display:flex;gap:8px;margin:0 0 10px;align-items:center">
+<button id="mG" onclick="setMode('g')"><i class="ti ti-list-numbers" aria-hidden="true"></i> Chat guiado con bot</button>
+<button id="mA" onclick="setMode('a')"><i class="ti ti-sparkles" aria-hidden="true"></i> Chat tipo agente</button>
+<button onclick="reset()" aria-label="Reiniciar"><i class="ti ti-refresh" aria-hidden="true"></i></button>
+</div>
+<div class="w">
+<div class="ph">
+<div class="log" id="log"></div>
+<div class="ops" id="ops"></div>
+<div style="display:flex;gap:6px">
+<input id="inp" placeholder="Escribe como cliente: hola, 1, 100-102-1041…" style="flex:1" onkeydown="if(event.key==='Enter')send()">
+<button onclick="send()" aria-label="Enviar"><i class="ti ti-send" aria-hidden="true"></i></button>
+</div>
+<div id="err" style="font-size:13px;color:var(--text-danger);min-height:0"></div>
+</div>
+<div class="side">
+<div class="card"><div class="k">Modo</div><div id="sMode" style="font-weight:500"></div></div>
+<div class="card"><div class="k">Nodo del árbol</div><div id="sNode" style="font-family:ui-monospace,Menlo,monospace"></div></div>
+<div class="card"><div class="k">Etapa del embudo</div><div id="sEt" style="font-weight:500"></div></div>
+<div class="card"><div class="k">Campos guardados</div><div id="sF"></div></div>
+<div class="card"><div class="k">Mensajes cobrables (Meta)</div><div id="sM" style="font-size:18px;font-weight:500"></div></div>
+<div class="card"><div class="k">Bot</div><div id="sB"></div></div>
+</div>
+</div>
+<script>
+const INV=[["100-102-1007-3","DELL","5520","Core i7-1135G7","16GB","256GB NVMe",1450000],["100-102-1041","DELL","INSPIRON 14","Core i7-1195G7","16GB","512GB M.2",2399000],["100-102-1052","DELL","5310","Core i7-10610U","8GB","256GB NVMe",899900],["100-102-1069","DELL","5490","Core i5-8250U","8GB","256GB SSD",800000],["100-102-1070","DELL","5300","Core i7-8665U","8GB","256GB NVMe",850000],["100-102-1007-7","DELL","LATITUD 5520","Core i5-1185G7","8GB","256GB NVMe",1150000],["100-101-1092","DELL","PRECISION 3510","Core i7-6820HQ","8GB","256GB NVMe",1030000],["100-102-1093","DELL","PRECISION 3560","Core i5-1145G7","16GB","512GB",1850000],["100-102-1032-5","DELL","5410","Core i7-10610U","16GB","256GB SSD",1250000],["100-102-1115","DELL","5420","Core i5-1145G7","8GB","256GB NVMe",1100000],["100-102-1117","DELL","5420","Core i5-1145G7","8GB","256GB NVMe",1100000],["100-102-1117-1","DELL","5420","Core i5-1145G7","8GB","256GB NVMe",1050000],["100-102-1043-3","DELL","LATITUDE 5430","Core i5-1245U","8GB","256GB NVMe",1100000],["100-102-1043-4","DELL","LATITUDE 5430","Core i5-1245U","8GB","256GB",1100000],["PU-23","DELL","5511","Core i7-10850H","16GB","512GB SSD",1600000],["PU-40","DELL","LATITUDE E7470","Core i7-6600U","8GB","256GB SSD",850000],["PU-48","DELL","LATITUDE 5521","Core i7-11850H","16GB","512GB SSD",2299000]].map(r=>({cod:r[0],marca:r[1],modelo:r[2],cpu:r[3],ram:r[4],disco:r[5],precio:r[6],stock:1}));
+const RANG=[[0,1e6,"Menos de $1.000.000"],[1e6,15e5,"$1.000.000 – $1.500.000"],[15e5,2e6,"$1.500.000 – $2.000.000"],[2e6,1e9,"Más de $2.000.000"]];
+const ETAPAS=["Nuevo","En Conversación","Cotización"];
+let S,mode='g';
+const $=i=>document.getElementById(i);
+const cop=n=>"$"+Math.round(n).toLocaleString("es-CO");
+const norm=s=>s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").trim();
+function reset(){S={node:null,et:null,f:{},msgs:0,err:0,pausa:false};$('log').innerHTML='';$('ops').innerHTML='';sys(mode==='g'?'El cliente abre el chat. Escribe hola.':'Agente simulado con reglas sobre la base (no es IA real). Pregunta libre: "busco un i7 de 16 GB por menos de 1,5 millones".');upd()}
+function setMode(m){mode=m;$('mG').style.borderColor=m==='g'?'var(--border-accent)':'';$('mA').style.borderColor=m==='a'?'var(--border-accent)':'';reset()}
+function sys(t){const d=document.createElement('div');d.className='sys';d.textContent=t;$('log').appendChild(d)}
+function tool(t){const d=document.createElement('div');d.className='tool';d.textContent='→ '+t;$('log').appendChild(d)}
+function add(t,c){const d=document.createElement('div');d.className='b '+c;d.textContent=t;$('log').appendChild(d);$('log').scrollTop=1e6}
+function bot(t,ops){if(S.pausa)return;add(t,'bot');S.msgs++;$('ops').innerHTML='';(ops||[]).forEach(o=>{const b=document.createElement('button');b.textContent=o[1];b.onclick=()=>{$('inp').value=o[0];send()};$('ops').appendChild(b)});upd()}
+function etapa(e){if(!S.et||ETAPAS.indexOf(e)>ETAPAS.indexOf(S.et))S.et=e}
+function upd(){$('sMode').textContent=mode==='g'?'Guiado (árbol)':'Agente';$('sNode').textContent=mode==='g'?(S.node||'—'):'libre';$('sEt').textContent=S.et||'—';const f=Object.entries(S.f);$('sF').innerHTML=f.length?f.map(([k,v])=>'<div><span class="k">'+k+':</span> '+v+'</div>').join(''):'<span class="k">—</span>';$('sM').textContent=S.msgs+' / 1.000';$('sB').innerHTML=S.pausa?'<span style="color:var(--text-warning)">Pausado · en cola de asesor</span>':'<span style="color:var(--text-success)">Activo</span>'}
+function findCode(t){const c=t.toUpperCase().replace(/\s/g,'');return INV.slice().sort((a,b)=>b.cod.length-a.cod.length).find(p=>c.includes(p.cod))}
+function ficha(p){return "💻 "+p.marca+" "+p.modelo+" · Código "+p.cod+"\n"+p.cpu+" · "+p.ram+" · "+p.disco+"\n💰 "+cop(p.precio)+" · ✅ Disponible"}
+function filtro(){let r=INV;const R=S.rango;if(R)r=r.filter(p=>p.precio>=R[0]&&p.precio<R[1]);if(S.f['Uso equipo']==='Diseño')r=r.filter(p=>/H|HQ/.test(p.cpu.split('-')[1]||'')||p.ram==='16GB');return r}
+const N={
+B00:()=>{etapa('Nuevo');S.f['Etiqueta']='WhatsApp-Bot';bot("¡Hola! 👋 Bienvenido a Ventas Virtuales Colombia, distribuidores al por mayor y detal de equipos de cómputo en Cali.\nSoy el Bot Ventas Virtuales 🤖 ¿En qué te podemos ayudar hoy?\n\n1️⃣ Productos\n2️⃣ Distribuidores\n3️⃣ Servicio al cliente",[["1","1 Productos"],["2","2 Distribuidores"],["3","3 Servicio al cliente"]])},
+B001A:()=>bot("¡Perfecto! ¿Qué producto estás buscando?\n\n1️⃣ Portátiles corporativos\n2️⃣ Torres Tiny\n3️⃣ Torres SFF\n4️⃣ Partes\n0️⃣ Volver al menú principal",[["1","1 Portátiles"],["2","2 Tiny"],["3","3 SFF"],["4","4 Partes"],["0","0 Volver"]]),
+B001A1:()=>bot("¿Para qué tipo de trabajo necesitas el portátil?\n\n1️⃣ Hogar / estudio\n2️⃣ Ejecutivo / oficina\n3️⃣ Diseño / edición\n0️⃣ Volver",[["1","1 Hogar"],["2","2 Ejecutivo"],["3","3 Diseño"],["0","0 Volver"]]),
+B001A2:()=>bot("¿Cuál es tu presupuesto aproximado?\n\n"+RANG.map((r,i)=>(i+1)+"️⃣ "+r[2]).join("\n"),RANG.map((r,i)=>[String(i+1),(i+1)+" "+r[2]])),
+B001A3:()=>bot("¿Deseas que te enviemos el catálogo de portátiles disponibles para "+S.f['Uso equipo']+" y así revises cuál te interesa?\n\n1️⃣ Sí, envíame el catálogo\n2️⃣ Cotización personalizada con un asesor\n3️⃣ Volver al menú anterior",[["1","1 Sí"],["2","2 Asesor"],["3","3 Volver"]]),
+B001A4:()=>{const m=[...new Set(INV.map(p=>p.marca))];bot("¿De qué marca quieres ver los portátiles?\n(solo aparecen marcas con stock)\n\n1️⃣ "+m[0]+"\n2️⃣ Todas las marcas",[["1","1 "+m[0]],["2","2 Todas"]])},
+B001A5:()=>{const r=filtro();S.f['Etiqueta']='Catalogo-Enviado';tool('consulta productos: '+(S.f['Marca interés'])+', '+S.f['Presupuesto']+', '+S.f['Uso equipo']+' → '+r.length+' con stock');if(!r.length){bot("😕 No tenemos equipos con stock en ese rango ahora mismo.\n\n1️⃣ Cambiar presupuesto\n9️⃣ Hablar con un asesor",[["1","1 Cambiar presupuesto"],["9","9 Asesor"]]);S.node='B001A5-vacio';return}bot("📎 Catálogo de "+S.f['Marca interés']+" armado desde la base ("+r.length+" equipos):\n\n"+r.map(p=>"• "+p.cod+" · "+p.modelo+" · "+p.cpu+" · "+p.ram+" · "+cop(p.precio)).join("\n")+"\n\nEnvíanos el código del equipo que te interesa (ej. "+r[0].cod+").\n0️⃣ Menú principal",r.slice(0,3).map(p=>[p.cod,p.cod]).concat([["0","0 Menú"]]))},
+ASESOR:(tag)=>{if(tag)S.f['Etiqueta']=tag;bot("¡Entendido! 🙌 En breve un asesor de Ventas Virtuales Colombia te atenderá personalmente.\n\n🕗 Lunes a viernes: 8:00 am – 6:00 pm\n🕘 Sábados: 9:00 am – 2:00 pm\nFestivos: cerrado.");S.pausa=true;S.node='B-ASESOR';sys('Chat en cola compartida · SLA 10 min, alerta a los 15');upd()}
+};
+function go(n,...a){S.node=n;S.err=0;N[n](...a)}
+function R11(p){S.node='R11';S.err=0;S.f['Código producto']=p.cod;S.f['Valor estimado']=cop(p.precio);etapa('Cotización');tool('consulta producto por código '+p.cod+' → stock '+p.stock);bot(ficha(p)+"\n\n1️⃣ Lo quiero · hablar con un asesor\n2️⃣ Ver otro código\n0️⃣ Menú principal",[["1","1 Lo quiero"],["2","2 Otro código"],["0","0 Menú"]])}
+function ERR(){S.err++;S.f['Errores bot']=S.err;if(S.err>=3){sys('3 respuestas no reconocidas → B-ASESOR');N.ASESOR();return}add("🤔 No entendí tu respuesta. Escribe el número de la opción que deseas, o MENU para volver al inicio.",'bot');S.msgs++;upd()}
+function guiado(t){const n=norm(t);
+if(S.pausa){sys('El bot no responde: el chat es de un asesor');return}
+if(!S.node||/^(hola|menu|inicio)$/.test(n))return go('B00');
+const p=findCode(t);if(p&&S.node!=='B001A2')return R11(p);
+if(n==='9'||n.includes('asesor'))return N.ASESOR('Escalado-Asesor');
+const k=S.node;
+if(k==='B00'){if(n==='1'||/producto|portatil|torre/.test(n))return go('B001A');if(n==='2'||/distribuidor|mayor/.test(n)||n==='3'||/servicio|garantia|soporte/.test(n)){sys('Rama pendiente (F1·7) → asesor');return N.ASESOR()}return ERR()}
+if(k==='B001A'){if(n==='1'||/portatil|laptop/.test(n)){S.f['Categoría interés']='Portátiles';S.f['Etiqueta']='Interes-Productos';return go('B001A1')}if(['2','3','4'].includes(n)){sys('Categoría sin stock ni rama definida (F1·7) → asesor');return N.ASESOR()}if(n==='0'||n==='volver')return go('B00');return ERR()}
+if(k==='B001A1'){const u={1:'Hogar',2:'Ejecutivo',3:'Diseño'}[n]||(/hogar|casa|estudio/.test(n)?'Hogar':/ejecutivo|oficina/.test(n)?'Ejecutivo':/diseno|edicion/.test(n)?'Diseño':null);if(u){S.f['Uso equipo']=u;S.f['Etiqueta']='Interes-Portatil';return go('B001A2')}if(n==='0')return go('B001A');return ERR()}
+if(k==='B001A2'){const i=parseInt(n)-1;if(RANG[i]){S.rango=RANG[i];S.f['Presupuesto']=RANG[i][2];etapa('En Conversación');return go('B001A3')}return ERR()}
+if(k==='B001A3'){if(n==='1'||/^si|catalogo/.test(n))return go('B001A4');if(n==='2'||/cotizacion/.test(n))return N.ASESOR('Cotizacion-Personalizada');if(n==='3'||n==='volver')return go('B001A');return ERR()}
+if(k==='B001A4'){if(n==='1'||n==='dell'){S.f['Marca interés']='DELL';return go('B001A5')}if(n==='2'||n==='todas'){S.f['Marca interés']='Todas';return go('B001A5')}if(/lenovo|hp/.test(n)){bot("Por ahora no tenemos esa marca en stock. Te muestro las que sí hay 👇");return go('B001A4')}return ERR()}
+if(k==='B001A5-vacio'){if(n==='1')return go('B001A2');return ERR()}
+if(k==='B001A5'){if(n==='0')return go('B00');return ERR()}
+if(k==='R11'){if(n==='1')return N.ASESOR('Escalado-Asesor');if(n==='2'){bot("Envíame el código del equipo 👇");S.node='B001A5';return}if(n==='0')return go('B00');return ERR()}
+}
+function agente(t){const n=norm(t);
+if(S.pausa){sys('El agente no responde: el chat es de un asesor');return}
+etapa('Nuevo');
+if(n.includes('asesor')||n.includes('humano')){return N.ASESOR('Escalado-Asesor')}
+const p=findCode(t);if(p){S.f['Código producto']=p.cod;S.f['Valor estimado']=cop(p.precio);etapa('Cotización');tool('buscar_producto(codigo="'+p.cod+'")');return bot("¡Claro! Ese equipo lo tenemos disponible:\n\n"+ficha(p)+"\n\n¿Quieres que te lo aparte y te pase con un asesor para el pago?")}
+let f={},r=INV.slice();
+const mm=n.replace(/\./g,'').match(/(\d+(?:,\d+)?)\s*(millon|millones|m\b|mill)/);const pl=n.replace(/\./g,'').match(/\b(\d{6,7})\b/);
+let max=null;if(mm)max=parseFloat(mm[1].replace(',','.'))*1e6;else if(pl)max=+pl[1];
+if(max){f.precio_max=max;r=r.filter(x=>x.precio<=max*1.001)}
+if(/\bi7\b/.test(n)){f.cpu='i7';r=r.filter(x=>x.cpu.includes('i7'))}else if(/\bi5\b/.test(n)){f.cpu='i5';r=r.filter(x=>x.cpu.includes('i5'))}
+const ram=n.match(/(8|16)\s*gb|(8|16)\s*de\s*ram/);if(ram){f.ram=(ram[1]||ram[2])+'GB';r=r.filter(x=>x.ram===f.ram)}
+if(/diseno|edicion|render|autocad/.test(n)){f.uso='diseño';r=r.filter(x=>x.ram==='16GB')}
+if(/barat|economic/.test(n)){f.orden='precio asc';r.sort((a,b)=>a.precio-b.precio)}
+if(!Object.keys(f).length){if(/hola|buenas|buenos/.test(n))return bot("¡Hola! 👋 Soy el asistente de Ventas Virtuales Colombia. Cuéntame qué equipo buscas: para qué lo vas a usar, tu presupuesto o un código del catálogo, y te digo qué tenemos disponible.");tool('sin intención reconocida');return bot("Te entiendo 🙂 ¿Me cuentas tu presupuesto aproximado o para qué vas a usar el portátil? Así te muestro solo lo que tenemos en stock.")}
+Object.assign(S.f,Object.fromEntries(Object.entries(f).map(([k,v])=>[k,k==='precio_max'?cop(v):v])));etapa('En Conversación');
+tool('buscar_productos('+Object.entries(f).map(([k,v])=>k+'='+(k==='precio_max'?Math.round(v):v)).join(', ')+') → '+r.length+' resultados');
+if(!r.length)return bot("Con esas características no tengo equipos disponibles ahora 😕. Lo más cercano que hay es:\n\n"+INV.slice().sort((a,b)=>a.precio-b.precio).slice(0,2).map(x=>"• "+x.cod+" · "+x.modelo+" · "+x.cpu+" · "+x.ram+" · "+cop(x.precio)).join("\n")+"\n\n¿Te sirve alguno o prefieres hablar con un asesor?");
+bot("Encontré "+r.length+" "+(r.length===1?"equipo disponible":"equipos disponibles")+" que te pueden servir"+(r.length>3?"; te dejo los 3 mejores":"")+":\n\n"+r.slice(0,3).map(x=>"• "+x.cod+" · "+x.modelo+" · "+x.cpu+" · "+x.ram+" · "+x.disco+" · "+cop(x.precio)).join("\n")+"\n\nTodos son usados en buen estado. ¿Quieres la ficha con fotos de alguno? Envíame su código.")}
+function send(){const t=$('inp').value.trim();if(!t){$('err').textContent='Escribe un mensaje primero';return}$('err').textContent='';add(t,'me');$('inp').value='';mode==='g'?guiado(t):agente(t)}
+$('inp').addEventListener('input',()=>{$('err').textContent=''});
+setMode('g');
+</script>
+</body>
+</html>
