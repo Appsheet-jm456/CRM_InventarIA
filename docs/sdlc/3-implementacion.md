@@ -1,0 +1,27 @@
+# Fase 3 · Implementación
+
+**Estado:** ⚪ Pendiente
+
+> Construir lo diseñado, módulo por módulo, con un commit por paso.
+
+## Criterio de cierre
+
+- [ ] Todos los módulos del MVP funcionando sobre Supabase (F3·1 a F3·9)
+- [ ] Permisos aplicados en el servidor (RLS), no solo escondiendo botones
+- [ ] `next build` compila sin errores
+
+---
+
+## Avance
+
+| Paso | Estado |
+|---|---|
+| F3·1 Esqueleto: login, panel lateral, usuarios y roles | Pendiente |
+| F3·2 Migración de datos desde Baserow (productos, etapas y leads) | Pendiente |
+| F3·3 Webhook, adaptador de Evolution y registro de mensajes | Pendiente |
+| F3·4 Motor del bot sobre `bot_nodos` | Pendiente |
+| F3·5 Bandeja multiasesor y kanban en tiempo real | Pendiente |
+| F3·6 Seguimientos y alertas de SLA | Pendiente |
+| F3·7 Editor del bot y horario de atención | Pendiente |
+| F3·8 Métricas del embudo | Pendiente |
+| F3·9 Inventario, fichas y catálogo PDF | Pendiente |
