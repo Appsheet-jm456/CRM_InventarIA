@@ -1,6 +1,6 @@
 # 0004 · Capa de canal: Evolution hoy, Meta después
 
-**Estado:** Aceptada · 29 sep 2026
+**Estado:** Reemplazada por la 0010 · 29 sep 2026
 
 ## Contexto
 

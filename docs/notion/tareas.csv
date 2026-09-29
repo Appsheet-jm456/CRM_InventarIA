@@ -1,23 +1,26 @@
 Tarea,Fase,Módulo,Estado,Prioridad,Notas,Referencia
 Decidir la base de datos,1 · Planeación,Arquitectura,Hecha,Alta,Supabase propio y separado (decisión 0003).,docs/decisiones/0003-supabase-propio-y-separado.md
-Decidir el canal de WhatsApp,1 · Planeación,Canales,Hecha,Alta,"Capa de canal: Evolution hoy, Meta Cloud API después (decisión 0004).",docs/decisiones/0004-capa-de-canal.md
+Decidir el canal de WhatsApp,1 · Planeación,Canales,Hecha,Alta,"API oficial de Meta en el MVP; Evolution solo en la v0 hasta el corte (decisión 0010, reemplaza a la 0004).",docs/decisiones/0010-api-oficial-de-meta.md
 Decidir reconstruir o refactorizar,1 · Planeación,Arquitectura,Hecha,Alta,Reconstruir por fases con la v0 viva hasta el corte (decisión 0008).,docs/decisiones/0008-reconstruir-por-fases.md
 Escribir el brief v1.0,1 · Planeación,Documentación,Hecha,Alta,"Alcance del MVP: bandeja, seguimientos/SLA, bot configurable y métricas.",docs/00-BRIEF.md
 F1·1 Levantar el flujo de atención real del local,1 · Planeación,Bandeja,Pendiente,Alta,"Quién responde, en qué horario, cuántos asesores y qué pasa fuera de horario.",docs/sdlc/1-planeacion.md
 F1·2 Validar etapas del embudo y motivos de pérdida,1 · Planeación,Embudo,Pendiente,Alta,Partir de las 7 etapas de la v0.,docs/sdlc/1-planeacion.md
 F1·3 Confirmar metas medibles y SLA,1 · Planeación,Métricas,Pendiente,Media,"Primera respuesta, recontacto a 24 h/72 h y chats sin respuesta al cierre.",docs/00-BRIEF.md
 F1·4 Subir a GitHub los commits pendientes,1 · Planeación,Documentación,Pendiente,Media,5 commits de la v0 sin push; solo con autorización.,
+"F1·5 Iniciar los trámites en Meta (negocio, app, número de prueba y token permanente)",1 · Planeación,Canales,Pendiente,Alta,Fases 1 a 3 de PLAN-META-API.md. Dependen de Meta: empezar ya.,docs/PLAN-META-API.md
+F1·6 Confirmar en Meta los precios desde el 1 oct 2026 y agregar el medio de pago,1 · Planeación,Canales,Pendiente,Alta,1.000 mensajes de servicio gratis al mes por número; cifras para Colombia en WhatsApp Manager y Billing Hub.,docs/decisiones/0011-precios-de-meta-desde-el-1-de-octubre.md
 F2·1 Reglas del negocio,2 · Diseño,Arquitectura,Pendiente,Alta,,docs/sdlc/2-diseno.md
 F2·2 Modelo de datos y migraciones,2 · Diseño,Arquitectura,Pendiente,Alta,"contactos, conversaciones, mensajes, oportunidades, bot_nodos…",docs/sdlc/2-diseno.md
-F2·3 Interfaz de canal y adaptador de Evolution,2 · Diseño,Canales,Pendiente,Alta,Webhook directo a la app; sin n8n.,docs/decisiones/0004-capa-de-canal.md
-F2·4 Máquina de estados del bot y horario,2 · Diseño,Bot,Pendiente,Alta,Reutiliza la lógica de lib/whatsappFlow.js.,docs/decisiones/0005-bot-de-menu-fijo.md
+F2·4 Máquina de estados del bot y horario,2 · Diseño,Bot,Pendiente,Alta,Un mensaje por respuesta con botones y listas interactivas (decisión 0011); reutiliza la lógica de lib/whatsappFlow.js.,docs/decisiones/0005-bot-de-menu-fijo.md
 "F2·5 Usuarios, roles y permisos (RLS)",2 · Diseño,Arquitectura,Pendiente,Alta,,docs/sdlc/2-diseno.md
 F2·6 Diseño de seguimientos y SLA,2 · Diseño,Seguimientos,Pendiente,Media,Quién programa y quién dispara; plantillas de Meta fuera de 24 h.,docs/sdlc/2-diseno.md
 "F2·7 Maquetas: bandeja, kanban, editor del bot y métricas",2 · Diseño,Bandeja,Pendiente,Media,,docs/sdlc/2-diseno.md
 F2·8 Levantar la instancia de Supabase del CRM,2 · Diseño,Arquitectura,Pendiente,Alta,"Puertos libres, separada de Futur Green.",docs/decisiones/0003-supabase-propio-y-separado.md
+F2·9 Arquitectura del frontend: Shell con panel lateral plegable,2 · Diseño,Frontend,Pendiente,Alta,Mismo diseño de Futur Green: módulos a la izquierda que se pliegan y despliegan; una ruta por módulo.,docs/decisiones/0009-frontend-como-futur-green.md
+F2·10 Túnel de Cloudflare con dominio propio para el webhook,2 · Diseño,Canales,Pendiente,Alta,trycloudflare solo para pruebas: la URL cambia al reiniciar.,docs/PLAN-META-API.md
+F2·11 Contador de consumo de Meta y aviso al 80 %,2 · Diseño,Métricas,Pendiente,Media,Categoría y cobro por mensaje saliente.,docs/decisiones/0011-precios-de-meta-desde-el-1-de-octubre.md
 "F3·1 Esqueleto: login, panel, usuarios y roles",3 · Implementación,Arquitectura,Pendiente,Alta,,docs/sdlc/3-implementacion.md
 F3·2 Migración desde Baserow e historial de Evolution,3 · Implementación,Inventario,Pendiente,Alta,Conteo antes y después.,docs/sdlc/3-implementacion.md
-"F3·3 Webhook, adaptador de Evolution y registro de mensajes",3 · Implementación,Canales,Pendiente,Alta,,docs/sdlc/3-implementacion.md
 F3·4 Motor del bot sobre bot_nodos,3 · Implementación,Bot,Pendiente,Alta,,docs/sdlc/3-implementacion.md
 F3·5 Bandeja multiasesor y kanban en tiempo real,3 · Implementación,Bandeja,Pendiente,Alta,,docs/sdlc/3-implementacion.md
 F3·6 Seguimientos y alertas de SLA,3 · Implementación,Seguimientos,Pendiente,Media,,docs/sdlc/3-implementacion.md
@@ -27,6 +30,5 @@ F3·8 Métricas del embudo,3 · Implementación,Métricas,Pendiente,Media,,docs/
 F4·1 Pruebas pgTAP de reglas y permisos,4 · Pruebas,Pruebas,Pendiente,Alta,,docs/sdlc/4-pruebas.md
 F4·2 Pruebas del motor del bot por nodo,4 · Pruebas,Pruebas,Pendiente,Alta,,docs/sdlc/4-pruebas.md
 F4·3 Flujo completo con número de prueba,4 · Pruebas,Pruebas,Pendiente,Media,,docs/sdlc/4-pruebas.md
-F5·1 Corte: webhook a la app nueva y v0 apagada,5 · Despliegue,Despliegue,Pendiente,Alta,,docs/sdlc/5-despliegue.md
+F5·1 Corte: webhook a la app nueva y v0 apagada,5 · Despliegue,Despliegue,Pendiente,Alta,Evolution se apaga con la v0.,docs/sdlc/5-despliegue.md
 F5·2 Respaldos y restauración probada,5 · Despliegue,Despliegue,Pendiente,Alta,,docs/sdlc/5-despliegue.md
-F5·3 Adaptador de Meta Cloud API,5 · Despliegue,Canales,Pendiente,Media,Según PLAN-META-API.md.,docs/PLAN-META-API.md

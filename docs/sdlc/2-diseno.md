@@ -8,7 +8,9 @@
 
 - [ ] Reglas del negocio escritas: `REGLAS_DEL_NEGOCIO.md`
 - [ ] Modelo de datos: `MODELO_DE_DATOS.md`
-- [ ] Interfaz de canal definida (entrada normalizada y envío) con el adaptador de Evolution
+- [ ] Arquitectura del frontend: `Shell` con panel lateral plegable, `modulos.ts` y rutas por módulo (decisión 0009)
+- [ ] Interfaz de canal con el adaptador de la **Cloud API de Meta**, firma del webhook y túnel HTTPS (decisión 0010)
+- [ ] Bot de un mensaje por respuesta con botones y listas interactivas, y contador de consumo (decisión 0011)
 - [ ] Máquina de estados del bot sobre `bot_nodos`, con horario de atención y paso a asesor
 - [ ] Usuarios, roles y permisos (RLS) definidos
 - [ ] Seguimientos y SLA: cómo se programan y quién los dispara
@@ -22,8 +24,8 @@
 ```
 Cliente WhatsApp
    │
-Evolution API ──webhook──►  /api/canal/evolution  ──►  normalizar  ──►  mensajes (Supabase)
-(Meta Cloud API después)                                     │
+Meta Cloud API ─webhook─►  /api/canal/meta       ──►  normalizar  ──►  mensajes (Supabase)
+(túnel Cloudflare, firma verificada)                         │
                                                     ┌────────┴────────┐
                                              ¿bot activo?        bandeja en tiempo real
                                                     │            (Supabase Realtime)
@@ -32,7 +34,10 @@ Evolution API ──webhook──►  /api/canal/evolution  ──►  normaliza
                                                     └──► canal.enviar() ◄┘
 ```
 
-- **El webhook llega directo a la app.** n8n sale del camino del mensaje.
+- **El webhook de Meta llega directo a la app** por el túnel, con la firma `X-Hub-Signature-256`
+  verificada. n8n sale del camino del mensaje.
+- **Frontend:** el `Shell` de Futur Green (panel lateral plegable y cajón en el celular) con
+  una ruta por módulo (decisión 0009).
 - **Todo mensaje entra y sale por la tabla `mensajes`.** El CRM es dueño del historial, y
   Evolution solo transporta.
 - **Búsqueda por teléfono con índice único**: se acaba recorrer todos los leads por mensaje.
@@ -44,7 +49,8 @@ Evolution API ──webhook──►  /api/canal/evolution  ──►  normaliza
 |---|---|
 | `contactos` | Una fila por teléfono (único): nombre, origen, etiquetas |
 | `conversaciones` | Hilo por contacto y canal: estado (bot / en cola / asignada / cerrada), asesor asignado, estado del bot (`paso_menu`) |
-| `mensajes` | Entrantes y salientes: tipo (texto, imagen, audio, documento, video), media en Storage, id externo del canal y quién lo envió |
+| `mensajes` | Entrantes y salientes: tipo (texto, imagen, audio, documento, video o interactivo), media en Storage, id externo del canal, quién lo envió, **categoría de Meta (servicio, utilidad o marketing) y si fue cobrable** |
+| `plantillas` | Plantillas de Meta aprobadas, con su categoría, para escribir fuera de la ventana de 24 h |
 | `etapas` | Columnas del embudo con orden y color |
 | `oportunidades` | Contacto, etapa, valor estimado, producto de interés y motivo de pérdida |
 | `historial_etapas` | Cada cambio de etapa, con quién y cuándo (base de las métricas) |

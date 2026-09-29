@@ -23,3 +23,9 @@ la bandeja y Storage privado para la media.
 
 - Se migra el inventario, las etapas y los leads (F3·2).
 - Hay que elegir puertos libres para la instancia (Fase 2).
+
+## Confirmación (29 sep 2026)
+
+El dueño confirma la instancia **propia en este servidor**, no Supabase Cloud. Como el webhook
+de Meta exige HTTPS público, la app se publica con un túnel de Cloudflare (decisión 0010), y los
+respaldos corren por nuestra cuenta (Fase 5).

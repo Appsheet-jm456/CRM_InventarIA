@@ -1,7 +1,8 @@
 # InventarIA
 
 Inventario, chat con IA y CRM de WhatsApp para **Ventas Virtuales Colombia** (portátiles usados).
-Next.js 14 + Baserow + Evolution API.
+v0: Next.js 14 + Baserow + Evolution API. App nueva: Next.js 14 (TypeScript, panel lateral de
+Futur Green) + Supabase propio + WhatsApp Cloud API de Meta.
 
 ## Antes de empezar
 
@@ -21,7 +22,6 @@ estructurales. Cerrar una tarea se hace con un `PATCH` a su fila, no con el scri
 ## Reglas del proyecto
 
 - Commit por bloque de trabajo terminado; push solo con autorización.
-
 - El bot de WhatsApp responde por **menú fijo, nunca con IA libre** — para que no improvise precios.
 - El embudo del CRM **solo avanza**: nunca mover un lead a una etapa anterior automáticamente.
 - Dos claves distintas: `ACCESS_PASSWORD` para leer, `ACTION_PASSWORD` para escribir. No mezclarlas.

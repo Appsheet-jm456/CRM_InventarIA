@@ -293,12 +293,18 @@ Solo cuando la Fase 7 pase completa.
 | Responder dentro de 24 h del último mensaje del cliente | Libre | **Libre** ✅ |
 | Riesgo de baneo | Alto | Ninguno |
 | Sesión se cae | Sí, seguido | Nunca |
-| Costo | $0 | Gratis los primeros 1.000 chats/mes |
+| Costo | $0 | **Desde el 1 oct 2026:** 1.000 mensajes de servicio gratis al mes por número; después se cobra cada mensaje entregado |
 
-> ✅ **Para tu caso esto no cambia nada**: en InventarIA el cliente **siempre escribe primero**
-> (llega por catálogo o por las redes), así que toda la conversación cae dentro de la ventana
-> libre de 24 horas. Las plantillas solo harían falta si algún día quieres hacer campañas
-> saliendo tú a buscar al cliente.
+> ⚠️ **Actualizado el 29 sep 2026: esto ya no es gratis.** Antes, responder dentro de la ventana
+> de 24 horas no costaba nada. **Desde el 1 de octubre de 2026** cada número tiene **1.000
+> mensajes de servicio gratis al mes** y después **se cobra cada mensaje entregado**. Las
+> plantillas de utilidad dentro de la ventana también se cobran, y hay que tener un **medio de
+> pago en el Billing Hub** o Meta deja de entregar al llegar a los 1.000.
+>
+> Una ficha de la v0 son ~6 mensajes (fotos y video por separado, más el texto). Por eso el bot
+> nuevo responde con **un mensaje y botones**, y el panel lleva la cuenta del consumo. Ver la
+> [decisión 0011](decisiones/0011-precios-de-meta-desde-el-1-de-octubre.md). Las cifras se
+> confirman en el WhatsApp Manager (tarea F1·6).
 
 ---
 

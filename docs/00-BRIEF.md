@@ -22,7 +22,8 @@ compartida** donde el equipo la toma, la sigue hasta la venta y la mide.
 | **Seguimientos y SLA** | Tareas por contacto, recontacto programado y alertas de chats sin respuesta | Nuevo |
 | **Métricas** | Conversión por etapa, tiempo de primera respuesta, motivos de pérdida y ventas por asesor | Nuevo |
 | **Inventario y catálogo** | Productos con fotos y video, fichas que envía el bot y catálogo en PDF | Existe (v0, Baserow), se migra |
-| **Canales** | WhatsApp por Evolution API hoy y la Cloud API de Meta después, detrás de una sola interfaz | Existe (v0), se abstrae |
+| **Canal WhatsApp oficial** | **Cloud API de Meta** detrás de una interfaz de canal. Evolution solo atiende la v0 hasta el corte | Nuevo (decisión 0010) |
+| **Consumo de Meta** | Contador de mensajes cobrables del mes contra los 1.000 gratis, con aviso al 80 % | Nuevo (decisión 0011) |
 
 ## Problema que resuelve
 
@@ -74,10 +75,13 @@ Todo lo de la tabla de módulos, sobre **una sola base de datos Supabase propia*
 
 | Riesgo | Mitigación |
 |---|---|
-| Evolution usa Baileys (no oficial): Meta puede **bloquear el número** | Capa de canal (decisión 0004) para pasar a la Cloud API sin reescribir. Plan en [PLAN-META-API.md](PLAN-META-API.md) |
+| Evolution usa Baileys (no oficial): Meta puede **bloquear el número** | La app nueva nace sobre la Cloud API (decisión 0010). Los trámites de Meta arrancan ya: [PLAN-META-API.md](PLAN-META-API.md) |
+| **Desde el 1 oct 2026 Meta cobra los mensajes de servicio** después de 1.000 al mes por número | Bot de un mensaje por respuesta con botones, contador de consumo y medio de pago en el Billing Hub (decisión 0011) |
+| La verificación del negocio en Meta tarda días o semanas | Se empieza en la Fase 1, en paralelo al diseño |
 | La Cloud API de Meta solo deja escribir libremente **24 h** después del último mensaje del cliente | Los seguimientos fuera de la ventana usan plantillas aprobadas; se diseñan desde la Fase 2 |
 | Conversaciones y fotos son **datos personales** | Bucket privado, acceso por rol y nada en git |
 | La reconstrucción deja al local sin bot unos días | La v0 sigue viva en el puerto 3000 hasta el corte (decisión 0008) |
+| El webhook de Meta necesita HTTPS público y el servidor está en la red local | Túnel de Cloudflare con dominio propio (decisión 0010) |
 | Migrar desde Baserow pierde datos | Script de migración con conteo antes y después, probado en copia |
 
 ## Fases
@@ -92,9 +96,14 @@ Todo lo de la tabla de módulos, sobre **una sola base de datos Supabase propia*
 
 ## Stack
 
-Next.js (App Router) + **Supabase propio** (Postgres, Auth, Realtime y Storage) en el servidor
-del negocio. WhatsApp por **Evolution API** detrás de una interfaz de canal. Sin n8n en el
-camino del mensaje.
+- **Frontend:** Next.js 14 App Router con TypeScript y la **misma arquitectura de Futur Green**:
+  una ruta por módulo y **panel lateral izquierdo plegable** con los módulos agrupados
+  (decisión 0009). Reemplaza los botones de arriba de la v0 (Dashboard, Chat InventarIA y CRM).
+- **Backend:** **Supabase propio en este servidor** (Postgres, Auth, Realtime y Storage), en
+  Docker y separado de Futur Green (decisión 0003).
+- **Canal:** **WhatsApp Cloud API de Meta** (oficial) detrás de una interfaz de canal, con el
+  webhook directo a la app por un túnel de Cloudflare. Sin n8n en el camino del mensaje
+  (decisión 0010).
 
 ## Referencias
 
