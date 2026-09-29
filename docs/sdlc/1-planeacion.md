@@ -11,9 +11,12 @@
 - [x] Canal decidido: capa de canal, Evolution hoy y Meta después (decisión 0004)
 - [x] Enfoque decidido: reconstruir por fases con la v0 viva (decisión 0008)
 - [x] Alcance del MVP: bandeja multiasesor, seguimientos/SLA, bot configurable y métricas
-- [ ] Flujo de atención real del local: quién responde, en qué horario y con cuántos asesores
-- [ ] Etapas del embudo y motivos de pérdida validados con el dueño
-- [ ] Metas medibles confirmadas: SLA de primera respuesta, horario y tiempos de recontacto
+- [x] Flujo de atención del local: árbol de respuesta guiado, cola compartida y horario
+      L–V 8–18 · Sáb 9–14 · festivos cerrado — [ARBOL-DE-RESPUESTA.md](../ARBOL-DE-RESPUESTA.md) (F1·1)
+- [x] Etapas del embudo: las 7 de la app; motivos de pérdida de la v0 (F1·2)
+- [x] Metas medibles: primera respuesta en 10 min, alerta a los 15, solo en horario (F1·3)
+- [ ] Ramas pendientes del árbol definidas por el dueño: Tiny, SFF, Partes, Distribuidores y
+      Servicio al cliente (F1·7), y qué equipo es Hogar, Ejecutivo o Diseño (F1·8)
 - [ ] Riesgos revisados con el dueño
 
 ---

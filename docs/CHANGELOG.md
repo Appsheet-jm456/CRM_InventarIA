@@ -1,5 +1,12 @@
 # Changelog del brief
 
+## v1.0 · 29 sep 2026 (F1·1 a F1·3)
+
+- Árbol de respuesta guiado (Salesbot) conectado a la base: `docs/ARBOL-DE-RESPUESTA.md` (0012).
+- Cola compartida · SLA 10 min con alerta a los 15 · L–V 8–18, Sáb 9–14, festivos cerrado.
+- Se conservan las 7 etapas; rangos de presupuesto según el inventario; catálogo desde la base.
+- Nuevas F1·7 (ramas que define el dueño) y F1·8 (uso del equipo en el inventario).
+
 ## v1.0 · 29 sep 2026 (ajuste)
 
 - Frontend con la arquitectura de Futur Green: panel lateral plegable y una ruta por módulo (0009).

@@ -686,6 +686,7 @@ def actualizar_modelo_datos():
     for archivo, titulo, icono in [
         ("MODELO_DE_DATOS.md", "Modelado de Datos", "🗄️"),
         ("REGLAS_DEL_NEGOCIO.md", "Reglas del negocio", "📏"),
+        ("ARBOL-DE-RESPUESTA.md", "Árbol de respuesta del bot", "🌳"),
     ]:
         fuente = DOCS / archivo
         if not fuente.exists():

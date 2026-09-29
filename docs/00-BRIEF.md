@@ -18,7 +18,7 @@ compartida** donde el equipo la toma, la sigue hasta la venta y la mide.
 |---|---|---|
 | **Bandeja multiasesor** | Todas las conversaciones en un lugar, en tiempo real. Se asignan a un asesor, se abren y se cierran, con respuestas rápidas y con audio, imagen y documento | Nuevo |
 | **Embudo (kanban)** | Cada contacto con su oportunidad en una etapa: de Nuevo a Vendido o Perdido (con motivo) | Existe (v0), se rehace |
-| **Bot de menú fijo** | Árbol de menús **editable desde el panel**, con horario de atención y paso a asesor | Existe (v0, en código), pasa a configurable |
+| **Bot guiado (Salesbot)** | Guía al cliente por módulos con menús numerados en lista para tocar; responde fichas, precios y stock **desde la base**; árbol editable desde el panel — [ARBOL-DE-RESPUESTA.md](ARBOL-DE-RESPUESTA.md) | Existe (v0, en código), pasa a configurable |
 | **Seguimientos y SLA** | Tareas por contacto, recontacto programado y alertas de chats sin respuesta | Nuevo |
 | **Métricas** | Conversión por etapa, tiempo de primera respuesta, motivos de pérdida y ventas por asesor | Nuevo |
 | **Inventario y catálogo** | Productos con fotos y video, fichas que envía el bot y catálogo en PDF | Existe (v0, Baserow), se migra |
@@ -47,11 +47,11 @@ Que **ningún cliente que escribe se pierda por falta de respuesta o de seguimie
 dueño sepa en cualquier momento cuántos llegaron, cuántos compraron, por qué se perdieron y cuánto
 tarda el equipo en contestar.
 
-### Metas medibles (se confirman en la Fase 1)
+### Metas medibles (confirmadas el 29 sep 2026)
 
 | Meta | Cómo se mide |
 |---|---|
-| Primera respuesta humana en menos de 15 min en horario de atención | Tiempo entre el paso a asesor y el primer mensaje del asesor |
+| Primera respuesta humana en **10 min** (alerta a los 15) en horario de atención | Tiempo entre el paso a asesor y el primer mensaje del asesor |
 | Cero chats sin respuesta al cierre del día | Conversaciones abiertas con el último mensaje del cliente |
 | Cada oportunidad perdida con motivo | % de oportunidades en Perdido sin motivo = 0 |
 | El bot responde en menos de 2 s | Tiempo del webhook hasta el envío |
