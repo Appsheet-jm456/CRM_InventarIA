@@ -365,6 +365,27 @@ h3.sub { font: 600 13px var(--f-display); margin: 18px 0 8px; color: var(--muted
 .tarjeta-equipo-foto { aspect-ratio: 4 / 3; border-radius: 6px; background: var(--surface-2); display: grid; place-items: center; overflow: hidden }
 .tarjeta-equipo-foto img { width: 100%; height: 100%; object-fit: cover }
 @media (max-width: 760px) { .ficha-cols { grid-template-columns: 1fr } .form-panel .span-2 { grid-column: 1 / -1 } .filtro-inv input[type=search] { min-width: 0 } }
+.aviso.warn { background: var(--warn-soft); color: var(--warn) }
+.editor-bot { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 380px); gap: 20px; align-items: start }
+.editor-bot-campos, .editor-bot-vista { display: grid; gap: 12px; min-width: 0 }
+.editor-bot .contador { justify-content: space-between }
+small.warn { color: var(--warn) } small.bad { color: var(--bad) }
+.punto-editado { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--warn); margin-left: 6px; vertical-align: middle }
+.pastilla.activa .punto-editado { background: var(--accent-ink) }
+.wa { --wa-fondo: #EFE7DD; --wa-burbuja: #FFFFFF; --wa-tinta: #111B21; --wa-boton: #027EB5; --wa-hora: #667781;
+  background: var(--wa-fondo); border-radius: 12px; padding: 14px 12px; display: grid; gap: 8px }
+.wa-burbuja { background: var(--wa-burbuja); color: var(--wa-tinta); border-radius: 0 10px 10px 10px; max-width: 100%; box-shadow: 0 1px 1px rgba(0,0,0,.12); overflow: hidden }
+.wa-texto { padding: 7px 10px 0; font: 14px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; white-space: pre-wrap; overflow-wrap: anywhere }
+.wa-texto code { font-family: var(--f-mono); font-size: 13px }
+.wa-burbuja time { display: block; text-align: right; font-size: 11px; color: var(--wa-hora); padding: 0 8px 5px }
+.wa-boton { border-top: 1px solid #E9EDEF; color: var(--wa-boton); text-align: center; padding: 9px 8px; font: 500 14px system-ui, sans-serif }
+.wa-lista { background: var(--wa-burbuja); color: var(--wa-tinta); border-radius: 10px; overflow: hidden; font: 14px system-ui, sans-serif }
+.wa-lista-h { text-align: center; font-weight: 600; padding: 9px; border-bottom: 1px solid #E9EDEF }
+.wa-fila { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid #F0F2F5 }
+.wa-fila small { display: block; color: var(--wa-hora); font-size: 12px }
+.wa-radio { width: 16px; height: 16px; border-radius: 50%; border: 2px solid #8696A0; flex: none }
+@media (prefers-color-scheme: dark) { .wa { --wa-fondo: #0B141A; --wa-burbuja: #202C33; --wa-tinta: #E9EDEF; --wa-boton: #53BDEB; --wa-hora: #8696A0 } .wa-boton, .wa-lista-h { border-color: #2A3942 } .wa-fila { border-color: #26343C } }
+@media (max-width: 900px) { .editor-bot { grid-template-columns: 1fr } }
 .grid-metricas { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 16px; align-items: start }
 .grid-metricas .panel { margin: 0 }
 @media (max-width: 560px) { .grid-metricas { grid-template-columns: 1fr } .barras .barra { grid-template-columns: 90px 1fr 80px } }

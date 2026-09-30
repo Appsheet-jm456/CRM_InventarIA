@@ -1,5 +1,10 @@
 # Changelog del brief
 
+## v1.0 · 30 sep 2026 (F4·4)
+
+- Editor del bot: vista previa como WhatsApp (negrita, cursiva, botones o lista), contador con el límite real y
+  la base rechaza mensajes que WhatsApp cortaría o con marcas `{x}` que el bot no reemplaza (migración 0010).
+
 ## v1.0 · 30 sep 2026 (F3·9)
 
 - Inventario en la app (0025, `docs/INVENTARIO.md`): ficha editable con foto subida que el bot envía por id de Meta,
