@@ -1,5 +1,10 @@
 # Changelog del brief
 
+## v1.0 · 30 sep 2026 (F4·6)
+
+- Lienzo del flujo del bot en `/bot` (React Flow): borrador aparte de la versión publicada, mensajes nuevos, flechas
+  que se arrastran, panel con vista de WhatsApp y lo que falta para publicar (migraciones 0012 y 0013).
+
 ## v1.0 · 30 sep 2026 (F4·5)
 
 - El flujo del bot pasa a la base por versiones (0026, migración 0011): `bot_cuadros` reemplaza a `bot_nodos` y

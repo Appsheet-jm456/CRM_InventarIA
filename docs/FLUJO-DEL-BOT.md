@@ -11,7 +11,7 @@
 |---|---|
 | ✅ **F4·4** Vista previa real y límites (30 sep, migración 0010) | En el editor actual: burbuja como WhatsApp (*negrita*, _cursiva_, botones o lista tal como llegan), contador del mensaje (1.024 con botones, 4.096 en lista o texto: hoy el bot corta sin avisar) y aviso si una marca como `{horario}` se borró o está mal escrita. Se reutiliza en el lienzo |
 | ✅ **F4·5** Flujo en la base (30 sep, migración 0011) | Modelo de versiones, motor de `flujo.py` que recorre la versión publicada y versión 1 igual al árbol actual |
-| **F4·6** Lienzo | Cuadros y flechas en `/bot`: crear, editar, unir y borrar mensajes; cuadros del sistema fijos; marca de editado |
+| ✅ **F4·6** Lienzo (30 sep, migraciones 0012 y 0013) | Cuadros y flechas en `/bot`: crear, editar, unir y borrar mensajes; cuadros del sistema fijos; marca de editado |
 | **F4·7** Borrador, publicar e historial | Validación al publicar, lista de versiones con quién y cuándo, volver a una anterior |
 | **F4·8** Simulador | Probar el borrador como cliente, sin WhatsApp |
 
@@ -69,3 +69,30 @@ Un cliente cuyo cuadro ya no existe en la versión publicada vuelve al inicio.
 
 **Versión 1 = árbol de F3·4.** Se comprobó con el motor anterior: 85.536 conversaciones simuladas (todas las
 combinaciones de 4 pasos de 16 entradas, más 20.000 al azar de hasta 12), mismos mensajes y mismo estado en cada paso.
+
+## Lienzo (F4·6, migraciones 0012 y 0013)
+
+`/bot` → **Flujo (lienzo)**, con React Flow (`@xyflow/react`, MIT). Sin borrador se ve la versión publicada;
+**Editar el flujo** abre un borrador (copia de la publicada) y todo lo que se cambie queda ahí hasta publicar.
+
+- **+ Mensaje** crea un cuadro con una opción y la de volver al inicio (RF-04). Se arrastra para moverlo.
+- **Unir:** se arrastra desde el punto de una opción y se suelta en cualquier parte del cuadro destino. Una flecha
+  se borra eligiéndola y pulsando Supr. En el panel, cada opción también tiene su selector "Lleva a".
+- **Panel del cuadro:** nombre, texto con contador y avisos (F4·4), opciones (número, título, destino; hasta 10;
+  el 9 está reservado para el asesor) y la vista de WhatsApp. **Borrar cuadro** suelta las flechas que llegaban.
+- **Cuadros 🔒 del sistema:** se cambia su texto y el título de sus botones; sus salidas no (RF-03). A la ficha, la
+  lista de equipos y los avisos no se llega con flecha: los abre el bot.
+- **Marcas:** "nuevo" y "cambiado" frente a la versión publicada, y ⚠ con lo que impediría publicar (opción sin
+  destino, mensaje al que no llega nadie, texto que pasa el límite), listado también en el panel.
+- **Descartar borrador** lo borra entero; el bot nunca se enteró.
+
+| Función | Para qué |
+|---|---|
+| `crear_borrador()` · `descartar_borrador()` | Abrir (o reabrir) y descartar el borrador |
+| `borrador_crear_mensaje(x, y)` | Cuadro nuevo `M1`, `M2`… |
+| `borrador_guardar_cuadro(clave, nombre, texto, opciones)` | Guarda desde el panel; conserva palabras, reconocedor y efectos de cada opción por su número |
+| `borrador_conectar(clave, opción, destino)` · `borrador_mover(clave, x, y)` · `borrador_borrar_cuadro(clave)` | Flechas, posición y borrar |
+
+**Pendiente para F4·7:** mientras hay un borrador abierto, la pestaña *Mensajes del bot* sigue editando la versión
+publicada; al publicar hay que avisar si la publicada cambió después de abrir el borrador, para no pisar esos textos.
+

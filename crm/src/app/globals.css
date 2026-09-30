@@ -386,6 +386,41 @@ small.warn { color: var(--warn) } small.bad { color: var(--bad) }
 .wa-radio { width: 16px; height: 16px; border-radius: 50%; border: 2px solid #8696A0; flex: none }
 @media (prefers-color-scheme: dark) { .wa { --wa-fondo: #0B141A; --wa-burbuja: #202C33; --wa-tinta: #E9EDEF; --wa-boton: #53BDEB; --wa-hora: #8696A0 } .wa-boton, .wa-lista-h { border-color: #2A3942 } .wa-fila { border-color: #26343C } }
 @media (max-width: 900px) { .editor-bot { grid-template-columns: 1fr } }
+.lienzo .panel-h { align-items: flex-start }
+.lienzo-cuerpo { display: grid; grid-template-columns: minmax(0, 1fr) 380px; border-top: 1px solid var(--line) }
+.lienzo-area { height: calc(100vh - 250px); min-height: 520px; background: var(--bg) }
+.lienzo-lado { border-left: 1px solid var(--line); max-height: calc(100vh - 250px); min-height: 520px; overflow-y: auto }
+.lienzo-panel { display: grid; gap: 12px; padding: 14px 16px; align-content: start }
+.lienzo-panel-h { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; flex-wrap: wrap }
+.lienzo-panel textarea, .lienzo-opcion input, .lienzo-opcion select { border: 1px solid var(--line); background: var(--bg); border-radius: 6px; padding: 6px 8px; font-size: 13px; color: var(--ink); min-width: 0; width: 100% }
+.lienzo-opciones { display: grid; gap: 6px }
+.lienzo-opcion { display: grid; grid-template-columns: 44px minmax(0, 1fr) minmax(0, 1fr) auto; gap: 6px; align-items: center }
+.lienzo-vista { display: grid; gap: 6px }
+.lienzo-problemas ul { margin: 6px 0 0; padding-left: 18px; font-size: 12.5px; display: grid; gap: 4px }
+.enlace { background: none; border: 0; padding: 0; color: var(--accent); cursor: pointer; font: inherit; text-decoration: underline }
+.nodo-bot { width: 240px; background: var(--surface); color: var(--ink); border: 1.5px solid var(--accent); border-radius: 10px; padding: 8px 10px; font-size: 12px; box-shadow: var(--shadow) }
+.nodo-bot.sistema { border-color: var(--line); background: var(--surface-2) }
+.nodo-bot.elegido { box-shadow: 0 0 0 3px var(--accent-soft), var(--shadow) }
+.nodo-bot.con-problema { border-color: var(--bad) }
+.nodo-bot-h { display: flex; justify-content: space-between; gap: 6px; align-items: flex-start }
+.nodo-bot-h b { font: 600 13px var(--f-body); line-height: 1.25 }
+.nodo-bot-chips { display: flex; gap: 4px; flex: none }
+.nodo-bot-tipo { display: block; color: var(--muted); font-size: 11px; margin: 2px 0 4px }
+.nodo-bot-texto { margin: 4px 0; color: var(--muted); line-height: 1.35 }
+.nodo-bot-opciones { list-style: none; margin: 6px -10px -8px; padding: 0; border-top: 1px solid var(--line) }
+.nodo-bot-opciones li { position: relative; padding: 5px 16px 5px 10px; border-bottom: 1px solid var(--line) }
+.nodo-bot-opciones li:last-child { border-bottom: 0 }
+.nodo-bot-opciones li.suelta { color: var(--bad) }
+.nodo-bot .react-flow__handle { width: 10px; height: 10px; background: var(--accent); border: 2px solid var(--surface) }
+.nodo-bot.sistema .react-flow__handle { background: var(--muted) }
+.nodo-bot-opciones .react-flow__handle { right: -6px }
+.nodo-bot > .react-flow__handle-left { width: 14px; height: 14px; left: -8px }
+.nodo-bot > .react-flow__handle.handle-cuadro { inset: 0; width: auto; height: auto; transform: none; border-radius: 10px; opacity: 0; z-index: 1 }
+.nodo-bot > .react-flow__handle.handle-cuadro.connectingto { opacity: .15; background: var(--accent) }
+.react-flow__edge.flecha-mensaje .react-flow__edge-path { stroke: var(--accent); stroke-width: 1.8 }
+.react-flow__edge.flecha-sistema .react-flow__edge-path { stroke: var(--muted); stroke-dasharray: 5 4 }
+.react-flow__edge.selected .react-flow__edge-path { stroke: var(--bad) }
+@media (max-width: 1000px) { .lienzo-cuerpo { grid-template-columns: 1fr } .lienzo-lado { border-left: 0; border-top: 1px solid var(--line); max-height: none; min-height: 0 } .lienzo-area { height: 70vh; min-height: 420px } }
 .grid-metricas { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 16px; align-items: start }
 .grid-metricas .panel { margin: 0 }
 @media (max-width: 560px) { .grid-metricas { grid-template-columns: 1fr } .barras .barra { grid-template-columns: 90px 1fr 80px } }

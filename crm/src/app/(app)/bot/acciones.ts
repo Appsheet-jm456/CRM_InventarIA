@@ -68,3 +68,35 @@ export async function borrarFestivo(fecha: string): Promise<Resultado> {
   const { data, error } = await crearCliente().from('festivos').delete().eq('fecha', fecha).select('fecha')
   return listo(error, data)
 }
+
+// --------------------------------------------------------------------------- //
+// Lienzo (F4·6): todo sobre el borrador, con las funciones de la base (migración 0012)
+// --------------------------------------------------------------------------- //
+async function rpc(nombre: string, args: Record<string, unknown> = {}, ok?: string): Promise<Resultado & { dato?: unknown }> {
+  const { data, error } = await crearCliente().rpc(nombre, args)
+  const r = listo(error, [nombre], ok)
+  return error ? r : { ...r, dato: data }
+}
+
+export async function crearBorrador() {
+  return rpc('crear_borrador', {}, 'Borrador abierto: el bot sigue con la versión publicada hasta que publiques.')
+}
+export async function descartarBorrador() {
+  return rpc('descartar_borrador', {}, 'Borrador descartado.')
+}
+export async function crearMensaje(x: number, y: number) {
+  return rpc('borrador_crear_mensaje', { p_x: Math.round(x), p_y: Math.round(y) })
+}
+export async function guardarCuadro(clave: string, nombre: string | null, texto: string | null, opciones: { id: string; titulo: string; destino?: string | null }[] | null) {
+  return rpc('borrador_guardar_cuadro', { p_clave: clave, p_nombre: nombre, p_texto: texto, p_opciones: opciones }, 'Cuadro guardado en el borrador.')
+}
+export async function conectar(clave: string, opcion: string, destino: string | null) {
+  return rpc('borrador_conectar', { p_clave: clave, p_opcion: opcion, p_destino: destino })
+}
+export async function moverCuadro(clave: string, x: number, y: number) {
+  const { error } = await crearCliente().rpc('borrador_mover', { p_clave: clave, p_x: Math.round(x), p_y: Math.round(y) })
+  return error ? { error: error.message } : {}
+}
+export async function borrarCuadro(clave: string) {
+  return rpc('borrador_borrar_cuadro', { p_clave: clave }, 'Cuadro borrado del borrador.')
+}

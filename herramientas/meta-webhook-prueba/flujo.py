@@ -339,7 +339,7 @@ def mostrar_marca(st, c):
 
 
 def filtrar(st):
-    lo, hi = st["rango"][:2]
+    lo, hi = (st.get("rango") or (0, 10**12))[:2]  # un flujo puede llegar a la marca sin pasar por el presupuesto
     r = [p for p in inventario() if lo <= p["precio"] < hi]
     if st["campos"].get("Marca interés", "Todas") != "Todas":
         r = [p for p in r if p["marca"].upper() == st["campos"]["Marca interés"].upper()]

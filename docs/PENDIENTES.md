@@ -9,7 +9,7 @@ de las Fases 1 y 2 abajo. **Código nuevo:** el bot de prueba sobre Supabase (`h
 1. **F3·1 a F3·10 hechas** (30 sep 2026): la construcción de la Fase 3 está completa. Para cerrarla falta revisar su
    criterio (RLS en todo, `next build` sin errores) y pasar a la Fase 4 (pruebas con el dueño).
 2. **Mejoras (F4·4 en adelante), módulo por módulo.** Primero **Bot y horario** (decisión 0026,
-   [FLUJO-DEL-BOT.md](FLUJO-DEL-BOT.md)): ✅ F4·4 vista previa real y límites (migración 0010) → ✅ F4·5 flujo en la base (migración 0011) → F4·6 lienzo →
+   [FLUJO-DEL-BOT.md](FLUJO-DEL-BOT.md)): ✅ F4·4 vista previa real y límites (migración 0010) → ✅ F4·5 flujo en la base (migración 0011) → ✅ F4·6 lienzo (migraciones 0012 y 0013) →
    F4·7 borrador, publicar e historial → F4·8 simulador. **Por confirmar con el dueño:** que los pasos que no son
    mensajes (inventario, ficha, catálogo, asesor) queden como cuadros del sistema fijos.
 3. **Pendiente del dueño en F3·9:** subir las fotos de los equipos (hoy los 17 están sin foto), los catálogos PDF y el

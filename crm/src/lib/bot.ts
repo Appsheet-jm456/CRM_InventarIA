@@ -2,7 +2,7 @@
 // cambian los tres. La base es la que decide al guardar; esto es para ver y contar mientras se escribe.
 
 export type Opcion = { id: string; titulo: string; descripcion?: string }
-export type Formato = 'menu' | 'texto' | 'ficha' | 'motivo'
+export type Formato = 'menu' | 'texto' | 'ficha' | 'motivo' | 'sistema'
 export type Medida = { largo: number; limite: number; forma: 'botones' | 'lista' | 'texto' }
 
 // El valor más largo de cada marca (bot_largo_marca).
