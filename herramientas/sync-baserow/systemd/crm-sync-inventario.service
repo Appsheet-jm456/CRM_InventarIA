@@ -1,0 +1,8 @@
+[Unit]
+Description=CRM InventarIA · copia el inventario de Baserow a Supabase
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/atlasjm/chat_bot-inventario
+ExecStart=/usr/bin/python3 herramientas/sync-baserow/sincronizar_inventario.py

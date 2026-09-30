@@ -29,3 +29,8 @@ herramientas/**/eventos.log
 herramientas/**/tunel-url.txt
 __pycache__/
 herramientas/**/conversaciones.jsonl
+
+# Supabase del CRM: datos en tiempo de ejecución
+supabase/volumes/db/data/
+supabase/volumes/storage/
+supabase/volumes/logs/*.log

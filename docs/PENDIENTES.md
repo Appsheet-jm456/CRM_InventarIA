@@ -1,6 +1,6 @@
 # Pendientes y dónde retomar
 
-**Última sesión:** 30 sep 2026 · **Fase actual:** 1 de 5 (Planeación) · **Código nuevo escrito:** ninguno
+**Última sesión:** 30 sep 2026 · **Fase actual:** 1 de 5 (Planeación), con F2·8 hecha y F2·2/F3·2 en curso · **Código nuevo escrito:** ninguno
 (todo el trabajo fue documentación, decisiones y una simulación). La v0 sigue viva en el puerto 3000
 sin tocar.
 
@@ -40,6 +40,21 @@ ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIONAxvcI3oR3igFtPME4BMX2UWaT1Ju6LFxZQosRf0GN
   (2) un texto libre solo se entrega si el cliente escribió en las últimas 24 h, y si no, Meta lo descarta en
   silencio (solo avisa por el webhook); (3) la app debe estar suscrita a la WABA (`POST /{WABA}/subscribed_apps`)
   además de tener el webhook verificado.
+
+## Supabase del CRM (montado el 30 sep 2026, decisión 0013)
+
+- **Instancia `crminventaria-supabase`** en `supabase/` (copia del montaje de Futur Green, claves propias en
+  `supabase/.env`, fuera de git). API y **Studio en http://192.168.20.50:8020** (usuario `supabase`, contraseña
+  `DASHBOARD_PASSWORD` de `supabase/.env`). Base: `:5434` (sesión) y `:6545` (transacción).
+  - Levantar o revisar: `cd supabase && docker compose up -d` · `docker compose ps`
+  - Migraciones: `supabase/migrations/NNNN_*.sql`, se aplican con `bash supabase/migrar.sh`.
+- **Modelo actual (0001):** `productos`, `etapas` y `leads`, espejo de Baserow con tipos corregidos y RLS sin
+  políticas (solo el servidor con `SERVICE_ROLE_KEY`).
+- **Inventario:** se edita en Baserow y se copia cada 5 min (`systemctl --user list-timers crm-sync-inventario`,
+  registro con `journalctl --user -u crm-sync-inventario`). A mano:
+  `python3 herramientas/sync-baserow/sincronizar_inventario.py [--revisar]`.
+- **Siguiente:** mover el bot de prueba a leer `productos` y escribir `leads` en Supabase (después de la demo,
+  porque el kanban de la v0 lee Baserow) y completar el modelo del diseño (F2·2).
 
 ## Demo del bot por WhatsApp (dejada lista el 30 sep 2026)
 

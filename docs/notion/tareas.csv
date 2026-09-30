@@ -13,19 +13,19 @@ F1·6 Confirmar en Meta los precios desde el 1 oct 2026 y agregar el medio de pa
 "F1·8 Definir qué equipo es Hogar, Ejecutivo o Diseño",1 · Planeación,Inventario,Pendiente,Media,"El inventario no tiene campo de uso; decidir si se deduce (procesador, RAM) o se agrega un campo. P-04b.",docs/ARBOL-DE-RESPUESTA.md
 "F1·9 Decidir el tipo de chat del MVP: guiado, agente o híbrido",1 · Planeación,Bot,Pendiente,Alta,P-11. Ver la simulación en docs/simulacion/simulacion-chat.html. Elegir agente o híbrido obliga a revisar la decisión 0005 (sin IA libre).,docs/SIMULACION-CHAT.md
 F2·1 Reglas del negocio,2 · Diseño,Arquitectura,Pendiente,Alta,,docs/sdlc/2-diseno.md
-F2·2 Modelo de datos y migraciones,2 · Diseño,Arquitectura,Pendiente,Alta,"contactos, conversaciones, mensajes, oportunidades, bot_nodos…",docs/sdlc/2-diseno.md
+F2·2 Modelo de datos y migraciones,2 · Diseño,Arquitectura,En curso,Alta,"Migración 0001: modelo espejo de Baserow (productos, etapas, leads). Falta el modelo completo del diseño: contactos, conversaciones, mensajes, historial de etapas, bot_nodos, usuarios.",supabase/migrations/0001_modelo_baserow.sql
 F2·3 Interfaz de canal y adaptador de Meta Cloud API,2 · Diseño,Canales,Pendiente,Alta,Webhook directo a la app con firma X-Hub-Signature-256; sin n8n.,docs/decisiones/0010-api-oficial-de-meta.md
 F2·4 Máquina de estados del bot y horario,2 · Diseño,Bot,Pendiente,Alta,Un mensaje por respuesta con botones y listas interactivas (decisión 0011); reutiliza la lógica de lib/whatsappFlow.js.,docs/decisiones/0005-bot-de-menu-fijo.md
 "F2·5 Usuarios, roles y permisos (RLS)",2 · Diseño,Arquitectura,Pendiente,Alta,,docs/sdlc/2-diseno.md
 F2·6 Diseño de seguimientos y SLA,2 · Diseño,Seguimientos,Pendiente,Media,Quién programa y quién dispara; plantillas de Meta fuera de 24 h.,docs/sdlc/2-diseno.md
 "F2·7 Maquetas: bandeja, kanban, editor del bot y métricas",2 · Diseño,Bandeja,Pendiente,Media,,docs/sdlc/2-diseno.md
-F2·8 Levantar la instancia de Supabase del CRM,2 · Diseño,Arquitectura,Pendiente,Alta,"Puertos libres, separada de Futur Green.",docs/decisiones/0003-supabase-propio-y-separado.md
+F2·8 Levantar la instancia de Supabase del CRM,2 · Diseño,Arquitectura,Hecha,Alta,"Hecha 30 sep 2026: instancia crminventaria-supabase (API y Studio :8020, base :5434/:6545), claves propias, separada de Futur Green (decisión 0013).",docs/decisiones/0013-migracion-de-baserow-a-supabase.md
 F2·9 Arquitectura del frontend: Shell con panel lateral plegable,2 · Diseño,Frontend,Pendiente,Alta,Mismo diseño de Futur Green: módulos a la izquierda que se pliegan y despliegan; una ruta por módulo.,docs/decisiones/0009-frontend-como-futur-green.md
 F2·10 Túnel de Cloudflare con dominio propio para el webhook,2 · Diseño,Canales,Pendiente,Alta,"trycloudflare solo para pruebas: la URL cambia al reiniciar. Probado con túnel rápido (cloudflared en ~/.local/bin): funciona, pero la URL cambia en cada reinicio.",docs/PLAN-META-API.md
 F2·11 Contador de consumo de Meta y aviso al 80 %,2 · Diseño,Métricas,Pendiente,Media,Categoría y cobro por mensaje saliente.,docs/decisiones/0011-precios-de-meta-desde-el-1-de-octubre.md
 F2·12 Perfeccionar la simulación del chat,2 · Diseño,Bot,Pendiente,Media,"El dueño la aprobó tal cual y quiere perfeccionarla. Ideas en SIMULACION-CHAT.md: horario y SLA, ficha con imagen, vista del asesor, inventario en vivo.",docs/SIMULACION-CHAT.md
 "F3·1 Esqueleto: login, panel, usuarios y roles",3 · Implementación,Arquitectura,Pendiente,Alta,,docs/sdlc/3-implementacion.md
-F3·2 Migración desde Baserow e historial de Evolution,3 · Implementación,Inventario,Pendiente,Alta,Conteo antes y después.,docs/sdlc/3-implementacion.md
+F3·2 Migración desde Baserow e historial de Evolution,3 · Implementación,Inventario,En curso,Alta,"Inventario copiado de Baserow cada 5 min (timer crm-sync-inventario), 17 productos cuadrados. Etapas sembradas. Los leads de Baserow eran pruebas: no se migran (decisión 0013). Falta voltear el inventario a Supabase cuando exista el módulo (F3·9).",herramientas/sync-baserow/sincronizar_inventario.py
 "F3·3 Webhook de Meta, adaptador y registro de mensajes",3 · Implementación,Canales,Pendiente,Alta,Guarda la categoría de Meta y si el mensaje fue cobrable.,docs/sdlc/3-implementacion.md
 F3·4 Motor del bot sobre bot_nodos,3 · Implementación,Bot,Pendiente,Alta,,docs/sdlc/3-implementacion.md
 F3·5 Bandeja multiasesor y kanban en tiempo real,3 · Implementación,Bandeja,Pendiente,Alta,,docs/sdlc/3-implementacion.md
