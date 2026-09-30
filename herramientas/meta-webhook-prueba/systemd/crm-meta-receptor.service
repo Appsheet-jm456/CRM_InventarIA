@@ -1,0 +1,12 @@
+[Unit]
+Description=CRM InventarIA · receptor de prueba del webhook de Meta (puerto 8095)
+After=network-online.target
+
+[Service]
+WorkingDirectory=/home/atlasjm/chat_bot-inventario
+ExecStart=/usr/bin/python3 herramientas/meta-webhook-prueba/receptor.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target

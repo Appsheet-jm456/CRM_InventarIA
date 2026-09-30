@@ -9,7 +9,7 @@ solo comprueba que Meta entrega los mensajes al servidor antes de diseñar F3·3
 Qué hace:
   GET  /webhook  verificación de Meta (hub.verify_token == META_VERIFY_TOKEN)
   POST /webhook  valida la firma X-Hub-Signature-256 con META_APP_SECRET, anota el evento en
-                 eventos.log y contesta con eco a los mensajes de texto (prueba de ida y vuelta)
+                 eventos.log y responde con el árbol de respuesta de prueba (flujo.py)
 
 Lee .env.meta de la raíz del repo. eventos.log tiene teléfonos y mensajes: no se commitea.
 """
@@ -25,6 +25,9 @@ from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
+
+import flujo
+import kanban
 
 RAIZ = Path(__file__).resolve().parents[2]
 REGISTRO = Path(__file__).with_name("eventos.log")
@@ -56,17 +59,37 @@ def anotar(texto):
         f.write(linea + "\n")
 
 
-def enviar_texto(numero, texto):
-    cuerpo = {"messaging_product": "whatsapp", "to": numero, "type": "text", "text": {"body": texto}}
+def enviar(numero, mensaje):
+    cuerpo = {"messaging_product": "whatsapp", "to": numero, **mensaje}
     peticion = urllib.request.Request(
         f"{API}/{ENV['META_PHONE_NUMBER_ID']}/messages", method="POST",
         headers={"Authorization": f"Bearer {ENV['META_TOKEN']}", "Content-Type": "application/json"},
         data=json.dumps(cuerpo).encode())
     try:
         urllib.request.urlopen(peticion, timeout=15)
-        anotar(f"  → eco enviado a {numero}")
+        anotar(f"  → enviado ({mensaje.get('interactive', {}).get('type') or mensaje['type']})")
+        return True
     except urllib.error.HTTPError as e:
-        anotar(f"  ✗ eco falló: {e.read().decode()[:300]}")
+        anotar(f"  ✗ envío falló: {e.read().decode()[:300]}")
+        return False
+
+
+def contestar(numero, entrada, visible, nombre):
+    try:
+        mensajes, st = flujo.responder(numero, entrada)
+    except Exception as e:  # una falla del árbol no debe tumbar el receptor
+        anotar(f"  ✗ el árbol falló: {e!r}")
+        return
+    for m in mensajes:
+        # Si la foto de la cabecera no se puede descargar, la ficha sale igual sin imagen.
+        if not enviar(numero, m) and m.get("interactive", {}).pop("header", None):
+            enviar(numero, m)
+    anotar(f"  · nodo {st['nodo']} · etapa {st['etapa']} · {st['campos']}"
+           + (" · BOT PAUSADO" if st["pausa"] else ""))
+    try:
+        anotar(f"  🗂 kanban v0: {kanban.sincronizar(numero, nombre, visible, st)}")
+    except Exception as e:  # el espejo es secundario: si Baserow falla, el bot sigue
+        anotar(f"  ✗ kanban v0 falló: {e!r}")
 
 
 def procesar(evento):
@@ -76,10 +99,20 @@ def procesar(evento):
             nombres = {c["wa_id"]: c.get("profile", {}).get("name", "") for c in valor.get("contacts", [])}
             for m in valor.get("messages", []):
                 de, tipo = m.get("from"), m.get("type")
-                texto = m.get("text", {}).get("body") if tipo == "text" else f"[{tipo}]"
-                anotar(f"📩 {de} ({nombres.get(de, '')}) · {tipo}: {texto}")
                 if tipo == "text":
-                    enviar_texto(de, f"🤖 Recibido en el servidor del CRM: «{texto}»\n\nEl webhook funciona de ida y vuelta.")
+                    entrada = m["text"].get("body", "")
+                elif tipo == "interactive":  # tocó una opción de la lista o un botón
+                    r = m["interactive"].get("list_reply") or m["interactive"].get("button_reply") or {}
+                    entrada = r.get("id", "")
+                    visible = r.get("title", entrada)
+                elif tipo == "button":       # botón de una plantilla
+                    entrada = m["button"].get("text", "")
+                else:                        # audio, imagen, sticker: pasan a asesor (ARBOL, B-ERR)
+                    entrada = "asesor"
+                if tipo != "interactive":
+                    visible = entrada if tipo in ("text", "button") else f"[{tipo}]"
+                anotar(f"📩 {de} ({nombres.get(de, '')}) · {tipo}: {entrada}")
+                contestar(de, entrada, visible, nombres.get(de, ""))
             for s in valor.get("statuses", []):
                 errores = "; ".join(f"{e.get('code')} {e.get('title')}" for e in s.get("errors", []))
                 anotar(f"📬 estado {s.get('status')} · {s.get('recipient_id')}" + (f" · {errores}" if errores else ""))

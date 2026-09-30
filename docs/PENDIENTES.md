@@ -41,6 +41,30 @@ ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIONAxvcI3oR3igFtPME4BMX2UWaT1Ju6LFxZQosRf0GN
   silencio (solo avisa por el webhook); (3) la app debe estar suscrita a la WABA (`POST /{WABA}/subscribed_apps`)
   además de tener el webhook verificado.
 
+## Demo del bot por WhatsApp (dejada lista el 30 sep 2026)
+
+El árbol de respuesta corre sobre el **número de prueba de Meta (+1 555 190 4296)** con el inventario en vivo
+de Baserow, y refleja cada cliente en el **kanban de la v0 (puerto 3000)**. Es una prueba, no la app nueva.
+
+- **Servicios** (usuario `atlasjm`, arrancan solos con el servidor, `Linger=yes`):
+  `crm-meta-receptor` (receptor en 127.0.0.1:8095) y `crm-meta-tunel` (túnel de Cloudflare que **registra solo
+  su URL nueva en Meta** cada vez que arranca). Copia de las unidades en `herramientas/meta-webhook-prueba/systemd/`.
+  - Estado: `systemctl --user status crm-meta-receptor crm-meta-tunel`
+  - Reiniciar: `systemctl --user restart crm-meta-receptor crm-meta-tunel`
+  - Conversaciones: `tail -f herramientas/meta-webhook-prueba/eventos.log` · URL actual: `tunel-url.txt`
+  - Apagar después de la demo: `systemctl --user disable --now crm-meta-tunel crm-meta-receptor`
+- **Quién puede probar:** solo números verificados en Meta → Tests de la API → paso 3 (máximo 5). Un número
+  sin verificar escribe, pero Meta no le entrega las respuestas.
+- **Reiniciar una charla:** escribir `reiniciar` (también quita la pausa de asesor). `hola` o `menu` vuelven al inicio.
+- **Kanban de la v0:** crea o actualiza la tarjeta en `CRM_Leads` (etapa, último mensaje, paso, pausa, código y
+  valor). El embudo solo avanza y no toca Vendido ni Perdido. **La conversación no se ve en la tarjeta** (la v0
+  la lee de Evolution) y responder desde la v0 saldría por Evolution, no por Meta.
+- **Hallazgos de la prueba** (para el motor definitivo, F3·4):
+  1. En el presupuesto el cliente escribe montos ("1.5"): el bot debe ubicarlos en el rango.
+  2. En la ficha escribe "quiero comprar": debe valer como "Lo quiero".
+  3. El campo "Errores bot" no vuelve a 0 al avanzar (el contador interno sí).
+  4. Ningún equipo tiene foto en Baserow: las fichas salen sin imagen.
+
 ## Estado del repositorio
 
 - Rama `main`, **11 commits sin subir** (5 de la v0, 6 de esta sesión). Remoto `inventaria` →

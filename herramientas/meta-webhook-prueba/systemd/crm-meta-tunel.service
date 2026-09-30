@@ -1,0 +1,13 @@
+[Unit]
+Description=CRM InventarIA · túnel de prueba hacia el receptor y registro de la URL en Meta
+After=network-online.target crm-meta-receptor.service
+Wants=crm-meta-receptor.service
+
+[Service]
+WorkingDirectory=/home/atlasjm/chat_bot-inventario
+ExecStart=/usr/bin/python3 herramientas/meta-webhook-prueba/tunel.py
+Restart=always
+RestartSec=15
+
+[Install]
+WantedBy=default.target
