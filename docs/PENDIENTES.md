@@ -6,9 +6,9 @@ de las Fases 1 y 2 abajo. **Código nuevo:** el bot de prueba sobre Supabase (`h
 
 ## Dónde retomar (en este orden)
 
-1. **F3·1 hecha.** Falta solo que el dueño cree su usuario: `bash supabase/crear-admin.sh admin "Nombre"`
-   (pide la contraseña). Luego sigue **F3·2** (voltear el inventario a la carga por Excel y decidir el historial de Evolution).
-2. Luego F3·2 a F3·9 en orden. En **F3·5** la app pasa al puerto **8096** y el visor de Python se apaga.
+1. **F3·1 y F3·2 hechas.** Falta que el dueño cree su usuario: `bash supabase/crear-admin.sh admin "Nombre"`
+   (pide la contraseña). Sigue **F3·3** (webhook de Meta en la app nueva).
+2. Luego F3·3 a F3·9 en orden. En **F3·5** la app pasa al puerto **8096** y el visor de Python se apaga.
 3. En paralelo, lo que depende del dueño: F1·4 (deploy key), F1·6, F1·7, F1·8, clave de Gemini, PDF y enlace de Drive, hoja Excel.
 
 ## Estado de las tareas de la Fase 1
@@ -61,13 +61,14 @@ ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIONAxvcI3oR3igFtPME4BMX2UWaT1Ju6LFxZQosRf0GN
   `DASHBOARD_PASSWORD` de `supabase/.env`). Base: `:5434` (sesión) y `:6545` (transacción).
   - Levantar o revisar: `cd supabase && docker compose up -d` · `docker compose ps`
   - Migraciones: `supabase/migrations/NNNN_*.sql`, se aplican con `bash supabase/migrar.sh`.
-- **Modelo actual (0001):** `productos`, `etapas` y `leads`, espejo de Baserow con tipos corregidos y RLS sin
-  políticas (solo el servidor con `SERVICE_ROLE_KEY`).
-- **Inventario:** se edita en Baserow y se copia cada 5 min (`systemctl --user list-timers crm-sync-inventario`,
-  registro con `journalctl --user -u crm-sync-inventario`). A mano:
-  `python3 herramientas/sync-baserow/sincronizar_inventario.py [--revisar]`.
-- **Siguiente:** mover el bot de prueba a leer `productos` y escribir `leads` en Supabase (después de la demo,
-  porque el kanban de la v0 lee Baserow) y completar el modelo del diseño (F2·2).
+- **Modelo actual (0001–0003):** `productos`, `etapas`, `leads`, `mensajes`, `catalogos` y usuarios/roles/permisos.
+  `leads` y `mensajes` sin políticas (solo el servidor con `SERVICE_ROLE_KEY`) hasta F3·5.
+- **Inventario (desde el 30 sep, F3·2):** Supabase manda. **Baserow ya no se copia** (timer `crm-sync-inventario`
+  apagado). Se cambia con la hoja [plantillas/inventario.xlsx](plantillas/inventario.xlsx) y `cargar_inventario.py`.
+- **Datos de prueba (decisión 0019):** los 17 equipos, los clientes y los mensajes que hay son de prueba. Antes de
+  arrancar con lo real: `python3 herramientas/datos-prueba/borrar_datos_prueba.py` (muestra), `--probar` (borra y
+  deshace) y `--borrar` (respalda en `respaldos/`, pide escribir BORRAR). Después se carga la hoja real.
+  Evolution estaba vacío (0 chats): no hubo historial que migrar.
 
 ## Demo del bot por WhatsApp (dejada lista el 30 sep 2026)
 
@@ -97,8 +98,7 @@ de Baserow, y refleja cada cliente en el **kanban de la v0 (puerto 3000)**. Es u
 - **Catálogos (decisión 0015):** tabla `catalogos` y bucket privado `catalogos`; el bot envía el más específico
   para la marca y categoría y el enlace de Drive con todos. **Vacía hasta recibir los PDF y el enlace.**
 - **Carga de la lista por Excel (F2·14):** `python3 herramientas/carga-inventario/cargar_inventario.py lista.xlsx`
-  (muestra cambios) y `--aplicar` (escribe). Al usarla por primera vez hay que apagar la copia desde Baserow:
-  `systemctl --user disable --now crm-sync-inventario.timer`.
+  (muestra cambios) y `--aplicar` (escribe). Plantilla con las columnas: `docs/plantillas/inventario.xlsx`.
 - **Hallazgos de la prueba del 30 sep:** 1) montos escritos en el presupuesto, 2) "quiero comprar" en la ficha y
   3) el contador de errores que no volvía a 0 — **corregidos**. 4) Ningún equipo tiene foto: las fichas salen sin imagen.
 

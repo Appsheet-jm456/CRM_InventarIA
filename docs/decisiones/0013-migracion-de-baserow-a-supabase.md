@@ -1,6 +1,6 @@
 # 0013 · Migración de Baserow a Supabase: modelo espejo e inventario copiado
 
-**Estado:** Aceptada · 30 sep 2026 · el inventario pasó a Supabase por la 0014
+**Estado:** Aceptada · 30 sep 2026 · el inventario pasó a Supabase por la 0014 · copia desde Baserow apagada por la 0019
 
 ## Contexto
 

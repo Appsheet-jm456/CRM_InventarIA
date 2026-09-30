@@ -17,7 +17,7 @@
 | Paso | Estado |
 |---|---|
 | F3·1 Esqueleto: login, panel lateral, usuarios y roles | ✅ Hecho 30 sep 2026 · `crm/`, migración 0003 |
-| F3·2 Migración de datos desde Baserow (productos, etapas y leads) | En curso |
+| F3·2 Migración de datos desde Baserow (productos, etapas y leads) | ✅ Hecho 30 sep 2026 · Supabase manda, datos de prueba (0019) |
 | F3·3 Webhook de Meta, adaptador y registro de mensajes | Pendiente |
 | F3·4 Motor del bot sobre `bot_nodos` | Pendiente |
 | F3·5 Bandeja multiasesor y kanban en tiempo real | Pendiente |

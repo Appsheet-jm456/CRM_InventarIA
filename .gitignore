@@ -35,3 +35,6 @@ supabase/volumes/db/data/
 supabase/volumes/storage/
 supabase/volumes/logs/*.log
 !crm/.env.example
+
+# Respaldos locales (datos de clientes y teléfonos)
+/respaldos/
