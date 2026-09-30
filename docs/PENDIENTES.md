@@ -16,7 +16,7 @@ sin tocar.
 |---|---|---|
 | F1·1 Flujo de atención · F1·2 Etapas · F1·3 Metas y SLA | ✅ Hechas | — |
 | **F1·4** Subir commits a GitHub | 🔴 Bloqueada | El dueño debe pegar la llave pública de abajo en GitHub → `Appsheet-jm456/inventaria` → Settings → Deploy keys, con **write access**. Después: `git push inventaria main` |
-| **F1·5** Trámites en Meta | 🔵 En curso | ✅ App *Futur Green bot* (portafolio Futur Green) con número de prueba +1 555 190 4296 · ✅ token permanente en `.env.meta` (no vence) · ✅ envío desde el servidor. Falta: webhook para recibir (túnel HTTPS) y, para el número real, verificar el negocio |
+| **F1·5** Trámites en Meta | 🔵 En curso | ✅ App *Futur Green bot* (portafolio Futur Green) con número de prueba +1 555 190 4296 · ✅ token permanente en `.env.meta` (no vence) · ✅ envío desde el servidor · ✅ **webhook de prueba de ida y vuelta** (recibe, responde, firma validada, estados de entrega). Falta: verificar el negocio y el número real |
 | **F1·6** Confirmar precios de Meta del 1 oct 2026 | Pendiente | Solo hay fuentes de terceros; la documentación oficial no lo muestra. Confirmar en WhatsApp Manager y Billing Hub, y agregar medio de pago |
 | **F1·7** Ramas del árbol sin definir | Pendiente | Las define el dueño: Torres Tiny, SFF, Partes, Distribuidores, Servicio al cliente. Mientras tanto van a asesor |
 | **F1·8** Qué equipo es Hogar, Ejecutivo o Diseño | Pendiente | El inventario no tiene ese dato: deducirlo (procesador, RAM) o agregar un campo |
@@ -27,6 +27,19 @@ Llave pública de despliegue (`~/.ssh/inventaria_deploy_ed25519.pub`, alias SSH 
 ```
 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIONAxvcI3oR3igFtPME4BMX2UWaT1Ju6LFxZQosRf0GN inventaria-deploy@atlasjm
 ```
+
+## Conexión con Meta (probada el 30 sep 2026)
+
+- **Datos en `.env.meta`** (no se commitea): `META_TOKEN` (usuario del sistema `crm-bot`, no vence),
+  `META_APP_ID`, `META_WABA_ID`, `META_PHONE_NUMBER_ID`, `META_APP_SECRET` y `META_VERIFY_TOKEN`.
+- **Receptor de prueba:** `herramientas/meta-webhook-prueba/receptor.py` en el puerto 8095, más
+  `~/.local/bin/cloudflared tunnel --url http://127.0.0.1:8095`. La URL de `trycloudflare` **cambia en cada
+  reinicio**: al levantarlo de nuevo hay que pegarla otra vez en Meta → WhatsApp → Configuración → Webhook.
+  El registro (`eventos.log`) tiene teléfonos y mensajes y no se commitea.
+- **Lecciones:** (1) al generar un token hay que marcar la cuenta de WhatsApp o sale "object does not exist";
+  (2) un texto libre solo se entrega si el cliente escribió en las últimas 24 h, y si no, Meta lo descarta en
+  silencio (solo avisa por el webhook); (3) la app debe estar suscrita a la WABA (`POST /{WABA}/subscribed_apps`)
+  además de tener el webhook verificado.
 
 ## Estado del repositorio
 
