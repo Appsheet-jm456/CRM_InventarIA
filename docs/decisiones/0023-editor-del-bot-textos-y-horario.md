@@ -1,6 +1,6 @@
 # 0023 · El editor del bot cambia textos y horario, no la estructura
 
-**Estado:** Aceptada · 30 sep 2026 · Tarea F3·7 · Amplía la 0005
+**Estado:** Aceptada · RBOT-01 reemplazada por la 0026 (el flujo pasa a la base) · 30 sep 2026 · Tarea F3·7 · Amplía la 0005
 
 ## Contexto
 

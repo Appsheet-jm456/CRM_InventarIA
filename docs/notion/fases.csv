@@ -1,6 +1,6 @@
 Fase,Orden,Estado,Criterio de cierre,Documento
 1 · Planeación,1,En curso,"Alcance del MVP validado con el dueño: flujo de atención, etapas, SLA y metas medibles",docs/sdlc/1-planeacion.md
-2 · Diseño,2,Pendiente,"Modelo de datos, interfaz de canal, motor del bot, roles y maquetas; esquema reproducible desde cero",docs/sdlc/2-diseno.md
-3 · Implementación,3,Pendiente,Los módulos del MVP funcionando sobre Supabase con permisos en el servidor,docs/sdlc/3-implementacion.md
+2 · Diseño,2,En curso,"Modelo de datos, interfaz de canal, motor del bot, roles y maquetas; esquema reproducible desde cero",docs/sdlc/2-diseno.md
+3 · Implementación,3,En curso,Los módulos del MVP funcionando sobre Supabase con permisos en el servidor,docs/sdlc/3-implementacion.md
 4 · Pruebas,4,Pendiente,"Reglas, permisos, motor del bot y webhook con pruebas que fallen si se rompen",docs/sdlc/4-pruebas.md
 5 · Despliegue,5,Pendiente,"CRM nuevo operando con clientes reales, datos migrados, respaldos probados y v0 apagada",docs/sdlc/5-despliegue.md

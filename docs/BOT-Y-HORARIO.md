@@ -7,7 +7,7 @@
 
 ## Reglas
 
-**RBOT-01 · Se editan textos y títulos de botones, no la estructura.** El árbol (qué nodo lleva a cuál) y las
+**RBOT-01 · Se editan textos y títulos de botones, no la estructura.** *(Reemplazada por la 0026: el flujo pasa a la base y se arma en un lienzo, F4·5 a F4·8, [FLUJO-DEL-BOT.md](FLUJO-DEL-BOT.md).)* El árbol (qué nodo lleva a cuál) y las
 reglas del negocio siguen en el código (decisión 0005: menú fijo, sin IA libre). Quien tiene `administrar_bot`
 cambia el texto de cada nodo y el título de sus opciones.
 

@@ -9,13 +9,13 @@
 - [ ] Reglas del negocio escritas: `REGLAS_DEL_NEGOCIO.md`
 - [ ] Modelo de datos: `MODELO_DE_DATOS.md`
 - [x] Arquitectura del frontend: `Shell` con panel lateral plegable, `modulos.ts` y rutas por módulo (decisión 0009) → [ARQUITECTURA-FRONTEND.md](../ARQUITECTURA-FRONTEND.md), decisión 0017
-- [ ] Interfaz de canal con el adaptador de la **Cloud API de Meta**, firma del webhook y túnel HTTPS (decisión 0010)
-- [ ] Bot de un mensaje por respuesta con botones y listas interactivas, y contador de consumo (decisión 0011)
-- [ ] Máquina de estados del bot sobre `bot_nodos`, con horario de atención y paso a asesor
+- [x] Interfaz de canal con el adaptador de la **Cloud API de Meta** y firma del webhook (decisión 0010) → F3·3. El túnel con dominio propio sigue en F2·10
+- [x] Bot de un mensaje por respuesta con botones y listas interactivas, y contador de consumo (decisión 0011) → F3·4, F3·8
+- [x] Máquina de estados del bot sobre `bot_nodos`, con horario de atención y paso a asesor → F3·4, F3·7
 - [x] Usuarios, roles y permisos (RLS) definidos → [USUARIOS-Y-PERMISOS.md](../USUARIOS-Y-PERMISOS.md), decisión 0018
 - [x] Seguimientos y SLA: cómo se programan y quién los dispara → [SEGUIMIENTOS-Y-SLA.md](../SEGUIMIENTOS-Y-SLA.md), decisión 0021
 - [ ] Maqueta de la bandeja, el kanban, el editor del bot y las métricas
-- [ ] Esquema reproducible desde cero: migraciones numeradas y probadas contra una instancia vacía
+- [ ] Esquema reproducible desde cero: migraciones 0001–0009 numeradas y con pruebas; falta correrlas contra una instancia vacía
 
 ---
 
