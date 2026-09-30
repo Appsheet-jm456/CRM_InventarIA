@@ -34,3 +34,4 @@ herramientas/**/conversaciones.jsonl
 supabase/volumes/db/data/
 supabase/volumes/storage/
 supabase/volumes/logs/*.log
+!crm/.env.example

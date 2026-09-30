@@ -1,6 +1,6 @@
 # Fase 3 · Implementación
 
-**Estado:** ⚪ Pendiente
+**Estado:** 🔵 En curso
 
 > Construir lo diseñado, módulo por módulo, con un commit por paso.
 
@@ -16,9 +16,9 @@
 
 | Paso | Estado |
 |---|---|
-| F3·1 Esqueleto: login, panel lateral, usuarios y roles | Pendiente |
-| F3·2 Migración de datos desde Baserow (productos, etapas y leads) | Pendiente |
-| F3·3 Webhook, adaptador de Evolution y registro de mensajes | Pendiente |
+| F3·1 Esqueleto: login, panel lateral, usuarios y roles | ✅ Hecho 30 sep 2026 · `crm/`, migración 0003 |
+| F3·2 Migración de datos desde Baserow (productos, etapas y leads) | En curso |
+| F3·3 Webhook de Meta, adaptador y registro de mensajes | Pendiente |
 | F3·4 Motor del bot sobre `bot_nodos` | Pendiente |
 | F3·5 Bandeja multiasesor y kanban en tiempo real | Pendiente |
 | F3·6 Seguimientos y alertas de SLA | Pendiente |

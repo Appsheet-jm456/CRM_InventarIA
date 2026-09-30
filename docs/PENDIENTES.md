@@ -6,9 +6,8 @@ de las Fases 1 y 2 abajo. **Código nuevo:** el bot de prueba sobre Supabase (`h
 
 ## Dónde retomar (en este orden)
 
-1. **F3·1 Esqueleto: login, panel, usuarios y roles** — diseño listo en
-   [USUARIOS-Y-PERMISOS.md](USUARIOS-Y-PERMISOS.md) (F2·5) y [ARQUITECTURA-FRONTEND.md](ARQUITECTURA-FRONTEND.md)
-   (F2·9). Pasos: migración 0003 → app en `crm/` (puerto 3020) → Usuarios y Roles → `next build` → servicio.
+1. **F3·1 hecha.** Falta solo que el dueño cree su usuario: `bash supabase/crear-admin.sh admin "Nombre"`
+   (pide la contraseña). Luego sigue **F3·2** (voltear el inventario a la carga por Excel y decidir el historial de Evolution).
 2. Luego F3·2 a F3·9 en orden. En **F3·5** la app pasa al puerto **8096** y el visor de Python se apaga.
 3. En paralelo, lo que depende del dueño: F1·4 (deploy key), F1·6, F1·7, F1·8, clave de Gemini, PDF y enlace de Drive, hoja Excel.
 
@@ -29,6 +28,18 @@ Llave pública de despliegue (`~/.ssh/inventaria_deploy_ed25519.pub`, alias SSH 
 ```
 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIONAxvcI3oR3igFtPME4BMX2UWaT1Ju6LFxZQosRf0GN inventaria-deploy@atlasjm
 ```
+
+## App nueva CRM InventarIA (F3·1, 30 sep 2026)
+
+- Código en `crm/` (Next.js 14 + TypeScript, copia del esqueleto de Futur Green). **http://100.114.72.43:3020**
+  (Tailscale) o `http://192.168.20.50:3020`. En F3·5 pasa al 8096 (decisión 0017).
+- Servicio `crm-inventaria-app` (usuario atlasjm, arranca solo): `systemctl --user status crm-inventaria-app`.
+  Copia de la unidad en `crm/systemd/`. Tras cambiar código: `cd crm && npx next build && systemctl --user restart crm-inventaria-app`.
+- Secretos en `crm/.env.local` (fuera de git, plantilla en `crm/.env.example`).
+- Se entra con **usuario** (se guarda como `<usuario>@inventaria.local`). Primer admin: `supabase/crear-admin.sh`;
+  los demás desde Configuración → Usuarios. Roles y permisos: [USUARIOS-Y-PERMISOS.md](USUARIOS-Y-PERMISOS.md).
+- Probado: RLS (anon sin acceso, asesor sin leads/mensajes ni escritura, salvaguardas del admin) y en navegador
+  (login, clave mala, panel por rol, Usuarios, Roles, módulos en construcción). Usuarios QA borrados.
 
 ## Conexión con Meta (probada el 30 sep 2026)
 
