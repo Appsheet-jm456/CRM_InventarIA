@@ -109,7 +109,7 @@ un rol o borrar un rol que no es del sistema).
 | `etapas` | usuario activo | `administrar_embudo` | F3·1 (leer) · F3·5 (escribir) |
 | `leads` / `conversaciones` | `ver_todas_conversaciones`, o `atender_bandeja` si está asignada a él o sin asignar | ídem, más `gestionar_oportunidades` para la etapa | F3·5, con el modelo de F2·2 |
 | `mensajes` | como su conversación | `atender_bandeja` (lado `asesor`) | F3·5 |
-| `bot_nodos`, `horario_atencion`, `respuestas_rapidas` | usuario activo | `administrar_bot` | F3·7 |
+| `bot_nodos`, `horario_atencion`, `respuestas_rapidas` | usuario activo | `administrar_bot` | F3·7 ✅ (`bot_nodos` solo se lee y actualiza; `respuestas_rapidas` también se crea y borra) |
 
 Mientras llega cada paso, las tablas del bot (`leads`, `mensajes`) siguen como están hoy: RLS
 encendido y sin políticas, solo el servidor entra.

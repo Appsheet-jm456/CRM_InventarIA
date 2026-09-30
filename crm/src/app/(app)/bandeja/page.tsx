@@ -8,11 +8,12 @@ export default async function PaginaBandeja({ searchParams }: { searchParams: { 
   if (!puede(sesion, ['atender_bandeja'])) return <SinPermiso />
 
   const supabase = crearCliente()
-  const [{ data: usuarios }, { data: atienden }, { data: etapas }, { data: embudos }] = await Promise.all([
+  const [{ data: usuarios }, { data: atienden }, { data: etapas }, { data: embudos }, { data: rapidas }] = await Promise.all([
     supabase.from('usuarios').select('id, nombre, activo, rol_id').order('nombre'),
     supabase.from('rol_permisos').select('rol_id').eq('permiso', 'atender_bandeja'),
     supabase.from('etapas').select('id, nombre, cierre, color, embudo_id, orden').order('orden'),
     supabase.from('embudos').select('id, nombre').eq('activo', true).order('orden'),
+    supabase.from('respuestas_rapidas').select('id, atajo, titulo, texto').eq('activo', true).order('atajo'),
   ])
   const rolesQueAtienden = new Set((atienden ?? []).map((r) => r.rol_id))
 
@@ -23,6 +24,7 @@ export default async function PaginaBandeja({ searchParams }: { searchParams: { 
       asesores={(usuarios ?? []).filter((u) => u.activo && rolesQueAtienden.has(u.rol_id)).map((u) => ({ id: u.id, nombre: u.nombre }))}
       embudos={embudos ?? []}
       etapas={etapas ?? []}
+      rapidas={rapidas ?? []}
       inicial={Number(searchParams.c) || null}
     />
   )

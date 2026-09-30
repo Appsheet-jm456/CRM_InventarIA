@@ -1,5 +1,11 @@
 # Changelog del brief
 
+## v1.0 · 30 sep 2026 (F3·7)
+
+- Editor del bot: textos y títulos de botones desde la app, sin tocar la estructura (0023,
+  `docs/BOT-Y-HORARIO.md`). Horario y festivos editables; el bot los lee de la base y, fuera de horario,
+  avisa cuándo le responden al pasar a asesor. Respuestas rápidas con `/` en la Bandeja.
+
 ## v1.0 · 30 sep 2026 (F2·5 y F2·9)
 
 - Usuarios propios y permisos por rol configurables: administrador y asesor, RLS por permiso (0018,

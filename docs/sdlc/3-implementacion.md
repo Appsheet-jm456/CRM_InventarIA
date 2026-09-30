@@ -22,7 +22,7 @@
 | F3·4 Motor del bot sobre `bot_nodos` | Pendiente |
 | F3·5 Bandeja multiasesor y kanban en tiempo real | ✅ Hecho 30 sep 2026 · migración 0004, app en el 8096 |
 | F3·6 Seguimientos y alertas de SLA | ✅ Hecho 30 sep 2026 · migración 0005 |
-| F3·7 Editor del bot, horario y respuestas rápidas | 🔵 En curso · migración 0007, [BOT-Y-HORARIO.md](../BOT-Y-HORARIO.md) |
+| F3·7 Editor del bot, horario y respuestas rápidas | ✅ Hecho 30 sep 2026 · migración 0007, [BOT-Y-HORARIO.md](../BOT-Y-HORARIO.md) |
 | F3·8 Métricas del embudo | Pendiente |
 | F3·9 Inventario, fichas y catálogo PDF | Pendiente |
 | F3·10 Varios embudos: Cliente Final, Pos Venta y Distribuidor (va antes de F3·7) | ✅ Hecho 30 sep 2026 · migración 0006 |

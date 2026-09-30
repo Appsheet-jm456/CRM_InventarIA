@@ -86,12 +86,13 @@ function Media({ m }: { m: Mensaje }) {
   return <a className="btn chico" href={src} target="_blank" rel="noreferrer">📄 {m.media_nombre || 'Abrir documento'}</a>
 }
 
-export function Bandeja({ yo, usuarios, asesores, embudos, etapas, inicial }: {
+export function Bandeja({ yo, usuarios, asesores, embudos, etapas, rapidas, inicial }: {
   yo: { id: string; verTodas: boolean; moverEtapas: boolean }
   usuarios: Persona[]
   asesores: Persona[]
   embudos: Embudo[]
   etapas: Etapa[]
+  rapidas: { id: number; atajo: string; titulo: string; texto: string }[]
   inicial: number | null
 }) {
   const [leads, setLeads] = useState<Lead[]>([])
@@ -229,6 +230,16 @@ export function Bandeja({ yo, usuarios, asesores, embudos, etapas, inicial }: {
     return !r.error
   }
 
+  // Respuestas rápidas (RBOT-08): "/" al inicio abre la lista; al elegir, el texto queda para revisarlo.
+  const busquedaRapida = /^\/(\S*)$/.exec(texto)
+  const coincidencias = busquedaRapida
+    ? rapidas.filter((r) => `${r.atajo} ${r.titulo}`.toLowerCase().includes(busquedaRapida[1].toLowerCase())).slice(0, 6)
+    : []
+  function usarRapida(r: { texto: string }) {
+    const primero = (lead?.nombre ?? '').trim().split(/\s+/)[0]
+    setTexto(r.texto.replaceAll('{nombre}', primero || 'cliente'))
+  }
+
   async function enviar() {
     if (!lead || !texto.trim() || ocupado) return
     const escrito = texto
@@ -344,14 +355,26 @@ export function Bandeja({ yo, usuarios, asesores, embudos, etapas, inicial }: {
                   {lead.estado_chat !== 'asignada' && (
                     <small className="muted">Al responder tomas la conversación y el bot deja de contestarle.</small>
                   )}
+                  {coincidencias.length > 0 && (
+                    <div role="listbox" aria-label="Respuestas rápidas" style={{ display: 'grid', gap: 2, border: '1px solid var(--line, #d1d5db)', borderRadius: 10, padding: 4, marginBottom: 6 }}>
+                      {coincidencias.map((r) => (
+                        <button key={r.id} type="button" role="option" aria-selected="false" className="btn chico" style={{ textAlign: 'left', justifyContent: 'flex-start' }} onClick={() => usarRapida(r)}>
+                          <strong>/{r.atajo}</strong> · {r.titulo} <span className="muted"> — {r.texto.slice(0, 60)}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                   <div className="b-caja">
                     <textarea
                       rows={2}
-                      placeholder="Escribe tu respuesta · Enter envía, Shift+Enter hace salto de línea"
+                      placeholder="Escribe tu respuesta · Enter envía, Shift+Enter hace salto de línea · / para respuestas rápidas"
                       value={texto}
                       onChange={(e) => setTexto(e.target.value)}
                       onKeyDown={(e) => {
-                        if (e.key === 'Enter' && !e.shiftKey) {
+                        if ((e.key === 'Enter' || e.key === 'Tab') && !e.shiftKey && coincidencias.length > 0) {
+                          e.preventDefault()
+                          usarRapida(coincidencias[0])
+                        } else if (e.key === 'Enter' && !e.shiftKey) {
                           e.preventDefault()
                           enviar()
                         }

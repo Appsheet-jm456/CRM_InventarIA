@@ -26,9 +26,9 @@ export const MODULOS: readonly Modulo[] = [
 
   { clave: 'metricas', titulo: 'Métricas', subtitulo: 'Embudo, tiempos y asesores', grupo: 'Análisis', ruta: '/metricas', icono: 'metricas', permisos: ['ver_metricas', 'atender_bandeja'], paso: 'F3·8' },
 
-  { clave: 'bot', titulo: 'Bot y horario', subtitulo: 'Árbol del bot y horario de atención', grupo: 'Configuración', ruta: '/bot', icono: 'bot', permisos: ['administrar_bot'], paso: 'F3·7' },
+  { clave: 'bot', titulo: 'Bot y horario', subtitulo: 'Árbol del bot y horario de atención', grupo: 'Configuración', ruta: '/bot', icono: 'bot', permisos: ['administrar_bot'] },
   { clave: 'etapas', titulo: 'Etapas', subtitulo: 'Etapas del embudo y motivos de pérdida', grupo: 'Configuración', ruta: '/etapas', icono: 'etapas', permisos: ['administrar_embudo'] },
-  { clave: 'respuestas-rapidas', titulo: 'Respuestas rápidas', subtitulo: 'Atajos de texto del equipo', grupo: 'Configuración', ruta: '/respuestas-rapidas', icono: 'respuestas', permisos: ['administrar_bot'], paso: 'F3·7' },
+  { clave: 'respuestas-rapidas', titulo: 'Respuestas rápidas', subtitulo: 'Atajos de texto del equipo', grupo: 'Configuración', ruta: '/respuestas-rapidas', icono: 'respuestas', permisos: ['administrar_bot'] },
   { clave: 'canal', titulo: 'Canal WhatsApp', subtitulo: 'Plantillas de Meta', grupo: 'Configuración', ruta: '/canal', icono: 'canal', permisos: ['administrar_canal'] },
   { clave: 'usuarios', titulo: 'Usuarios', subtitulo: 'Usuarios', grupo: 'Configuración', ruta: '/usuarios', icono: 'usuarios', permisos: ['administrar_usuarios'] },
   { clave: 'roles', titulo: 'Roles y permisos', subtitulo: 'Roles y permisos', grupo: 'Configuración', ruta: '/roles', icono: 'roles', permisos: ['administrar_usuarios'] },
