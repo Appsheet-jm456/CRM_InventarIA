@@ -331,8 +331,11 @@ def responder(st, texto, avisar=None):
     if k == "B00":
         if n == "1" or re.fullmatch(r"productos?|portatil(es)?|torres?", n):
             return ir(st, "B001A"), st
-        if n in ("2", "3") or re.fullmatch(r"distribuidor(es)?|mayorista|servicio( al cliente)?|garantia|soporte", n):
-            return asesor(st, motivo="Esta opción aún no está en el bot (F1·7)."), st
+        # Cada opción deja al cliente en su embudo por la etiqueta (decisión 0022); el detalle lo lleva un asesor (F1·7).
+        if n == "2" or re.fullmatch(r"distribuidor(es)?|mayorista|al por mayor", n):
+            return asesor(st, etiqueta="Interes-Distribuidor", motivo="Esta opción aún no está en el bot (F1·7)."), st
+        if n == "3" or re.fullmatch(r"servicio( al cliente)?|garantia|soporte( tecnico)?", n):
+            return asesor(st, etiqueta="Interes-Soporte", motivo="Esta opción aún no está en el bot (F1·7)."), st
     elif k == "B001A":
         if n == "1" or re.fullmatch(r"portatil(es)?( corporativos)?|laptops?", n):
             st["campos"].update({"Categoría interés": "Portátiles", "Etiqueta": "Interes-Productos"})
