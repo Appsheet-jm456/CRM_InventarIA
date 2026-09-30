@@ -1,6 +1,6 @@
 # 0005 · Bot de menú fijo, sin IA libre
 
-**Estado:** Aceptada · 29 sep 2026
+**Estado:** Modificada por la 0016 (30 sep 2026) · 29 sep 2026
 
 ## Decisión
 
