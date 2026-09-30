@@ -25,4 +25,4 @@
 | F3·7 Editor del bot y horario de atención | Pendiente |
 | F3·8 Métricas del embudo | Pendiente |
 | F3·9 Inventario, fichas y catálogo PDF | Pendiente |
-| F3·10 Varios embudos: Cliente Final, Pos Venta y Distribuidor (va antes de F3·7) | En curso |
+| F3·10 Varios embudos: Cliente Final, Pos Venta y Distribuidor (va antes de F3·7) | ✅ Hecho 30 sep 2026 · migración 0006 |

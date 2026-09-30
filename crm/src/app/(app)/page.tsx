@@ -13,9 +13,9 @@ export default async function Inicio() {
   const supabase = crearCliente()
   const atiende = puede(sesion, ['atender_bandeja'])
   const sigue = puede(sesion, ['gestionar_oportunidades'])
-  const [{ data: productos }, { data: etapas }, { data: esperando }, { count: vencidos }] = await Promise.all([
+  const [{ data: productos }, { data: opsAbiertas }, { data: esperando }, { count: vencidos }] = await Promise.all([
     supabase.from('productos').select('precio, stock, marca'),
-    supabase.from('etapas').select('nombre').order('orden'),
+    supabase.from('oportunidades').select('embudos(nombre)').eq('estado', 'abierta'),
     atiende
       ? supabase.from('leads').select('id, minutos_espera').in('estado_chat', ['cola', 'asignada'])
           .is('primera_respuesta_en', null).not('en_cola_desde', 'is', null)
@@ -32,6 +32,9 @@ export default async function Inicio() {
   const marcas = new Set(conStock.map((p) => p.marca).filter(Boolean))
   const pendientes = MODULOS.filter((m) => m.paso && puede(sesion, m.permisos))
 
+  const abiertas = (opsAbiertas ?? []) as unknown as { embudos: { nombre: string } }[]
+  const porEmbudo = new Map<string, number>()
+  for (const o of abiertas) porEmbudo.set(o.embudos.nombre, (porEmbudo.get(o.embudos.nombre) ?? 0) + 1)
   const fueraSla = (esperando ?? []).filter((l) => (l.minutos_espera ?? 0) >= 10).length
   const tiles = [
     ...(atiende
@@ -45,7 +48,7 @@ export default async function Inicio() {
     { titulo: 'Equipos con stock', valor: String(conStock.length), detalle: `${unidades} unidades`, href: '/inventario' },
     { titulo: 'Valor del inventario', valor: dinero(valor), detalle: 'Precio de venta × stock', href: '/inventario' },
     { titulo: 'Marcas', valor: String(marcas.size), detalle: [...marcas].join(', ') || 'Sin datos', href: '/inventario' },
-    { titulo: 'Etapas del embudo', valor: String(etapas?.length ?? 0), detalle: (etapas ?? []).map((e) => e.nombre).join(' → '), href: '/embudo' },
+    { titulo: 'Oportunidades abiertas', valor: String(abiertas.length), detalle: [...porEmbudo].map(([e, n]) => `${e}: ${n}`).join(' · ') || 'Ninguna', href: '/embudo' },
   ]
 
   return (

@@ -33,8 +33,12 @@ export async function reanudarBot(lead: number) {
   return llamar('reanudar_bot', { p_lead: lead })
 }
 
-export async function moverEtapa(lead: number, etapa: string, motivo?: string) {
-  return llamar('mover_etapa', { p_lead: lead, p_etapa: etapa, p_motivo: motivo || null })
+export async function moverOportunidad(oportunidad: number, etapa: number, motivo?: string) {
+  return llamar('mover_oportunidad', { p_oportunidad: oportunidad, p_etapa: etapa, p_motivo: motivo || null })
+}
+
+export async function abrirOportunidad(lead: number, embudo: number) {
+  return llamar('abrir_oportunidad', { p_lead: lead, p_embudo: embudo })
 }
 
 // RB-02 y RB-03: dentro de la ventana de 24 h, primero Meta y solo si lo acepta se registra.

@@ -37,7 +37,7 @@ F3·6 Seguimientos y alertas de SLA,3 · Implementación,Seguimientos,Hecha,Medi
 F3·7 Editor del bot y horario de atención,3 · Implementación,Bot,Pendiente,Media,Incluye (de F3·4): pasar los nodos del árbol a la tabla bot_nodos y responder fuera de horario.,docs/sdlc/3-implementacion.md
 F3·8 Métricas del embudo,3 · Implementación,Métricas,Pendiente,Media,"Incluye (de F3·3): guardar la categoría de Meta, si fue cobrable y los estados de entrega (enviado, entregado, leído, fallido).",docs/sdlc/3-implementacion.md
 "F3·9 Inventario, fichas y catálogo PDF",3 · Implementación,Inventario,Pendiente,Media,,docs/sdlc/3-implementacion.md
-"F3·10 Varios embudos: Cliente Final, Pos Venta y Distribuidor",3 · Implementación,Embudo,En curso,Alta,Pedido del dueño 30 sep 2026. Va antes de F3·7. Un cliente puede tener una oportunidad abierta en cada embudo; el bot la abre según la opción del menú y el asesor a mano (decisión 0022).,docs/EMBUDOS.md
+"F3·10 Varios embudos: Cliente Final, Pos Venta y Distribuidor",3 · Implementación,Embudo,Hecha,Alta,"Hecha 30 sep 2026: embudos Cliente Final, Pos Venta y Distribuidor con sus etapas; oportunidades por cliente (una abierta por embudo); el bot las abre por la opción del menú; Embudo con pestañas, ficha con oportunidades y Etapas por embudo. Migración 0006 (decisión 0022).",docs/EMBUDOS.md
 F4·1 Pruebas pgTAP de reglas y permisos,4 · Pruebas,Pruebas,Pendiente,Alta,,docs/sdlc/4-pruebas.md
 F4·2 Pruebas del motor del bot por nodo,4 · Pruebas,Pruebas,Pendiente,Alta,,docs/sdlc/4-pruebas.md
 F4·3 Flujo completo con número de prueba,4 · Pruebas,Pruebas,Pendiente,Media,,docs/sdlc/4-pruebas.md

@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { clienteNavegador, prepararTiempoReal } from '@/lib/supabase/navegador'
-import { asignar, cerrar, liberar, moverEtapa, reanudarBot, responder, tomar, type Resultado } from './acciones'
+import { asignar, cerrar, liberar, reanudarBot, responder, tomar, type Resultado } from './acciones'
+import { OportunidadesCliente, type Embudo, type Etapa } from './OportunidadesCliente'
 import { ComponerPlantilla } from './Plantilla'
 import { SeguimientosCliente } from './SeguimientosCliente'
 import { activarAvisos, avisosActivos } from '@/components/avisos'
@@ -44,7 +45,6 @@ type Mensaje = {
 }
 
 type Persona = { id: string; nombre: string }
-type Etapa = { nombre: string; cierre: string; color: string }
 type Filtro = 'cola' | 'mias' | 'bot' | 'todas' | 'cerradas'
 
 const COLUMNAS =
@@ -52,7 +52,6 @@ const COLUMNAS =
   'primera_respuesta_en, paso_menu, categoria_interes, uso_equipo, presupuesto, marca_interes, cotiz_producto, ' +
   'valor_estimado, etiquetas, motivo_perdido, notas, minutos_espera'
 const VENTANA_MS = 24 * 60 * 60 * 1000
-const MOTIVOS = ['Precio', 'Sin respuesta', 'No calificado', 'Compró en otro lado', 'Solo preguntaba', 'Otro']
 const ESTADOS: Record<Lead['estado_chat'], { texto: string; clase: string }> = {
   bot: { texto: 'Bot', clase: 'ok' },
   cola: { texto: 'En cola', clase: 'warn' },
@@ -87,10 +86,11 @@ function Media({ m }: { m: Mensaje }) {
   return <a className="btn chico" href={src} target="_blank" rel="noreferrer">📄 {m.media_nombre || 'Abrir documento'}</a>
 }
 
-export function Bandeja({ yo, usuarios, asesores, etapas, inicial }: {
+export function Bandeja({ yo, usuarios, asesores, embudos, etapas, inicial }: {
   yo: { id: string; verTodas: boolean; moverEtapas: boolean }
   usuarios: Persona[]
   asesores: Persona[]
+  embudos: Embudo[]
   etapas: Etapa[]
   inicial: number | null
 }) {
@@ -104,7 +104,8 @@ export function Bandeja({ yo, usuarios, asesores, etapas, inicial }: {
   const [ocupado, setOcupado] = useState(false)
   const [aviso, setAviso] = useState<Resultado>({})
   const [vivo, setVivo] = useState(false)
-  const [perdido, setPerdido] = useState<string | null>(null)
+  const [abiertas, setAbiertas] = useState<Map<number, string[]>>(new Map())
+  const [versionOps, setVersionOps] = useState(0)
   const [verFicha, setVerFicha] = useState(false)
   const [avisos, setAvisos] = useState(true)
   useEffect(() => setAvisos(avisosActivos()), [])
@@ -120,6 +121,15 @@ export function Bandeja({ yo, usuarios, asesores, etapas, inicial }: {
       .order('fecha_ultimo_contacto', { ascending: false, nullsFirst: false })
       .limit(300)
     setLeads((data ?? []) as unknown as Lead[])
+    // Las oportunidades abiertas de cada cliente, para mostrarlas en la lista (RE-02).
+    const { data: ops } = await clienteNavegador()
+      .from('oportunidades')
+      .select('lead_id, embudos(nombre), etapas(nombre)')
+      .eq('estado', 'abierta')
+    const mapa = new Map<number, string[]>()
+    for (const o of (ops ?? []) as unknown as { lead_id: number; embudos: { nombre: string }; etapas: { nombre: string } }[])
+      mapa.set(o.lead_id, [...(mapa.get(o.lead_id) ?? []), `${o.embudos.nombre} · ${o.etapas.nombre}`])
+    setAbiertas(mapa)
     setCargado(true)
   }, [])
 
@@ -149,6 +159,10 @@ export function Bandeja({ yo, usuarios, asesores, etapas, inicial }: {
       canal = supabase
       .channel('bandeja')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'leads' }, programar)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'oportunidades' }, () => {
+        setVersionOps((v) => v + 1)
+        programar()
+      })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'mensajes' }, (p: { new: Record<string, unknown> }) => {
         const nuevo = p.new as unknown as Mensaje & { lead_id: number }
         if (nuevo.lead_id === selRef.current)
@@ -224,11 +238,6 @@ export function Bandeja({ yo, usuarios, asesores, etapas, inicial }: {
     else cargarMensajes(lead.id)
   }
 
-  function cambiarEtapa(etapa: string) {
-    if (!lead || etapa === lead.etapa) return
-    if (etapas.find((e) => e.nombre === etapa)?.cierre === 'perdida') setPerdido(etapa)
-    else hacer(() => moverEtapa(lead.id, etapa), `Movido a ${etapa}.`)
-  }
 
   const filtros: { clave: Filtro; texto: string }[] = [
     { clave: 'cola', texto: 'Cola' },
@@ -283,7 +292,7 @@ export function Bandeja({ yo, usuarios, asesores, etapas, inicial }: {
                   {l.estado_chat === 'asignada' && l.asignado_a && l.asignado_a !== yo.id && (
                     <span className="chip neu">{nombres.get(l.asignado_a) ?? 'Otro asesor'}</span>
                   )}
-                  <span className="chip neu">{l.etapa}</span>
+                  {(abiertas.get(l.id) ?? []).map((t) => <span key={t} className="chip neu">{t}</span>)}
                 </span>
               </button>
             )
@@ -391,13 +400,8 @@ export function Bandeja({ yo, usuarios, asesores, etapas, inicial }: {
                 </select>
               </label>
             )}
-            <label className="field">
-              Etapa
-              <select value={lead.etapa} disabled={ocupado || !yo.moverEtapas} onChange={(e) => cambiarEtapa(e.target.value)}>
-                {etapas.map((e) => <option key={e.nombre} value={e.nombre}>{e.nombre}</option>)}
-              </select>
-            </label>
-            {lead.motivo_perdido && <Dato titulo="Motivo de pérdida" valor={lead.motivo_perdido} />}
+            <OportunidadesCliente key={`op-${lead.id}`} lead={lead.id} embudos={embudos} etapas={etapas} puede={yo.moverEtapas}
+              version={versionOps} alCambiar={cargarLista} />
             <Dato titulo="Teléfono" valor={`+${lead.telefono}`} />
             <Dato titulo="Busca" valor={lead.categoria_interes} />
             <Dato titulo="Uso" valor={lead.uso_equipo} />
@@ -413,28 +417,11 @@ export function Bandeja({ yo, usuarios, asesores, etapas, inicial }: {
               </div>
             )}
             <Dato titulo="Notas" valor={lead.notas} />
-            <SeguimientosCliente key={lead.id} lead={lead.id} nombres={nombres} puedeAgendar={yo.moverEtapas} />
+            <SeguimientosCliente key={`seg-${lead.id}`} lead={lead.id} nombres={nombres} puedeAgendar={yo.moverEtapas} />
           </div>
         )}
       </div>
 
-      {perdido && lead && (
-        <div className="modal" onClick={() => setPerdido(null)}>
-          <div className="modal-box" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Motivo de pérdida">
-            <h3>¿Por qué se perdió?</h3>
-            <div className="row">
-              {MOTIVOS.map((m) => (
-                <button key={m} className="btn" disabled={ocupado} onClick={async () => {
-                  const etapa = perdido
-                  setPerdido(null)
-                  await hacer(() => moverEtapa(lead.id, etapa, m), `Marcado como ${etapa}: ${m}.`)
-                }}>{m}</button>
-              ))}
-            </div>
-            <button className="btn chico" onClick={() => setPerdido(null)}>Cancelar</button>
-          </div>
-        </div>
-      )}
     </section>
   )
 }

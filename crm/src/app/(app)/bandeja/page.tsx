@@ -8,10 +8,11 @@ export default async function PaginaBandeja({ searchParams }: { searchParams: { 
   if (!puede(sesion, ['atender_bandeja'])) return <SinPermiso />
 
   const supabase = crearCliente()
-  const [{ data: usuarios }, { data: atienden }, { data: etapas }] = await Promise.all([
+  const [{ data: usuarios }, { data: atienden }, { data: etapas }, { data: embudos }] = await Promise.all([
     supabase.from('usuarios').select('id, nombre, activo, rol_id').order('nombre'),
     supabase.from('rol_permisos').select('rol_id').eq('permiso', 'atender_bandeja'),
-    supabase.from('etapas').select('nombre, cierre, color').order('orden'),
+    supabase.from('etapas').select('id, nombre, cierre, color, embudo_id, orden').order('orden'),
+    supabase.from('embudos').select('id, nombre').eq('activo', true).order('orden'),
   ])
   const rolesQueAtienden = new Set((atienden ?? []).map((r) => r.rol_id))
 
@@ -20,6 +21,7 @@ export default async function PaginaBandeja({ searchParams }: { searchParams: { 
       yo={{ id: sesion.id, verTodas: puede(sesion, ['ver_todas_conversaciones']), moverEtapas: puede(sesion, ['gestionar_oportunidades']) }}
       usuarios={(usuarios ?? []).map((u) => ({ id: u.id, nombre: u.nombre }))}
       asesores={(usuarios ?? []).filter((u) => u.activo && rolesQueAtienden.has(u.rol_id)).map((u) => ({ id: u.id, nombre: u.nombre }))}
+      embudos={embudos ?? []}
       etapas={etapas ?? []}
       inicial={Number(searchParams.c) || null}
     />
