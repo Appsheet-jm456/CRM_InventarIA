@@ -27,31 +27,36 @@ export function formatoWhatsApp(texto: string, clave = 0): ReactNode[] {
 }
 
 // Lo que recibe el cliente: el cuerpo (con las opciones numeradas si es menú) y los botones o la lista.
-export function VistaWhatsApp({ cuerpo, forma, opciones, botonLista = 'Ver opciones', numerar = true }: {
+export function VistaWhatsApp({ cuerpo, forma, opciones, botonLista = 'Ver opciones', numerar = true, imagen, alElegir }: {
   cuerpo: string
   forma: 'botones' | 'lista' | 'texto'
   opciones: Opcion[]
   botonLista?: string
   numerar?: boolean // la ficha del equipo va sin las opciones numeradas en el texto
+  imagen?: string // cabecera (la foto de la ficha)
+  alElegir?: (o: Opcion) => void // simulador: tocar un botón o una fila responde como el cliente
 }) {
   const texto = forma === 'texto' || !opciones.length || !numerar ? cuerpo : `${cuerpo}\n\n${opciones.map(numerada).join('\n')}`
   return (
     <div className="wa">
       <div className="wa-burbuja">
+        {imagen && <div className="wa-imagen">{imagen}</div>}
         <div className="wa-texto">{formatoWhatsApp(texto)}</div>
         <time>10:24</time>
-        {forma === 'botones' && opciones.map((o) => <div key={o.id} className="wa-boton">{o.titulo}</div>)}
+        {forma === 'botones' && opciones.map((o) => alElegir
+          ? <button key={o.id} type="button" className="wa-boton" onClick={() => alElegir(o)}>{o.titulo}</button>
+          : <div key={o.id} className="wa-boton">{o.titulo}</div>)}
         {forma === 'lista' && <div className="wa-boton">☰ {botonLista}</div>}
       </div>
       {forma === 'lista' && (
         <div className="wa-lista" aria-label="Lista que se abre al tocar el botón">
           <div className="wa-lista-h">{botonLista}</div>
-          {opciones.map((o) => (
-            <div key={o.id} className="wa-fila">
-              <span><b>{o.titulo}</b>{o.descripcion && <small>{o.descripcion}</small>}</span>
-              <span className="wa-radio" aria-hidden />
-            </div>
-          ))}
+          {opciones.map((o) => {
+            const contenido = (<><span><b>{o.titulo}</b>{o.descripcion && <small>{o.descripcion}</small>}</span><span className="wa-radio" aria-hidden /></>)
+            return alElegir
+              ? <button key={o.id} type="button" className="wa-fila" onClick={() => alElegir(o)}>{contenido}</button>
+              : <div key={o.id} className="wa-fila">{contenido}</div>
+          })}
         </div>
       )}
     </div>

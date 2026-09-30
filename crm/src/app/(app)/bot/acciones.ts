@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { crearCliente } from '@/lib/supabase/server'
+import { obtenerSesion, puede } from '@/lib/sesion'
 
 export type Resultado = { error?: string; ok?: string }
 export type Opcion = { id: string; titulo: string }
@@ -115,4 +116,30 @@ export async function publicar(nota: string, pisar: boolean): Promise<Resultado 
 export async function volverAVersion(version: number, reemplazar: boolean) {
   return rpc('borrador_desde_version', { p_version: version, p_reemplazar: reemplazar },
     `Borrador abierto a partir de la versión ${version}: revísalo y publícalo para que el bot vuelva a ella.`)
+}
+
+// --------------------------------------------------------------------------- //
+// Simulador (F4·8, RF-07): el motor del bot en el receptor, sin escribir ni enviar a WhatsApp
+// --------------------------------------------------------------------------- //
+export type EstadoSimulado = Record<string, unknown> | null
+export type Simulacion = { error?: string; mensajes?: Record<string, unknown>[]; avisos?: string[]; estado?: EstadoSimulado }
+
+export async function simular(version: number, estado: EstadoSimulado, texto: string): Promise<Simulacion> {
+  const sesion = await obtenerSesion()
+  // El receptor lee con la llave de servicio: el permiso se revisa aquí antes de llamarlo.
+  if (!sesion || !puede(sesion, ['administrar_bot'])) return { error: 'No tienes permiso para probar el bot.' }
+  try {
+    const r = await fetch(`${process.env.CRM_INTERNO_URL}/interno/simular`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Interno-Token': process.env.CRM_INTERNO_TOKEN ?? '' },
+      body: JSON.stringify({ version, estado, texto: texto.slice(0, 1000) }),
+      cache: 'no-store',
+      signal: AbortSignal.timeout(60000),
+    })
+    if (r.status === 404) return { error: 'Esa versión ya no existe (¿se descartó el borrador?). Recarga la página.' }
+    if (!r.ok) throw new Error(String(r.status))
+    return await r.json()
+  } catch {
+    return { error: 'El bot no responde (receptor en el 8095). Revisa que el servicio esté arriba.' }
+  }
 }

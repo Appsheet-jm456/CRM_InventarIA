@@ -13,6 +13,7 @@ import {
   type Resultado,
 } from './acciones'
 import type { Contexto } from './Mensajes'
+import { Simulador } from './Simulador'
 import { VistaWhatsApp } from './VistaWhatsApp'
 
 // --------------------------------------------------------------------------- //
@@ -78,7 +79,7 @@ function revisar(cuadros: Cuadro[]) {
 // --------------------------------------------------------------------------- //
 // Un cuadro en el lienzo
 // --------------------------------------------------------------------------- //
-type DatosNodo = { cuadro: Cuadro; marca: 'nuevo' | 'cambiado' | null; problemas: string[]; editable: boolean }
+type DatosNodo = { cuadro: Cuadro; marca: 'nuevo' | 'cambiado' | null; problemas: string[]; editable: boolean; aqui: boolean }
 
 function recorte(texto: string, n = 110) {
   const t = texto.replace(/\s+/g, ' ').trim()
@@ -86,7 +87,7 @@ function recorte(texto: string, n = 110) {
 }
 
 function NodoCuadro({ data, selected }: NodeProps<Node<DatosNodo>>) {
-  const { cuadro: c, marca, problemas, editable } = data
+  const { cuadro: c, marca, problemas, editable, aqui } = data
   const sistema = c.tipo !== 'mensaje'
   const unible = editable && !sistema
   // Mientras se arrastra una flecha, todo el cuadro sirve para soltarla (no solo su punto de entrada).
@@ -96,7 +97,7 @@ function NodoCuadro({ data, selected }: NodeProps<Node<DatosNodo>>) {
     ...Object.keys(c.salidas ?? {}).map((s) => ({ id: s, titulo: SALIDAS[s] ?? s, destino: c.salidas[s], unible: false })),
   ]
   return (
-    <div className={`nodo-bot ${sistema ? 'sistema' : ''} ${selected ? 'elegido' : ''} ${problemas.length ? 'con-problema' : ''}`}>
+    <div className={`nodo-bot ${sistema ? 'sistema' : ''} ${selected ? 'elegido' : ''} ${problemas.length ? 'con-problema' : ''} ${aqui ? 'aqui' : ''}`}>
       {c.tipo !== 'aviso' && !c.inicio && <Handle type="target" position={Position.Left} isConnectable={editable} />}
       {editable && arrastrando && DESTINOS.includes(c.tipo) && !c.inicio && (
         <Handle type="target" position={Position.Left} id="cuadro" className="handle-cuadro" isConnectableStart={false} />
@@ -335,6 +336,8 @@ function LienzoInterno({ publicada, borrador, archivada, contexto, choques = [],
   const cuadros = useMemo(() => (archivada ?? borrador ?? publicada).cuadros, [archivada, borrador, publicada])
   const [elegido, setElegido] = useState<string | null>(null)
   const [publicando, setPublicando] = useState(false)
+  const [probando, setProbando] = useState(false)
+  const [aqui, setAqui] = useState<string | null>(null)
   const enElBot = archivada?.version === publicada.version
   const [aviso, setAviso] = useState<Resultado>({})
   const [ocupado, iniciar] = useTransition()
@@ -348,7 +351,7 @@ function LienzoInterno({ publicada, borrador, archivada, contexto, choques = [],
     const marca = !editable ? null : !antes ? 'nuevo'
       : antes.texto !== c.texto || antes.nombre !== c.nombre || JSON.stringify(antes.opciones) !== JSON.stringify(c.opciones) ? 'cambiado' : null
     return { id: c.clave, type: 'cuadro', position: { x: c.x, y: c.y }, draggable: editable,
-      data: { cuadro: c, marca, problemas: problemas.get(c.clave) ?? [], editable } }
+      data: { cuadro: c, marca, problemas: problemas.get(c.clave) ?? [], editable, aqui: probando && aqui?.replace(/-vacio$/, '') === c.clave } }
   })
   const armarFlechas = (): Edge[] => cuadros.flatMap((c) => [
     ...(c.opciones ?? []).filter((o) => o.destino && o.destino !== '@pedir_codigo').map((o) => ({
@@ -369,7 +372,7 @@ function LienzoInterno({ publicada, borrador, archivada, contexto, choques = [],
     setNodos((previos) => armarNodos().map((n) => ({ ...n, selected: previos.find((p) => p.id === n.id)?.selected ?? n.id === elegido })))
     setFlechas(armarFlechas())
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cuadros, problemas])
+  }, [cuadros, problemas, aqui, probando])
 
   // Al abrir o descartar un borrador cambia lo que se ve: se vuelve a encuadrar todo.
   const vista = archivada ? `a${archivada.version}` : borrador ? `b${borrador.version}` : `p${publicada.version}`
@@ -407,6 +410,7 @@ function LienzoInterno({ publicada, borrador, archivada, contexto, choques = [],
           </small>
         </div>
         <div className="row">
+          <button className="btn chico" onClick={() => { setElegido(null); setPublicando(false); setProbando(true) }}>▶ Probar</button>
           {editable && (
             <span className={`chip ${totalProblemas ? 'bad' : 'ok'}`} title="Lo que impediría publicar">
               {totalProblemas ? `${totalProblemas} por resolver` : 'Listo para publicar'}
@@ -419,7 +423,7 @@ function LienzoInterno({ publicada, borrador, archivada, contexto, choques = [],
                 const centro = flujo.screenToFlowPosition({ x: (r?.left ?? 0) + (r?.width ?? 600) / 2, y: (r?.top ?? 0) + (r?.height ?? 400) / 2 })
                 hacer(() => crearMensaje(centro.x - 110, centro.y - 60), (clave) => setElegido(String(clave)))
               }}>+ Mensaje</button>
-              <button className="btn primary chico" disabled={ocupado} onClick={() => { setElegido(null); setPublicando(true) }}>Publicar…</button>
+              <button className="btn primary chico" disabled={ocupado} onClick={() => { setElegido(null); setProbando(false); setPublicando(true) }}>Publicar…</button>
               <button className="btn chico peligro" disabled={ocupado}
                 onClick={() => confirm('¿Descartar el borrador? Se pierden todos sus cambios; el bot sigue igual.')
                   && hacer(descartarBorrador, () => setElegido(null))}>Descartar borrador</button>
@@ -453,7 +457,7 @@ function LienzoInterno({ publicada, borrador, archivada, contexto, choques = [],
           <ReactFlow
             nodes={nodos} edges={flechas} nodeTypes={TIPOS_NODO}
             onNodesChange={alCambiarNodos} onEdgesChange={alCambiarFlechas}
-            onNodeClick={(_, n) => { setPublicando(false); setElegido(n.id) }} onPaneClick={() => setElegido(null)}
+            onNodeClick={(_, n) => { if (probando) return; setPublicando(false); setElegido(n.id) }} onPaneClick={() => setElegido(null)}
             onNodeDragStop={(_, n) => editable && hacer(() => moverCuadro(n.id, n.position.x, n.position.y))}
             isValidConnection={validarUnion}
             onConnect={(u) => u.sourceHandle && hacer(() => conectar(u.source, u.sourceHandle!, u.target))}
@@ -471,7 +475,10 @@ function LienzoInterno({ publicada, borrador, archivada, contexto, choques = [],
           </ReactFlow>
         </div>
         <aside className="lienzo-lado">
-          {publicando && borrador ? (
+          {probando ? (
+            <Simulador version={(archivada ?? borrador ?? publicada).version!} nombres={new Map(cuadros.map((c) => [c.clave, c.nombre]))}
+              alMoverse={setAqui} alCerrar={() => { setProbando(false); setAqui(null) }} />
+          ) : publicando && borrador ? (
             <PanelPublicar borrador={borrador} publicada={publicada} choques={choques} problemas={totalProblemas}
               alCancelar={() => setPublicando(false)}
               alTerminar={(r) => { setAviso(r); if (!r.error) { setPublicando(false); router.refresh() } }} />

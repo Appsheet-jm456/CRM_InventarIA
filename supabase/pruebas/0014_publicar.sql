@@ -35,7 +35,12 @@ select case when pg_temp.error_de('select publicar_borrador()') like '%por resol
 select borrador_guardar_cuadro(:'m', 'Envíos', '¿A qué ciudad?', '[{"id":"1","titulo":"Cali","destino":"B-ASESOR"},{"id":"0","titulo":"Volver","destino":"B00"}]');
 select borrador_conectar('B00', '3', :'m');
 
--- Choque: alguien cambia un texto de la publicada después de abrir el borrador
+-- Choque: alguien cambia un texto de la publicada después de abrir el borrador. En una transacción todo tiene la
+-- misma hora: el borrador se abre "un minuto antes" para que el cambio quede después.
+reset role;
+update bot_flujos set creado_en = creado_en - interval '1 minute' where estado = 'borrador';
+set local role authenticated;
+select set_config('request.jwt.claims', json_build_object('sub', :'admin', 'role', 'authenticated')::text, true);
 select editar_cuadro('ERROR', 'No entendí. Toca una opción.');
 select case when pg_temp.error_de('select publicar_borrador(''QA'')') like 'CHOQUE%'
             then 'ok' else 'not ok' end || ' 3 - avisa si la publicada cambió después de abrir el borrador';

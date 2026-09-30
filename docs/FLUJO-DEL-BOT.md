@@ -13,7 +13,7 @@
 | ✅ **F4·5** Flujo en la base (30 sep, migración 0011) | Modelo de versiones, motor de `flujo.py` que recorre la versión publicada y versión 1 igual al árbol actual |
 | ✅ **F4·6** Lienzo (30 sep, migraciones 0012 y 0013) | Cuadros y flechas en `/bot`: crear, editar, unir y borrar mensajes; cuadros del sistema fijos; marca de editado |
 | ✅ **F4·7** Borrador, publicar e historial (30 sep, migración 0014) | Validación al publicar, lista de versiones con quién y cuándo, volver a una anterior |
-| **F4·8** Simulador | Probar el borrador como cliente, sin WhatsApp |
+| ✅ **F4·8** Simulador (30 sep) | Probar el borrador como cliente, sin WhatsApp |
 
 ## Reglas
 
@@ -108,3 +108,18 @@ combinaciones de 4 pasos de 16 entradas, más 20.000 al azar de hasta 12), mismo
   abre en el lienzo en solo lectura; *Volver a esta* (`borrador_desde_version`) la copia como borrador para revisarla
   y publicarla (si ya hay un borrador, pide reemplazarlo).
 - El bot toma la versión nueva en menos de 30 s. Un cliente parado en un cuadro que ya no existe vuelve al saludo.
+
+## Simulador (F4·8)
+
+**▶ Probar** en el lienzo abre un chat tipo WhatsApp sobre la versión que se está viendo (borrador, publicada o
+una anterior). Se escribe como el cliente o se tocan los botones y las filas de las listas; el lienzo resalta el
+cuadro en el que va la charla y el panel muestra lo que el bot anotaría (etapa, etiqueta, uso, presupuesto, marca,
+equipo, valor, paso a asesor). *Empezar de nuevo* borra la charla.
+
+- La app llama a `POST /interno/simular` del receptor (mismo token y bloqueo del túnel que el Chat InventarIA) con la
+  versión, el estado de la charla y el texto. El receptor corre `flujo.responder` con `flujo.con_cuadros()` sobre
+  esa versión, solo en ese hilo: el bot en vivo sigue con la publicada.
+- Usa el inventario, el horario y los catálogos reales; **no escribe** en `leads` ni en `mensajes` y **no envía** a
+  WhatsApp (RF-07). La foto y el PDF se muestran como marcas, sin subirlos a Meta.
+- Lo pide `administrar_bot` (lo revisa la app antes de llamar al receptor, que lee con la llave de servicio).
+

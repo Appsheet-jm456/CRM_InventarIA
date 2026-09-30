@@ -422,6 +422,21 @@ small.warn { color: var(--warn) } small.bad { color: var(--bad) }
 .react-flow__edge.selected .react-flow__edge-path { stroke: var(--bad) }
 @media (max-width: 1000px) { .lienzo-cuerpo { grid-template-columns: 1fr } .lienzo-lado { border-left: 0; border-top: 1px solid var(--line); max-height: none; min-height: 0 } .lienzo-area { height: 70vh; min-height: 420px } }
 .publicar-resumen { display: grid; gap: 6px; font-size: 13px }
+.nodo-bot.aqui { box-shadow: 0 0 0 4px #F5B942, var(--shadow) }
+.simulador { grid-template-rows: auto auto minmax(0, 1fr) auto auto; height: 100%; min-height: 520px }
+.simulador-chat { display: flex; flex-direction: column; gap: 8px; overflow-y: auto; background: #EFE7DD; border-radius: 12px; padding: 10px; min-height: 260px }
+.simulador-chat .wa { padding: 0; background: none; max-width: 92% }
+.simulador-cliente { align-self: flex-end; background: #D9FDD3; color: #111B21; border-radius: 10px 0 10px 10px; padding: 7px 10px; max-width: 80%; font: 14px/1.4 system-ui, sans-serif; white-space: pre-wrap }
+.simulador-escribir { display: flex; gap: 6px }
+.simulador-escribir input { flex: 1; min-width: 0; border: 1px solid var(--line); background: var(--bg); border-radius: 8px; padding: 7px 10px; color: var(--ink) }
+.simulador-estado dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 12px; margin: 6px 0 0; font-size: 12.5px }
+.simulador-estado dt { color: var(--muted); font-size: 11px }
+.simulador-estado dd { margin: 0 }
+button.wa-boton, button.wa-fila { width: 100%; background: none; border: 0; border-top: 1px solid #E9EDEF; cursor: pointer; font: inherit; text-align: center }
+button.wa-fila { text-align: left; border-top: 0; border-bottom: 1px solid #F0F2F5; color: inherit }
+button.wa-boton:hover, button.wa-fila:hover { background: rgba(2, 126, 181, .06) }
+.wa-imagen { background: #D1D7DB; color: #54656F; text-align: center; padding: 26px 8px; font-size: 13px }
+@media (prefers-color-scheme: dark) { .simulador-chat { background: #0B141A } .simulador-cliente { background: #005C4B; color: #E9EDEF } .wa-imagen { background: #2A3942; color: #AEBAC1 } }
 .grid-metricas { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 16px; align-items: start }
 .grid-metricas .panel { margin: 0 }
 @media (max-width: 560px) { .grid-metricas { grid-template-columns: 1fr } .barras .barra { grid-template-columns: 90px 1fr 80px } }

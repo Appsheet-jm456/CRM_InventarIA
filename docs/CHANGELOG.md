@@ -1,5 +1,10 @@
 # Changelog del brief
 
+## v1.0 · 30 sep 2026 (F4·8)
+
+- Simulador del bot en el lienzo: chat de prueba sobre cualquier versión, con el cuadro resaltado y lo que el bot
+  anotaría, sin guardar ni enviar a WhatsApp. La lista con "Todas las marcas" ya no dice "Equipos *Todas*".
+
 ## v1.0 · 30 sep 2026 (F4·7)
 
 - Publicar el borrador del flujo con resumen de cambios, validación en la base y aviso si pisa textos cambiados en la

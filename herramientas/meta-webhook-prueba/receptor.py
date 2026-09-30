@@ -9,6 +9,7 @@ solo comprueba que Meta entrega los mensajes al servidor antes de diseñar F3·3
 Qué hace:
   GET  /webhook  verificación de Meta (hub.verify_token == META_VERIFY_TOKEN)
   POST /interno/buscar  Chat InventarIA de la app (token CRM_INTERNO_TOKEN; no responde por el túnel)
+  POST /interno/simular Simulador del lienzo: el motor sobre una versión, sin escribir ni enviar (mismo token)
   POST /webhook  valida la firma X-Hub-Signature-256 con META_APP_SECRET, anota el evento en
                  eventos.log y responde con el árbol de respuesta de prueba (flujo.py)
 
@@ -299,26 +300,31 @@ class Webhook(BaseHTTPRequestHandler):
         anotar("✗ verificación rechazada: el token no coincide")
         self.responder(403)
 
-    def buscar_interno(self):
-        """Solo para la app en este servidor: con token y nunca por el túnel (decisión 0025)."""
+    def interno(self, accion):
+        """Solo para la app en este servidor: con token y nunca por el túnel (decisiones 0025 y 0026)."""
         token = ENV.get("CRM_INTERNO_TOKEN", "")
         por_tunel = any(self.headers.get(h) for h in ("Cf-Ray", "Cf-Connecting-Ip", "X-Forwarded-For"))
         if por_tunel or not token or not hmac.compare_digest(token, self.headers.get("X-Interno-Token", "")):
             return self.responder(403)
         try:
-            texto = str(json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))))["texto"])[:500]
-            cuerpo = json.dumps(buscar(texto), ensure_ascii=False)
+            pedido = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))))
+            respuesta = accion(pedido)
+        except LookupError:
+            return self.responder(404)
         except Exception as e:
-            anotar(f"✗ búsqueda interna falló: {e!r}")
+            anotar(f"✗ ruta interna falló: {e!r}")
             return self.responder(500)
         self.send_response(200)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.end_headers()
-        self.wfile.write(cuerpo.encode())
+        self.wfile.write(json.dumps(respuesta, ensure_ascii=False, default=str).encode())
 
     def do_POST(self):
-        if urlparse(self.path).path == "/interno/buscar":
-            return self.buscar_interno()
+        ruta = urlparse(self.path).path
+        if ruta == "/interno/buscar":
+            return self.interno(lambda p: buscar(str(p["texto"])[:500]))
+        if ruta == "/interno/simular":
+            return self.interno(simular)
         if urlparse(self.path).path != "/webhook":
             return self.responder(404)
         crudo = self.rfile.read(int(self.headers.get("Content-Length", 0)))
@@ -351,6 +357,19 @@ def buscar(texto):
     return {"fuente": fuente, "filtros": filtros, "descripcion": interprete.describir(filtros),
             "codigos": [p["cod"] for p in r],
             "cercanos": [] if r else [p["cod"] for p in interprete.cercanos(todos, filtros)]}
+
+
+def simular(pedido):
+    """Simulador del lienzo (F4·8, RF-07): el motor del bot sobre una versión, sin escribir en la base ni enviar a
+    WhatsApp. La app guarda el estado de la charla de prueba y lo manda en cada mensaje."""
+    otros = db.cuadros_de_version(pedido["version"])
+    if not otros:
+        raise LookupError("versión")
+    st = pedido.get("estado") or flujo.estado_vacio()
+    avisos = []
+    with flujo.con_cuadros(otros):
+        mensajes, st = flujo.responder(st, str(pedido["texto"])[:1000], avisos.append)
+    return {"avisos": avisos, "mensajes": mensajes, "estado": st}
 
 
 if __name__ == "__main__":

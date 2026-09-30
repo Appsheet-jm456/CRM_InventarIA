@@ -86,6 +86,12 @@ def flujo():
     return {c["clave"]: c for c in filas[0]["bot_cuadros"]}
 
 
+def cuadros_de_version(version):
+    """{clave: cuadro} de una versión cualquiera (simulador, F4·8). Sin caché: el borrador cambia a cada rato."""
+    filas = pedir(f"bot_flujos?version=eq.{int(version)}&select=version,bot_cuadros(*)")
+    return {c["clave"]: c for c in filas[0]["bot_cuadros"]} if filas else None
+
+
 def horario():
     return _cacheado("horario", "horario_atencion?select=dia,abre,cierra&order=dia,abre") or []
 

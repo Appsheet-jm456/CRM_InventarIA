@@ -13,7 +13,9 @@ de prueba de Meta. No es el motor definitivo (F3·4).
 """
 
 import re
+import threading
 import unicodedata
+from contextlib import contextmanager
 from datetime import datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -93,8 +95,22 @@ def proxima_apertura(ahora=None):
     return True, ""
 
 
+_hilo = threading.local()
+
+
 def cuadros():
-    return db.flujo()
+    """La versión publicada, o la que el simulador puso para este hilo (F4·8)."""
+    return getattr(_hilo, "cuadros", None) or db.flujo()
+
+
+@contextmanager
+def con_cuadros(otros):
+    """Corre el motor sobre otra versión (el borrador, para el simulador) sin tocar la del bot en vivo."""
+    _hilo.cuadros = otros
+    try:
+        yield
+    finally:
+        _hilo.cuadros = None
 
 
 def texto_cuadro(clave, **marcas):
@@ -356,7 +372,8 @@ def mostrar_equipos(st, c):
         st["nodo"] = c["clave"] + "-vacio"
         return catalogos + [menu("😕 No tenemos equipos con stock en ese rango ahora mismo.",
                                  [("1", "Cambiar presupuesto", ""), ("9", "Hablar con asesor", "")])]
-    titulo = (f"📎 Equipos *{marca}* con stock en tu rango, desde el inventario "
+    de_marca = "" if marca == "Todas" else f" *{marca}*"  # "Equipos *Todas*" se leía raro
+    titulo = (f"📎 Equipos{de_marca} con stock en tu rango, desde el inventario "
               f"({len(r)} {'equipo' if len(r) == 1 else 'equipos'}):")
     return catalogos + [lista_equipos(titulo, r)]
 
