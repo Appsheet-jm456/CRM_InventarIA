@@ -36,6 +36,9 @@ cambia por el primer nombre del cliente. Las crea `administrar_bot`; las ve todo
 
 ## Modelo (migración 0007)
 
+> Desde la 0011 (F4·5) los textos y títulos viven en `bot_cuadros` de la versión publicada; `bot_nodos` se retiró.
+> Ver [FLUJO-DEL-BOT.md](FLUJO-DEL-BOT.md).
+
 | Tabla | Para qué |
 |---|---|
 | `bot_nodos` | `clave`, `nombre`, `texto`, `opciones` (lista de `{id, titulo}`), `texto_original`, `opciones_original`, quién y cuándo editó |

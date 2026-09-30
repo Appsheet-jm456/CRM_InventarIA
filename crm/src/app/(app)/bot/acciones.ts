@@ -10,6 +10,7 @@ export type Opcion = { id: string; titulo: string }
 function listo(error: { code?: string; message: string } | null, filas: unknown[] | null, ok?: string): Resultado {
   if (error) {
     if (error.code === '23505') return { error: 'Ya existe.' }
+    if (error.code === '42501') return { error: 'No tienes permiso para cambiar el bot o el horario.' }
     return { error: error.message }
   }
   if (!filas?.length) return { error: 'No tienes permiso para cambiar el bot o el horario.' }
@@ -17,24 +18,21 @@ function listo(error: { code?: string; message: string } | null, filas: unknown[
   return ok ? { ok } : {}
 }
 
-export async function guardarNodo(clave: string, texto: string, opciones: Opcion[] | null): Promise<Resultado> {
-  if (!texto.trim()) return { error: 'El mensaje no puede quedar vacío.' }
-  const cambios: { texto: string; opciones?: Opcion[] } = { texto }
-  if (opciones) cambios.opciones = opciones.map((o) => ({ id: o.id, titulo: o.titulo.trim() }))
-  const { data, error } = await crearCliente().from('bot_nodos').update(cambios).eq('clave', clave).select('clave')
-  return listo(error, data, 'Guardado. El bot lo usa en menos de 30 segundos.')
+// La versión publicada se edita con funciones de la base: solo textos y títulos, nunca a dónde lleva cada opción
+// (decisión 0026). Las opciones que manda el navegador solo aportan su título.
+export async function guardarNodo(clave: string, texto: string | null, opciones: Opcion[] | null): Promise<Resultado> {
+  if (texto !== null && !texto.trim()) return { error: 'El mensaje no puede quedar vacío.' }
+  const { error } = await crearCliente().rpc('editar_cuadro', {
+    p_clave: clave,
+    p_texto: texto,
+    p_titulos: opciones ? opciones.map((o) => ({ id: o.id, titulo: o.titulo.trim() })) : null,
+  })
+  return listo(error, [clave], 'Guardado. El bot lo usa en menos de 30 segundos.')
 }
 
 export async function restaurarNodo(clave: string): Promise<Resultado> {
-  const supabase = crearCliente()
-  const { data: nodo } = await supabase.from('bot_nodos').select('texto_original, opciones_original').eq('clave', clave).maybeSingle()
-  if (!nodo) return { error: 'No se encontró el mensaje.' }
-  const { data, error } = await supabase
-    .from('bot_nodos')
-    .update({ texto: nodo.texto_original, opciones: nodo.opciones_original })
-    .eq('clave', clave)
-    .select('clave')
-  return listo(error, data, 'Restaurado al texto original.')
+  const { error } = await crearCliente().rpc('restaurar_cuadro', { p_clave: clave })
+  return listo(error, [clave], 'Restaurado al texto original.')
 }
 
 const HORA = /^([01]\d|2[0-3]):[0-5]\d$/

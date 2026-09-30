@@ -36,7 +36,7 @@ DIAS = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábad
 
 
 # --------------------------------------------------------------------------- #
-# Horario de atención (tabla horario_atencion, RBOT-06) y textos editables (bot_nodos, RBOT-01)
+# Horario de atención (tabla horario_atencion, RBOT-06) y flujo de la versión publicada (bot_cuadros, 0026)
 # --------------------------------------------------------------------------- #
 
 def _hora(t):
@@ -93,20 +93,24 @@ def proxima_apertura(ahora=None):
     return True, ""
 
 
-def texto_nodo(clave, defecto, **marcas):
-    """Texto del nodo desde bot_nodos; si falta, el del código. Las marcas {x} sin valor desaparecen."""
-    fila = db.nodos().get(clave)
-    texto = (fila or {}).get("texto") or defecto
+def cuadros():
+    return db.flujo()
+
+
+def texto_cuadro(clave, **marcas):
+    """Texto del cuadro en la versión publicada. Las marcas {x} se cambian por su valor."""
+    texto = cuadros()[clave]["texto"]
     for k, v in marcas.items():
         texto = texto.replace("{" + k + "}", str(v))
     return texto
 
 
-def opciones_nodo(clave, defecto):
-    """[(id, título, descripción)] con los títulos editados; los ids y el orden siempre son los del código."""
-    fila = db.nodos().get(clave)
-    editados = {o["id"]: o["titulo"] for o in (fila or {}).get("opciones") or []}
-    return [(i, editados.get(i) or t, d) for i, t, d in defecto]
+def inicio():
+    return next(c["clave"] for c in cuadros().values() if c["inicio"])
+
+
+def del_tipo(tipo):
+    return next((c["clave"] for c in cuadros().values() if c["tipo"] == tipo), None)
 
 
 def estado_vacio():
@@ -254,55 +258,84 @@ def etapa(st, nueva):
         st["etapa"] = nueva
 
 
-def ir(st, nodo):
-    st["nodo"], st["errores"] = nodo, 0
+def aplicar(st, efectos):
+    """Lo que anota una opción o un cuadro al llegar: campos del cliente, etiqueta y etapa."""
+    efectos = efectos or {}
+    st["campos"].update(efectos.get("campos") or {})
+    if efectos.get("etiqueta"):
+        st["campos"]["Etiqueta"] = efectos["etiqueta"]
+    if efectos.get("etapa"):
+        etapa(st, efectos["etapa"])
+
+
+def ir(st, clave):
+    """Lleva al cliente a un cuadro y devuelve lo que ve. Un cuadro que ya no existe lleva al inicio."""
+    c = cuadros().get(clave) or cuadros()[inicio()]
+    if c["tipo"] == "asesor":
+        return asesor(st)
+    st["nodo"], st["errores"] = c["clave"], 0
     st["campos"].pop("Errores bot", None)
-    return NODOS[nodo](st)
+    aplicar(st, c["al_entrar"])
+    return MOSTRAR[c["tipo"]](st, c)
 
 
-def b00(st):
-    etapa(st, "Nuevo")
-    st["campos"]["Etiqueta"] = "WhatsApp-Bot"
-    return [menu(texto_nodo("B00", "¡Hola! 👋 Bienvenido a *Ventas Virtuales Colombia*, distribuidores al por mayor "
-                            "y detal de equipos de cómputo en Cali.\nSoy el *Bot Ventas Virtuales* 🤖 ¿En qué te "
-                            "podemos ayudar hoy?\n\n_También puedes escribirme lo que buscas, por ejemplo: "
-                            "\"Dell i5 de décima\"._"),
-                 opciones_nodo("B00", [("1", "Productos", ""), ("2", "Distribuidores", ""),
-                                       ("3", "Servicio al cliente", "")]))]
+def seguir(st, op):
+    """El cliente eligió la opción `op` de un cuadro: anota sus efectos y va a su destino."""
+    efectos = op.get("efectos") or {}
+    aplicar(st, {"campos": efectos.get("campos"), "etapa": efectos.get("etapa")})
+    destino = cuadros().get(op["destino"])
+    if destino and destino["tipo"] == "asesor":
+        return asesor(st, efectos.get("etiqueta") or "Escalado-Asesor", efectos.get("motivo"))
+    aplicar(st, {"etiqueta": efectos.get("etiqueta")})
+    if op["destino"] == "@pedir_codigo":
+        st["nodo"] = del_tipo("equipos")
+        return [m_texto("Envíame el código del equipo 👇")]
+    return ir(st, op["destino"])
 
 
-def b001a(st):
-    return [menu(texto_nodo("B001A", "¡Perfecto! ¿Qué producto estás buscando?"),
-                 opciones_nodo("B001A", [("1", "Portátiles corporativos", ""), ("2", "Torres Tiny", ""),
-                                         ("3", "Torres SFF", ""), ("4", "Partes", ""), ("0", "Volver al menú", "")]))]
+def coincide(n, palabra):
+    """Palabra de una opción: exacta; "*x" si el texto contiene x; "re:x" expresión desde el inicio."""
+    if palabra.startswith("re:"):
+        return bool(re.match(palabra[3:], n))
+    if palabra.startswith("*"):
+        return palabra[1:] in n
+    return n == palabra
 
 
-def b001a1(st):
-    return [menu(texto_nodo("B001A1", "¿Para qué tipo de trabajo necesitas el portátil?"),
-                 opciones_nodo("B001A1", [("1", "Hogar / estudio", ""), ("2", "Ejecutivo / oficina", ""),
-                                          ("3", "Diseño / edición", ""), ("0", "Volver", "")]))]
+def reconoce(op, n):
+    if op.get("reconocer") == "uso":
+        return interprete.uso(n) == (op.get("efectos") or {}).get("campos", {}).get("Uso equipo")
+    if op.get("reconocer") == "quiere_comprar":
+        return interprete.quiere_comprar(n)
+    return False
 
 
-def b001a2(st):
-    return [menu(texto_nodo("B001A2", "¿Cuál es tu presupuesto aproximado?\n_(también puedes escribir el monto, "
-                            "por ejemplo 1.5 millones)_"),
-                 [(str(i + 1), r[3], r[2]) for i, r in enumerate(RANGOS)])]
+def elegir(c, n):
+    """La primera opción que reconoce lo que escribió o tocó el cliente (número, palabras o reconocedor)."""
+    for op in c.get("opciones") or []:
+        if n == op["id"] or any(coincide(n, p) for p in op.get("palabras") or []) or reconoce(op, n):
+            return op
+    return None
 
 
-def b001a3(st):
-    return [menu(texto_nodo("B001A3", "¿Deseas que te enviemos el catálogo de portátiles disponibles para *{uso}* "
-                            "y así revises cuál te interesa?", uso=st["campos"]["Uso equipo"]),
-                 opciones_nodo("B001A3", [("1", "Sí, el catálogo", ""), ("2", "Hablar con asesor", ""),
-                                          ("3", "Volver", "")]))]
+def opciones_de(c):
+    return [(o["id"], o["titulo"], o.get("descripcion", "")) for o in c.get("opciones") or []]
 
 
-def b001a4(st):
+def mostrar_mensaje(st, c):
+    return [menu(texto_cuadro(c["clave"], uso=st["campos"].get("Uso equipo", "")), opciones_de(c))]
+
+
+def mostrar_presupuesto(st, c):
+    return [menu(texto_cuadro(c["clave"]), [(str(i + 1), r[3], r[2]) for i, r in enumerate(RANGOS)])]
+
+
+def mostrar_marca(st, c):
     marcas = sorted({p["marca"] for p in inventario() if p["marca"]})
     st["marcas"] = marcas
     opciones = [(str(i + 1), m.title(), "") for i, m in enumerate(marcas)]
     opciones.append((str(len(marcas) + 1), "Todas las marcas", ""))
-    return [menu(texto_nodo("B001A4", "¿De qué marca quieres ver los portátiles?\n_(solo aparecen las marcas con "
-                            "stock)_"), opciones)]
+    return [menu(texto_cuadro(c["clave"]), opciones)]
 
 
 def filtrar(st):
@@ -315,13 +348,12 @@ def filtrar(st):
     return sorted(r, key=lambda p: p["precio"])
 
 
-def b001a5(st):
-    st["campos"]["Etiqueta"] = "Catalogo-Enviado"
+def mostrar_equipos(st, c):
     marca = st["campos"].get("Marca interés", "Todas")
     catalogos = mensajes_catalogo("Portátiles", "" if marca == "Todas" else marca)
     r = filtrar(st)
     if not r:
-        st["nodo"] = "B001A5-vacio"
+        st["nodo"] = c["clave"] + "-vacio"
         return catalogos + [menu("😕 No tenemos equipos con stock en ese rango ahora mismo.",
                                  [("1", "Cambiar presupuesto", ""), ("9", "Hablar con asesor", "")])]
     titulo = (f"📎 Equipos *{marca}* con stock en tu rango, desde el inventario "
@@ -330,30 +362,27 @@ def b001a5(st):
 
 
 def r11(st, p):
-    st["nodo"], st["errores"] = "R11", 0
+    c = cuadros()[del_tipo("ficha")]
+    st["nodo"], st["errores"] = c["clave"], 0
     st["campos"].pop("Errores bot", None)
     st["campos"].update({"Código producto": p["cod"], "Valor estimado": cop(p["precio"])})
     st["valor"] = p["precio"]
     etapa(st, "Cotización")
     ficha = (f"💻 *{p['marca']} {p['modelo']}* · Código {p['cod']}\n{p['cpu']} · {p['ram']} · {p['disco']}"
              f"{' · ' + p['estado'] if p['estado'] else ''}\n💰 {cop(p['precio'])} · ✅ Disponible")
-    botones = opciones_nodo("R11", [("1", "Lo quiero", ""), ("2", "Ver otro código", ""), ("0", "Menú principal", "")])
-    return [m_botones(ficha, [(i, t) for i, t, _ in botones], p["foto"])]
+    return [m_botones(ficha, [(i, t) for i, t, _ in opciones_de(c)], p["foto"])]
 
 
 def asesor(st, etiqueta="Escalado-Asesor", motivo=None):
     """Pasa el chat a la cola. Fuera de horario avisa cuándo lo atienden (RBOT-05); el chat entra igual."""
     st["campos"]["Etiqueta"] = etiqueta
-    st["pausa"], st["nodo"] = True, "B-ASESOR"
+    st["pausa"], st["nodo"] = True, del_tipo("asesor")
     aviso = f"_{motivo}_\n\n" if motivo else ""
     abierto, cuando = proxima_apertura()
     if abierto:
-        texto = texto_nodo("B-ASESOR", "{motivo}¡Entendido! 🙌 En breve un asesor de *Ventas Virtuales Colombia* te "
-                           "atenderá personalmente.\n\n{horario}", motivo=aviso, horario=texto_horario())
+        texto = texto_cuadro(st["nodo"], motivo=aviso, horario=texto_horario())
     else:
-        texto = texto_nodo("B-CERRADO", "{motivo}¡Entendido! 🙌 Ahora estamos fuera de horario, pero tu chat ya quedó "
-                           "en la fila: un asesor te responde {proxima}.\n\n{horario}",
-                           motivo=aviso, horario=texto_horario(), proxima=cuando)
+        texto = texto_cuadro("B-CERRADO", motivo=aviso, horario=texto_horario(), proxima=cuando)
     return [m_texto(texto)]
 
 
@@ -361,9 +390,8 @@ def error(st):
     st["errores"] += 1
     st["campos"]["Errores bot"] = st["errores"]
     if st["errores"] >= 3:
-        return asesor(st, motivo=texto_nodo("ERROR-3", "Tres respuestas no reconocidas: te paso con un asesor."))
-    return [m_texto(texto_nodo("ERROR", "🤔 No entendí tu respuesta. Toca una opción o escribe el *número*, o *MENU* "
-                               "para volver al inicio."))]
+        return asesor(st, motivo=texto_cuadro("ERROR-3"))
+    return [m_texto(texto_cuadro("ERROR"))]
 
 
 def busqueda(st, filtros):
@@ -389,8 +417,8 @@ def busqueda(st, filtros):
                           f"*{interprete.describir(filtros)}*:", r)]
 
 
-NODOS = {"B00": b00, "B001A": b001a, "B001A1": b001a1, "B001A2": b001a2,
-         "B001A3": b001a3, "B001A4": b001a4, "B001A5": b001a5}
+MOSTRAR = {"mensaje": mostrar_mensaje, "presupuesto": mostrar_presupuesto, "marca": mostrar_marca,
+           "equipos": mostrar_equipos}
 
 
 # --------------------------------------------------------------------------- #
@@ -407,86 +435,56 @@ def responder(st, texto, avisar=None):
     """
     n = normalizar(texto)
 
+    todos = cuadros()
     if n == "reiniciar":
         etapa_actual = st.get("etapa") or "Nuevo"  # reiniciar la charla no devuelve el embudo
         st.clear()
         st.update(estado_vacio(), etapa=etapa_actual)
-        return ir(st, "B00"), st
+        return ir(st, inicio()), st
     if st["pausa"]:
         return [], st
-    if not st["nodo"] or n in SALUDOS:
-        return ir(st, "B00"), st
+    k = st["nodo"]
+    c = todos.get(k)
+    vacio = k and k.endswith("-vacio") and todos.get(k[:-6], {}).get("tipo") == "equipos"
+    if not k or n in SALUDOS or not (c or vacio or k == "BUSQUEDA"):  # un cuadro que ya no existe vuelve al inicio
+        return ir(st, inicio()), st
 
-    p = buscar_codigo(texto) if st["nodo"] != "B001A2" else None
+    tipo = c["tipo"] if c else None
+    p = buscar_codigo(texto) if tipo != "presupuesto" else None
     if p:
         return r11(st, p), st
     if n == "9" or "asesor" in n:
         return asesor(st), st
-    if n == "0" and st["nodo"] in ("BUSQUEDA", "B001A5", "R11"):
-        return ir(st, "B00"), st
+    if n == "0" and (k == "BUSQUEDA" or tipo in ("equipos", "ficha")):
+        return ir(st, inicio()), st
 
-    k = st["nodo"]
-    if k == "B00":
-        if n == "1" or re.fullmatch(r"productos?|portatil(es)?|torres?", n):
-            return ir(st, "B001A"), st
-        # Cada opción deja al cliente en su embudo por la etiqueta (decisión 0022); el detalle lo lleva un asesor (F1·7).
-        if n == "2" or re.fullmatch(r"distribuidor(es)?|mayorista|al por mayor", n):
-            return asesor(st, etiqueta="Interes-Distribuidor", motivo="Esta opción aún no está en el bot (F1·7)."), st
-        if n == "3" or re.fullmatch(r"servicio( al cliente)?|garantia|soporte( tecnico)?", n):
-            return asesor(st, etiqueta="Interes-Soporte", motivo="Esta opción aún no está en el bot (F1·7)."), st
-    elif k == "B001A":
-        if n == "1" or re.fullmatch(r"portatil(es)?( corporativos)?|laptops?", n):
-            st["campos"].update({"Categoría interés": "Portátiles", "Etiqueta": "Interes-Productos"})
-            return ir(st, "B001A1"), st
-        if n in ("2", "3", "4"):
-            return asesor(st, motivo="Esa categoría aún no está en el bot (F1·7)."), st
-        if n in ("0", "volver"):
-            return ir(st, "B00"), st
-    elif k == "B001A1":
-        uso = {"1": "Hogar", "2": "Ejecutivo", "3": "Diseño"}.get(n) or interprete.uso(n)
-        if uso:
-            st["campos"].update({"Uso equipo": uso, "Etiqueta": "Interes-Portatil"})
-            return ir(st, "B001A2"), st
-        if n == "0":
-            return ir(st, "B001A"), st
-    elif k == "B001A2":
+    if tipo in ("mensaje", "ficha"):
+        op = elegir(c, n)
+        if op:
+            return seguir(st, op), st
+    elif tipo == "presupuesto":
         monto = interprete.monto(n, contexto_presupuesto=True) if n not in ("1", "2", "3", "4") else None
         if n in ("1", "2", "3", "4") or monto:
             st["rango"] = RANGOS[int(n) - 1] if not monto else rango_de_monto(monto)
             st["campos"]["Presupuesto"] = st["rango"][2]
             etapa(st, "En Conversación")
-            return ir(st, "B001A3"), st
-    elif k == "B001A3":
-        if n == "1" or re.match(r"^si\b|catalogo", n):
-            return ir(st, "B001A4"), st
-        if n == "2" or "cotizacion" in n:
-            return asesor(st, "Cotizacion-Personalizada"), st
-        if n in ("3", "volver"):
-            return ir(st, "B001A"), st
-    elif k == "B001A4":
+            return ir(st, c["salidas"]["siguiente"]), st
+    elif tipo == "marca":
         marcas = st.get("marcas", [])
         if n.isdigit() and 1 <= int(n) <= len(marcas):
             st["campos"]["Marca interés"] = marcas[int(n) - 1]
-            return ir(st, "B001A5"), st
+            return ir(st, c["salidas"]["siguiente"]), st
         if n == str(len(marcas) + 1) or n == "todas":
             st["campos"]["Marca interés"] = "Todas"
-            return ir(st, "B001A5"), st
+            return ir(st, c["salidas"]["siguiente"]), st
         if normalizar(n).upper() in [m.upper() for m in marcas]:
             st["campos"]["Marca interés"] = n.upper()
-            return ir(st, "B001A5"), st
+            return ir(st, c["salidas"]["siguiente"]), st
         if re.search(r"lenovo|hp|asus|acer|apple|mac", n):
-            return [m_texto("Por ahora no tenemos esa marca en stock. Te muestro las que sí hay 👇")] + ir(st, "B001A4"), st
-    elif k == "B001A5-vacio":
+            return [m_texto("Por ahora no tenemos esa marca en stock. Te muestro las que sí hay 👇")] + ir(st, k), st
+    elif vacio:
         if n == "1":
-            return ir(st, "B001A2"), st
-    elif k == "R11":
-        if n == "1" or interprete.quiere_comprar(n):
-            return asesor(st), st
-        if n in ("2", "ver otro codigo"):
-            st["nodo"] = "B001A5"
-            return [m_texto("Envíame el código del equipo 👇")], st
-        if n in ("0", "menu principal"):
-            return ir(st, "B00"), st
+            return ir(st, todos[k[:-6]]["salidas"]["cambiar_presupuesto"]), st
 
     # Texto libre: reglas primero; si no alcanzan, IA (Gemini o qwen3). La respuesta sale de la base.
     if not re.fullmatch(r"\d{1,2}", n):

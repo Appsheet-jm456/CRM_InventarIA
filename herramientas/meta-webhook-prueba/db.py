@@ -60,7 +60,7 @@ def productos_con_stock():
 
 
 # --------------------------------------------------------------------------- #
-# Nodos del bot, horario y festivos (F3·7, decisión 0023)
+# Flujo del bot, horario y festivos (F3·7 y F4·5, decisiones 0023 y 0026)
 # --------------------------------------------------------------------------- #
 
 _cache_bot = {}
@@ -78,10 +78,12 @@ def _cacheado(clave, ruta, segundos=30):
     return valor
 
 
-def nodos():
-    """{clave: fila} de bot_nodos. Un cambio en la app se ve en el bot en menos de 30 s."""
-    filas = _cacheado("nodos", "bot_nodos?select=clave,texto,opciones")
-    return {f["clave"]: f for f in filas or []}
+def flujo():
+    """{clave: cuadro} de la versión publicada del flujo (F4·5, decisión 0026). Un cambio se ve en menos de 30 s."""
+    filas = _cacheado("flujo", "bot_flujos?estado=eq.publicada&select=version,bot_cuadros(*)")
+    if not filas:
+        raise RuntimeError("No hay una versión publicada del flujo del bot")
+    return {c["clave"]: c for c in filas[0]["bot_cuadros"]}
 
 
 def horario():

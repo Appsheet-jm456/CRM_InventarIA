@@ -1,5 +1,11 @@
 # Changelog del brief
 
+## v1.0 · 30 sep 2026 (F4·5)
+
+- El flujo del bot pasa a la base por versiones (0026, migración 0011): `bot_cuadros` reemplaza a `bot_nodos` y
+  `flujo.py` recorre la versión publicada. La versión 1 es el árbol de F3·4, comprobado igual en 85.536
+  conversaciones simuladas.
+
 ## v1.0 · 30 sep 2026 (F4·4)
 
 - Editor del bot: vista previa como WhatsApp (negrita, cursiva, botones o lista), contador con el límite real y

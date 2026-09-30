@@ -24,8 +24,10 @@ export default async function Bot({ searchParams }: { searchParams: { t?: string
   ) : (
     await (async () => {
       const [{ data: nodos }, { data: franjas }, { data: equipos }] = await Promise.all([
-        supabase.from('bot_nodos')
-          .select('clave, nombre, texto, opciones, texto_original, opciones_original, max_titulo, marcas, formato, opciones_codigo, actualizado_en')
+        // Los cuadros de la versión publicada del flujo (decisión 0026); los del sistema sin texto propio no se editan.
+        supabase.from('bot_cuadros')
+          .select('clave, nombre, texto, opciones, texto_original, opciones_original, max_titulo, marcas, formato, opciones_codigo, actualizado_en, bot_flujos!inner(version, estado)')
+          .eq('bot_flujos.estado', 'publicada').neq('formato', 'sistema')
           .order('orden'),
         supabase.from('horario_atencion').select('dia, abre, cierra'),
         supabase.from('productos').select('codigo, marca, modelo, procesador, ram, almacenamiento, estado, precio').gt('stock', 0).order('precio'),
@@ -40,7 +42,8 @@ export default async function Bot({ searchParams }: { searchParams: { t?: string
       const ficha = p
         ? `💻 *${p.marca} ${p.modelo}* · Código ${p.codigo}\n${p.procesador} · ${p.ram} · ${p.almacenamiento}${p.estado ? ` · ${p.estado}` : ''}\n💰 ${pesos(p.precio).replace(/\s/g, '')} · ✅ Disponible`
         : '💻 *DELL LATITUDE 5420* · Código 100-102-1041\nCore i5-1145G7 · 16GB · 256GB NVMe · Usado\n💰 $1.450.000 · ✅ Disponible'
-      return <Mensajes nodos={lista} actual={searchParams.n} contexto={{ horario: textoHorario(franjas ?? []), ficha }} />
+      const version = (nodos?.[0]?.bot_flujos as unknown as { version: number } | undefined)?.version
+      return <Mensajes nodos={lista} version={version} actual={searchParams.n} contexto={{ horario: textoHorario(franjas ?? []), ficha }} />
     })()
   )
 

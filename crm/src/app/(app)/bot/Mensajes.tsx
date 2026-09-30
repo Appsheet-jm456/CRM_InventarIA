@@ -129,7 +129,7 @@ function Editor({ nodo, contexto }: { nodo: Nodo; contexto: Contexto }) {
           <small className="muted">Las opciones de este mensaje las pone el bot ({nodo.clave === 'B001A4' ? 'las marcas con stock' : 'los rangos de presupuesto'}); aquí se edita solo la pregunta.</small>
         )}
         <div className="inline">
-          <button className="btn primary" disabled={ocupado || sinCambios || bloqueado} onClick={() => correr(() => guardarNodo(nodo.clave, texto, opciones))}>
+          <button className="btn primary" disabled={ocupado || sinCambios || bloqueado} onClick={() => correr(() => guardarNodo(nodo.clave, ficha ? null : texto, opciones))}>
             {ocupado ? 'Guardando…' : 'Guardar'}
           </button>
           <button className="btn" disabled={ocupado || igualOriginal}
@@ -157,14 +157,14 @@ function Editor({ nodo, contexto }: { nodo: Nodo; contexto: Contexto }) {
   )
 }
 
-export function Mensajes({ nodos, actual, contexto }: { nodos: Nodo[]; actual?: string; contexto: Contexto }) {
+export function Mensajes({ nodos, version, actual, contexto }: { nodos: Nodo[]; version?: number; actual?: string; contexto: Contexto }) {
   const nodo = nodos.find((n) => n.clave === actual) ?? nodos[0]
   return (
     <section className="panel">
       <div className="panel-h">
         <div>
           <h2>Mensajes del bot</h2>
-          <small>Cambias lo que dice y el título de los botones. A dónde lleva cada opción lo define el árbol (decisión 0005, RBOT-01).</small>
+          <small>Versión publicada {version ?? '—'}. Aquí cambias lo que dice cada mensaje y el título de sus botones; a dónde lleva cada opción se cambia en el lienzo (F4·6).</small>
         </div>
       </div>
       <div className="embudos-tabs" style={{ padding: '0 16px' }}>
