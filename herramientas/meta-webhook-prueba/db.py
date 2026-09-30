@@ -125,14 +125,26 @@ def descargar_pdf(ruta):
         return r.read()
 
 
+def subir_media(ruta, contenido, mime):
+    """Guarda en el bucket privado 'media' lo que mandó el cliente (la app lo muestra por /media/...)."""
+    url = REST.replace("/rest/v1", f"/storage/v1/object/media/{urllib.parse.quote(ruta)}")
+    peticion = urllib.request.Request(url, method="POST", data=contenido, headers={
+        "apikey": _CLAVE, "Authorization": f"Bearer {_CLAVE}", "Content-Type": mime or "application/octet-stream",
+        "x-upsert": "true"})
+    with urllib.request.urlopen(peticion, timeout=120):
+        pass
+
+
 # --------------------------------------------------------------------------- #
 # Mensajes
 # --------------------------------------------------------------------------- #
 
-def guardar_mensaje(lead_id, lado, texto, tipo="text", meta_id=None):
+def guardar_mensaje(lead_id, lado, texto, tipo="text", meta_id=None, media=None):
     fila = {"lead_id": lead_id, "lado": lado, "texto": texto, "tipo": tipo}
     if meta_id:
         fila["meta_id"] = meta_id
+    if media:  # {"ruta", "mime", "nombre"}: audio, imagen o documento del cliente (F3·5)
+        fila.update(media_ruta=media["ruta"], media_mime=media["mime"], media_nombre=media.get("nombre", ""))
     pedir("mensajes?on_conflict=meta_id" if meta_id else "mensajes", "POST", fila,
           "resolution=ignore-duplicates,return=minimal" if meta_id else "return=minimal")
 

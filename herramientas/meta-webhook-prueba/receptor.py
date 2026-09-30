@@ -77,6 +77,26 @@ def enviar(numero, mensaje):
         return None
 
 
+EXTENSIONES = {"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "audio/ogg": "ogg",
+               "audio/mpeg": "mp3", "audio/mp4": "m4a", "audio/aac": "aac", "audio/amr": "amr", "video/mp4": "mp4",
+               "video/3gpp": "3gp", "application/pdf": "pdf"}
+ETIQUETAS_MEDIA = {"image": "📷 Imagen", "audio": "🎤 Audio", "video": "🎬 Video", "document": "📄 Documento",
+                   "sticker": "Sticker"}
+
+
+def guardar_media(lead_id, wamid, media):
+    """Baja de Meta el audio, imagen o documento del cliente y lo sube al bucket 'media' (F3·5)."""
+    cabecera = {"Authorization": f"Bearer {ENV['META_TOKEN']}"}
+    datos = json.load(urllib.request.urlopen(urllib.request.Request(f"{API}/{media['id']}", headers=cabecera),
+                                             timeout=30))
+    contenido = urllib.request.urlopen(urllib.request.Request(datos["url"], headers=cabecera), timeout=120).read()
+    mime = (media.get("mime") or datos.get("mime_type") or "application/octet-stream").split(";")[0].strip()
+    extension = EXTENSIONES.get(mime) or Path(media.get("nombre") or "").suffix.lstrip(".") or "bin"
+    ruta = f"{lead_id}/{wamid}.{extension}"
+    db.subir_media(ruta, contenido, mime)
+    return {"ruta": ruta, "mime": mime, "nombre": media.get("nombre", "")}
+
+
 def subir_pdf(catalogo):
     """Sube el PDF del bucket a Meta y devuelve su id de medio (reutiliza el guardado si tiene < 25 días)."""
     guardado, fecha = catalogo.get("meta_media_id"), catalogo.get("meta_media_en")
@@ -150,12 +170,18 @@ def guardar_estado(lead, st, visible, nombre):
     db.actualizar_lead(lead["id"], cambios)
 
 
-def contestar(numero, entrada, visible, nombre, tipo, meta_id):
+def contestar(numero, entrada, visible, nombre, tipo, meta_id, media=None):
     # Un cliente que escribe rápido manda mensajes casi a la vez: se atienden en orden, uno por uno.
     with _candados.setdefault(numero, threading.Lock()):
         try:
             lead = db.lead(numero) or db.crear_lead(numero, nombre)
-            db.guardar_mensaje(lead["id"], "cliente", visible, tipo, meta_id)
+            guardada = None
+            if media:
+                try:
+                    guardada = guardar_media(lead["id"], meta_id, media)
+                except Exception as e:  # sin la media, el mensaje queda igual con su etiqueta
+                    anotar(f"  ✗ no se pudo guardar la media: {e!r}")
+            db.guardar_mensaje(lead["id"], "cliente", visible, tipo, meta_id, guardada)
             st = cargar_estado(lead)
 
             def avisar(texto):
@@ -191,6 +217,7 @@ def procesar(evento):
             nombres = {c["wa_id"]: c.get("profile", {}).get("name", "") for c in valor.get("contacts", [])}
             for m in valor.get("messages", []):
                 de, tipo = m.get("from"), m.get("type")
+                media = None
                 if tipo == "text":
                     entrada = m["text"].get("body", "")
                 elif tipo == "interactive":  # tocó una opción de la lista o un botón
@@ -201,10 +228,16 @@ def procesar(evento):
                     entrada = m["button"].get("text", "")
                 else:                        # audio, imagen, sticker: pasan a asesor (ARBOL, B-ERR)
                     entrada = "asesor"
-                if tipo != "interactive":
-                    visible = entrada if tipo in ("text", "button") else f"[{tipo}]"
+                    datos = m.get(tipo) or {}
+                    if datos.get("id"):      # se guarda para que el asesor lo vea en la Bandeja (F3·5)
+                        media = {"id": datos["id"], "mime": datos.get("mime_type", ""),
+                                 "nombre": datos.get("filename", "")}
+                    pie = datos.get("caption") or datos.get("filename") or ""
+                    visible = ETIQUETAS_MEDIA.get(tipo, f"[{tipo}]") + (f": {pie}" if pie else "")
+                if tipo in ("text", "button"):
+                    visible = entrada
                 anotar(f"📩 {de} ({nombres.get(de, '')}) · {tipo}: {entrada}")
-                contestar(de, entrada, visible, nombres.get(de, ""), tipo, m.get("id"))
+                contestar(de, entrada, visible, nombres.get(de, ""), tipo, m.get("id"), media)
             for s in valor.get("statuses", []):
                 errores = "; ".join(f"{e.get('code')} {e.get('title')}" for e in s.get("errors", []))
                 anotar(f"📬 estado {s.get('status')} · {s.get('recipient_id')}" + (f" · {errores}" if errores else ""))
