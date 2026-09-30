@@ -28,6 +28,7 @@ from urllib.parse import parse_qs, urlparse
 
 import flujo
 import kanban
+import visor
 
 RAIZ = Path(__file__).resolve().parents[2]
 REGISTRO = Path(__file__).with_name("eventos.log")
@@ -82,8 +83,11 @@ def contestar(numero, entrada, visible, nombre):
         return
     for m in mensajes:
         # Si la foto de la cabecera no se puede descargar, la ficha sale igual sin imagen.
-        if not enviar(numero, m) and m.get("interactive", {}).pop("header", None):
-            enviar(numero, m)
+        ok = enviar(numero, m)
+        if not ok and m.get("interactive", {}).pop("header", None):
+            ok = enviar(numero, m)
+        if ok:
+            visor.registrar(numero, nombre, "bot", visor.texto_saliente(m))
     anotar(f"  · nodo {st['nodo']} · etapa {st['etapa']} · {st['campos']}"
            + (" · BOT PAUSADO" if st["pausa"] else ""))
     try:
@@ -112,6 +116,7 @@ def procesar(evento):
                 if tipo != "interactive":
                     visible = entrada if tipo in ("text", "button") else f"[{tipo}]"
                 anotar(f"📩 {de} ({nombres.get(de, '')}) · {tipo}: {entrada}")
+                visor.registrar(de, nombres.get(de, ""), "cliente", visible)
                 contestar(de, entrada, visible, nombres.get(de, ""))
             for s in valor.get("statuses", []):
                 errores = "; ".join(f"{e.get('code')} {e.get('title')}" for e in s.get("errors", []))
@@ -158,4 +163,5 @@ class Webhook(BaseHTTPRequestHandler):
 
 if __name__ == "__main__":
     anotar(f"Receptor de prueba escuchando en 127.0.0.1:{PUERTO}/webhook")
+    anotar(f"Visor de conversaciones en el puerto {visor.arrancar()} (red local, clave de lectura)")
     ThreadingHTTPServer(("127.0.0.1", PUERTO), Webhook).serve_forever()

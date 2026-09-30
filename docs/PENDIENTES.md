@@ -53,6 +53,10 @@ de Baserow, y refleja cada cliente en el **kanban de la v0 (puerto 3000)**. Es u
   - Reiniciar: `systemctl --user restart crm-meta-receptor crm-meta-tunel`
   - Conversaciones: `tail -f herramientas/meta-webhook-prueba/eventos.log` · URL actual: `tunel-url.txt`
   - Apagar después de la demo: `systemctl --user disable --now crm-meta-tunel crm-meta-receptor`
+- **Visor de conversaciones:** `http://192.168.20.50:8096` (red local; usuario cualquiera, contraseña =
+  `ACCESS_PASSWORD` de la app). Muestra el chat con burbujas, la etapa, el nodo y los datos guardados, y se
+  actualiza solo. Va en otro puerto que el túnel no expone. Las conversaciones quedan en `conversaciones.jsonl`
+  (fuera de git). El panel de la v0 no puede mostrarlas: las pide a Evolution.
 - **Quién puede probar:** solo números verificados en Meta → Tests de la API → paso 3 (máximo 5). Un número
   sin verificar escribe, pero Meta no le entrega las respuestas.
 - **Reiniciar una charla:** escribir `reiniciar` (también quita la pausa de asesor). `hola` o `menu` vuelven al inicio.

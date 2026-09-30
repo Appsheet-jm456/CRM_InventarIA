@@ -28,3 +28,4 @@ Thumbs.db
 herramientas/**/eventos.log
 herramientas/**/tunel-url.txt
 __pycache__/
+herramientas/**/conversaciones.jsonl
