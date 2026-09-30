@@ -10,8 +10,8 @@ de las Fases 1 y 2 abajo. **Código nuevo:** el bot de prueba sobre Supabase (`h
    criterio (RLS en todo, `next build` sin errores) y pasar a la Fase 4 (pruebas con el dueño).
 2. **Mejoras (F4·4 en adelante), módulo por módulo.** Primero **Bot y horario** (decisión 0026,
    [FLUJO-DEL-BOT.md](FLUJO-DEL-BOT.md)): ✅ F4·4 vista previa real y límites (migración 0010) → ✅ F4·5 flujo en la base (migración 0011) → ✅ F4·6 lienzo (migraciones 0012 y 0013) →
-   F4·7 borrador, publicar e historial → F4·8 simulador. **Por confirmar con el dueño:** que los pasos que no son
-   mensajes (inventario, ficha, catálogo, asesor) queden como cuadros del sistema fijos.
+   ✅ F4·7 borrador, publicar e historial (migración 0014) → F4·8 simulador. Los pasos que no son mensajes (inventario, ficha, catálogo, asesor) son cuadros del sistema fijos (supuesto de la
+   0026; el dueño siguió con él).
 3. **Pendiente del dueño en F3·9:** subir las fotos de los equipos (hoy los 17 están sin foto), los catálogos PDF y el
    enlace de Drive con todos, desde Inventario → Catálogos.
 3. **Pendiente del dueño en F3·6:** aprobar los textos de las 3 plantillas del CRM y enviarlas a

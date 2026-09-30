@@ -100,3 +100,19 @@ export async function moverCuadro(clave: string, x: number, y: number) {
 export async function borrarCuadro(clave: string) {
   return rpc('borrador_borrar_cuadro', { p_clave: clave }, 'Cuadro borrado del borrador.')
 }
+
+// --------------------------------------------------------------------------- //
+// Publicar e historial (F4·7, migración 0014)
+// --------------------------------------------------------------------------- //
+export async function publicar(nota: string, pisar: boolean): Promise<Resultado & { choque?: boolean; version?: number }> {
+  const { data, error } = await crearCliente().rpc('publicar_borrador', { p_nota: nota, p_pisar: pisar })
+  if (error?.message.startsWith('CHOQUE')) return { error: error.message.replace(/^CHOQUE:\s*/, ''), choque: true }
+  if (error) return listo(error, null)
+  revalidatePath('/bot')
+  return { ok: `Versión ${data} publicada: el bot la usa en menos de 30 segundos.`, version: data as number }
+}
+
+export async function volverAVersion(version: number, reemplazar: boolean) {
+  return rpc('borrador_desde_version', { p_version: version, p_reemplazar: reemplazar },
+    `Borrador abierto a partir de la versión ${version}: revísalo y publícalo para que el bot vuelva a ella.`)
+}

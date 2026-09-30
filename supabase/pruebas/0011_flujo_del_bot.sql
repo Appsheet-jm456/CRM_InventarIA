@@ -21,8 +21,9 @@ select case when not exists (
          select 1 from bot_cuadros k join bot_flujos f on f.id = k.flujo_id, jsonb_each_text(k.salidas) s
          where f.estado = 'publicada' and not exists (select 1 from bot_cuadros d where d.flujo_id = k.flujo_id and d.clave = s.value))
             then 'ok' else 'not ok' end || ' 2 - toda opción y salida lleva a un cuadro que existe';
-select case when (select count(*) from bot_cuadros where tipo = 'asesor') = 1 and (select count(*) from bot_cuadros where tipo = 'ficha') = 1
-             and (select count(*) from bot_cuadros where tipo = 'equipos') = 1
+create temporary view pub as select k.* from bot_cuadros k join bot_flujos f on f.id = k.flujo_id where f.estado = 'publicada';
+select case when (select count(*) from pub where tipo = 'asesor') = 1 and (select count(*) from pub where tipo = 'ficha') = 1
+             and (select count(*) from pub where tipo = 'equipos') = 1
             then 'ok' else 'not ok' end || ' 3 - los cuadros del sistema están una vez';
 
 insert into auth.users (id, email) values ('00000000-0000-4000-8000-0000000011a1', 'prueba-0011-asesor@inventaria.local');
@@ -44,7 +45,7 @@ reset role;
 select case when opciones->0->>'titulo' = 'Ver productos' and opciones->0->>'destino' = 'B001A'
              and opciones->0->'palabras' ? 'productos' and opciones->1->'efectos'->>'etiqueta' = 'Interes-Distribuidor'
             then 'ok' else 'not ok' end || ' 5 - cambiar un título conserva destino, palabras y efectos'
-from bot_cuadros where clave = 'B00';
+from pub where clave = 'B00';
 
 set local role authenticated;
 select set_config('request.jwt.claims', json_build_object('sub', :'admin', 'role', 'authenticated')::text, true);
@@ -57,7 +58,7 @@ select restaurar_cuadro('B00');
 reset role;
 select case when opciones->0->>'titulo' = 'Productos' and opciones->0->>'destino' = 'B001A'
             then 'ok' else 'not ok' end || ' 8 - restaurar vuelve al título original con su destino'
-from bot_cuadros where clave = 'B00';
+from pub where clave = 'B00';
 
 -- No puede haber dos publicadas ni dos inicios
 select case when pg_temp.falla($q$insert into bot_flujos (version, estado) values (99, 'publicada')$q$)

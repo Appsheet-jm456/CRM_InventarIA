@@ -9,7 +9,8 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useState, useTransition } from 'react'
 import { medir, revisarMarcas, type Formato, type Opcion } from '@/lib/bot'
 import {
-  borrarCuadro, conectar, crearBorrador, crearMensaje, descartarBorrador, guardarCuadro, moverCuadro, type Resultado,
+  borrarCuadro, conectar, crearBorrador, crearMensaje, descartarBorrador, guardarCuadro, moverCuadro, publicar, volverAVersion,
+  type Resultado,
 } from './acciones'
 import type { Contexto } from './Mensajes'
 import { VistaWhatsApp } from './VistaWhatsApp'
@@ -253,14 +254,88 @@ function Panel({ cuadro, cuadros, editable, contexto, alTerminar }: {
 }
 
 // --------------------------------------------------------------------------- //
+// Publicar (F4·7): qué cambia, choques con la versión publicada y nota
+// --------------------------------------------------------------------------- //
+function PanelPublicar({ borrador, publicada, choques, problemas, alTerminar, alCancelar }: {
+  borrador: Version
+  publicada: Version
+  choques: { clave: string; nombre: string }[]
+  problemas: number
+  alTerminar: (r: Resultado) => void
+  alCancelar: () => void
+}) {
+  const [nota, setNota] = useState('')
+  const [pisar, setPisar] = useState(false)
+  const [choque, setChoque] = useState<string | null>(null)
+  const [ocupado, iniciar] = useTransition()
+  const antes = new Map(publicada.cuadros.map((c) => [c.clave, c]))
+  const ahora = new Set(borrador.cuadros.map((c) => c.clave))
+  const nuevos = borrador.cuadros.filter((c) => !antes.has(c.clave))
+  const borrados = publicada.cuadros.filter((c) => !ahora.has(c.clave))
+  const cambiados = borrador.cuadros.filter((c) => {
+    const a = antes.get(c.clave)
+    return a && (a.texto !== c.texto || a.nombre !== c.nombre || JSON.stringify(a.opciones) !== JSON.stringify(c.opciones))
+  })
+  const hayChoque = choques.length > 0 || !!choque
+  const sinCambios = !nuevos.length && !borrados.length && !cambiados.length
+
+  return (
+    <div className="lienzo-panel">
+      <b>Publicar la versión {borrador.version}</b>
+      <small className="muted">El bot la usa en menos de 30 segundos. La versión {publicada.version} queda en el historial y puedes volver a ella.
+        Un cliente que esté en un cuadro que ya no existe vuelve al saludo.</small>
+      {problemas > 0 && <div className="aviso bad">Hay {problemas} cosa(s) por resolver: están marcadas con ⚠ en el lienzo.</div>}
+      <div className="publicar-resumen">
+        {sinCambios && <span className="muted">El borrador es igual a la versión publicada.</span>}
+        {nuevos.length > 0 && <div><span className="chip acc">{nuevos.length} nuevo(s)</span> {nuevos.map((c) => c.nombre).join(', ')}</div>}
+        {cambiados.length > 0 && <div><span className="chip warn">{cambiados.length} cambiado(s)</span> {cambiados.map((c) => c.nombre).join(', ')}</div>}
+        {borrados.length > 0 && <div><span className="chip bad">{borrados.length} borrado(s)</span> {borrados.map((c) => c.nombre).join(', ')}</div>}
+      </div>
+      {hayChoque && (
+        <div className="aviso warn">
+          {choque ?? <>Desde que abriste el borrador cambiaron en la versión publicada: <b>{choques.map((c) => c.nombre).join(', ')}</b>.
+            Publicar los reemplaza por lo que tiene el borrador.</>}
+          <label className="inline" style={{ marginTop: 8 }}>
+            <input type="checkbox" checked={pisar} onChange={(e) => setPisar(e.target.checked)} /> Entiendo, publicar igual
+          </label>
+        </div>
+      )}
+      <label className="field">Nota (qué cambia, para el historial)
+        <textarea rows={2} value={nota} maxLength={300} onChange={(e) => setNota(e.target.value)} placeholder="Agrega la pregunta de ciudad de envío" />
+      </label>
+      <div className="row">
+        <button className="btn primary" disabled={ocupado || problemas > 0 || sinCambios || (hayChoque && !pisar)}
+          onClick={() => iniciar(async () => {
+            const r = await publicar(nota, pisar)
+            if (r.choque) { setChoque(r.error ?? ''); setPisar(false); return }
+            alTerminar(r)
+          })}>{ocupado ? 'Publicando…' : `Publicar versión ${borrador.version}`}</button>
+        <button className="btn" disabled={ocupado} onClick={alCancelar}>Cancelar</button>
+      </div>
+    </div>
+  )
+}
+
+// --------------------------------------------------------------------------- //
 // El lienzo
 // --------------------------------------------------------------------------- //
-function LienzoInterno({ publicada, borrador, contexto }: { publicada: Version; borrador: Version | null; contexto: Contexto }) {
+type Props = {
+  publicada: Version
+  borrador: Version | null
+  archivada?: Version
+  contexto: Contexto
+  choques?: { clave: string; nombre: string }[]
+  hayBorrador?: boolean
+}
+
+function LienzoInterno({ publicada, borrador, archivada, contexto, choques = [], hayBorrador = false }: Props) {
   const router = useRouter()
   const flujo = useReactFlow()
   const editable = !!borrador
-  const cuadros = useMemo(() => (borrador ?? publicada).cuadros, [borrador, publicada])
+  const cuadros = useMemo(() => (archivada ?? borrador ?? publicada).cuadros, [archivada, borrador, publicada])
   const [elegido, setElegido] = useState<string | null>(null)
+  const [publicando, setPublicando] = useState(false)
+  const enElBot = archivada?.version === publicada.version
   const [aviso, setAviso] = useState<Resultado>({})
   const [ocupado, iniciar] = useTransition()
 
@@ -297,7 +372,7 @@ function LienzoInterno({ publicada, borrador, contexto }: { publicada: Version; 
   }, [cuadros, problemas])
 
   // Al abrir o descartar un borrador cambia lo que se ve: se vuelve a encuadrar todo.
-  const vista = borrador ? `b${borrador.version}` : `p${publicada.version}`
+  const vista = archivada ? `a${archivada.version}` : borrador ? `b${borrador.version}` : `p${publicada.version}`
   useEffect(() => {
     const t = setTimeout(() => flujo.fitView({ padding: 0.12, duration: 300 }), 60)
     return () => clearTimeout(t)
@@ -324,10 +399,10 @@ function LienzoInterno({ publicada, borrador, contexto }: { publicada: Version; 
     <section className="panel lienzo">
       <div className="panel-h">
         <div>
-          <h2>{editable ? `Borrador · versión ${borrador!.version}` : `Versión publicada ${publicada.version ?? ''}`}</h2>
+          <h2>{archivada ? `Versión ${archivada.version} (${enElBot ? 'la que usa el bot' : 'anterior'})` : editable ? `Borrador · versión ${borrador!.version}` : `Versión publicada ${publicada.version ?? ''}`}</h2>
           <small>
-            {editable
-              ? 'Lo que cambies aquí no llega al bot hasta publicar (F4·7). Arrastra desde el punto de una opción hasta un cuadro para unirlos.'
+            {archivada ? (enElBot ? 'Solo para ver: los cambios se hacen en el borrador.' : 'Así estaba el flujo en esa versión. Para volver a ella se abre como borrador y se publica.') : editable
+              ? 'Lo que cambies aquí no llega al bot hasta que lo publiques. Arrastra desde el punto de una opción hasta un cuadro para unirlos.'
               : 'Así está el flujo que usa el bot. Abre un borrador para cambiarlo sin afectar a los clientes.'}
           </small>
         </div>
@@ -344,13 +419,27 @@ function LienzoInterno({ publicada, borrador, contexto }: { publicada: Version; 
                 const centro = flujo.screenToFlowPosition({ x: (r?.left ?? 0) + (r?.width ?? 600) / 2, y: (r?.top ?? 0) + (r?.height ?? 400) / 2 })
                 hacer(() => crearMensaje(centro.x - 110, centro.y - 60), (clave) => setElegido(String(clave)))
               }}>+ Mensaje</button>
-              <button className="btn chico" disabled title="Llega en F4·7: valida el borrador y lo pone en el bot">Publicar (F4·7)</button>
+              <button className="btn primary chico" disabled={ocupado} onClick={() => { setElegido(null); setPublicando(true) }}>Publicar…</button>
               <button className="btn chico peligro" disabled={ocupado}
                 onClick={() => confirm('¿Descartar el borrador? Se pierden todos sus cambios; el bot sigue igual.')
                   && hacer(descartarBorrador, () => setElegido(null))}>Descartar borrador</button>
             </>
+          ) : archivada && enElBot ? (
+            <a className="btn primary chico" href="/bot?t=flujo">{hayBorrador ? 'Ir al borrador' : 'Editar el flujo'}</a>
+          ) : archivada ? (
+            <>
+              <a className="btn chico" href={`/bot?t=flujo&v=${publicada.version}`}>Ver la que usa el bot</a>
+              <button className="btn primary chico" disabled={ocupado} onClick={() => {
+                if (!confirm(hayBorrador
+                  ? `Ya hay un borrador abierto. ¿Reemplazarlo por una copia de la versión ${archivada.version}?`
+                  : `¿Abrir un borrador con la versión ${archivada.version}? El bot no cambia hasta que lo publiques.`)) return
+                hacer(() => volverAVersion(archivada.version!, hayBorrador), () => router.push('/bot?t=flujo'))
+              }}>Volver a esta versión</button>
+            </>
           ) : (
-            <button className="btn primary chico" disabled={ocupado} onClick={() => hacer(crearBorrador)}>Editar el flujo</button>
+            <button className="btn primary chico" disabled={ocupado} onClick={() => hacer(crearBorrador)}>
+              {hayBorrador ? 'Seguir con el borrador' : 'Editar el flujo'}
+            </button>
           )}
         </div>
       </div>
@@ -364,7 +453,7 @@ function LienzoInterno({ publicada, borrador, contexto }: { publicada: Version; 
           <ReactFlow
             nodes={nodos} edges={flechas} nodeTypes={TIPOS_NODO}
             onNodesChange={alCambiarNodos} onEdgesChange={alCambiarFlechas}
-            onNodeClick={(_, n) => setElegido(n.id)} onPaneClick={() => setElegido(null)}
+            onNodeClick={(_, n) => { setPublicando(false); setElegido(n.id) }} onPaneClick={() => setElegido(null)}
             onNodeDragStop={(_, n) => editable && hacer(() => moverCuadro(n.id, n.position.x, n.position.y))}
             isValidConnection={validarUnion}
             onConnect={(u) => u.sourceHandle && hacer(() => conectar(u.source, u.sourceHandle!, u.target))}
@@ -382,7 +471,11 @@ function LienzoInterno({ publicada, borrador, contexto }: { publicada: Version; 
           </ReactFlow>
         </div>
         <aside className="lienzo-lado">
-          {elegidoCuadro ? (
+          {publicando && borrador ? (
+            <PanelPublicar borrador={borrador} publicada={publicada} choques={choques} problemas={totalProblemas}
+              alCancelar={() => setPublicando(false)}
+              alTerminar={(r) => { setAviso(r); if (!r.error) { setPublicando(false); router.refresh() } }} />
+          ) : elegidoCuadro ? (
             <Panel key={elegidoCuadro.clave + elegidoCuadro.actualizado_en} cuadro={elegidoCuadro} cuadros={cuadros} editable={editable}
               contexto={contexto} alTerminar={(r, borrado) => {
                 setAviso(r)
@@ -414,7 +507,7 @@ function LienzoInterno({ publicada, borrador, contexto }: { publicada: Version; 
   )
 }
 
-export function Lienzo(props: { publicada: Version; borrador: Version | null; contexto: Contexto }) {
+export function Lienzo(props: Props) {
   return (
     <ReactFlowProvider>
       <LienzoInterno {...props} />

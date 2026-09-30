@@ -421,6 +421,7 @@ small.warn { color: var(--warn) } small.bad { color: var(--bad) }
 .react-flow__edge.flecha-sistema .react-flow__edge-path { stroke: var(--muted); stroke-dasharray: 5 4 }
 .react-flow__edge.selected .react-flow__edge-path { stroke: var(--bad) }
 @media (max-width: 1000px) { .lienzo-cuerpo { grid-template-columns: 1fr } .lienzo-lado { border-left: 0; border-top: 1px solid var(--line); max-height: none; min-height: 0 } .lienzo-area { height: 70vh; min-height: 420px } }
+.publicar-resumen { display: grid; gap: 6px; font-size: 13px }
 .grid-metricas { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 16px; align-items: start }
 .grid-metricas .panel { margin: 0 }
 @media (max-width: 560px) { .grid-metricas { grid-template-columns: 1fr } .barras .barra { grid-template-columns: 90px 1fr 80px } }

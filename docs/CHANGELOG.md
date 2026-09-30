@@ -1,5 +1,10 @@
 # Changelog del brief
 
+## v1.0 · 30 sep 2026 (F4·7)
+
+- Publicar el borrador del flujo con resumen de cambios, validación en la base y aviso si pisa textos cambiados en la
+  versión publicada; historial de versiones con ver y volver a una anterior (migración 0014).
+
 ## v1.0 · 30 sep 2026 (F4·6)
 
 - Lienzo del flujo del bot en `/bot` (React Flow): borrador aparte de la versión publicada, mensajes nuevos, flechas

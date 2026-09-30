@@ -12,7 +12,7 @@
 | ✅ **F4·4** Vista previa real y límites (30 sep, migración 0010) | En el editor actual: burbuja como WhatsApp (*negrita*, _cursiva_, botones o lista tal como llegan), contador del mensaje (1.024 con botones, 4.096 en lista o texto: hoy el bot corta sin avisar) y aviso si una marca como `{horario}` se borró o está mal escrita. Se reutiliza en el lienzo |
 | ✅ **F4·5** Flujo en la base (30 sep, migración 0011) | Modelo de versiones, motor de `flujo.py` que recorre la versión publicada y versión 1 igual al árbol actual |
 | ✅ **F4·6** Lienzo (30 sep, migraciones 0012 y 0013) | Cuadros y flechas en `/bot`: crear, editar, unir y borrar mensajes; cuadros del sistema fijos; marca de editado |
-| **F4·7** Borrador, publicar e historial | Validación al publicar, lista de versiones con quién y cuándo, volver a una anterior |
+| ✅ **F4·7** Borrador, publicar e historial (30 sep, migración 0014) | Validación al publicar, lista de versiones con quién y cuándo, volver a una anterior |
 | **F4·8** Simulador | Probar el borrador como cliente, sin WhatsApp |
 
 ## Reglas
@@ -93,6 +93,18 @@ combinaciones de 4 pasos de 16 entradas, más 20.000 al azar de hasta 12), mismo
 | `borrador_guardar_cuadro(clave, nombre, texto, opciones)` | Guarda desde el panel; conserva palabras, reconocedor y efectos de cada opción por su número |
 | `borrador_conectar(clave, opción, destino)` · `borrador_mover(clave, x, y)` · `borrador_borrar_cuadro(clave)` | Flechas, posición y borrar |
 
-**Pendiente para F4·7:** mientras hay un borrador abierto, la pestaña *Mensajes del bot* sigue editando la versión
-publicada; al publicar hay que avisar si la publicada cambió después de abrir el borrador, para no pisar esos textos.
+## Publicar e historial (F4·7, migración 0014)
 
+- **Publicar…** abre en el panel el resumen frente a la versión publicada (cuadros nuevos, cambiados y borrados) y
+  una nota para el historial. Se deshabilita mientras haya algo por resolver o si el borrador es igual.
+- `problemas_del_flujo()` revisa en la base lo mismo que marca el lienzo (RF-05): un solo inicio, toda opción de un
+  mensaje con destino válido, todo mensaje alcanzable desde el inicio y textos dentro del límite.
+  `publicar_borrador(nota, pisar)` no publica si hay alguno.
+- **Choque:** si alguien cambió un texto en *Mensajes del bot* después de abrir el borrador
+  (`cambios_publicados_despues()`), publicar avisa cuáles y pide "Entiendo, publicar igual". La pestaña *Mensajes*
+  avisa mientras haya un borrador abierto.
+- Publicar archiva la versión anterior y deja quién, cuándo y la nota. Una versión archivada no se cambia (trigger).
+- **Historial de versiones** (`/bot?t=historial`): versión, estado, nota, quién y cuándo, cuántos cuadros. *Ver* la
+  abre en el lienzo en solo lectura; *Volver a esta* (`borrador_desde_version`) la copia como borrador para revisarla
+  y publicarla (si ya hay un borrador, pide reemplazarlo).
+- El bot toma la versión nueva en menos de 30 s. Un cliente parado en un cuadro que ya no existe vuelve al saludo.
