@@ -1,6 +1,6 @@
 # Fase 2 · Diseño
 
-**Estado:** ⚪ Pendiente
+**Estado:** 🔵 En curso
 
 > Define **cómo** se construye: arquitectura, modelo de datos y seguridad.
 
@@ -8,11 +8,11 @@
 
 - [ ] Reglas del negocio escritas: `REGLAS_DEL_NEGOCIO.md`
 - [ ] Modelo de datos: `MODELO_DE_DATOS.md`
-- [ ] Arquitectura del frontend: `Shell` con panel lateral plegable, `modulos.ts` y rutas por módulo (decisión 0009)
+- [x] Arquitectura del frontend: `Shell` con panel lateral plegable, `modulos.ts` y rutas por módulo (decisión 0009) → [ARQUITECTURA-FRONTEND.md](../ARQUITECTURA-FRONTEND.md), decisión 0017
 - [ ] Interfaz de canal con el adaptador de la **Cloud API de Meta**, firma del webhook y túnel HTTPS (decisión 0010)
 - [ ] Bot de un mensaje por respuesta con botones y listas interactivas, y contador de consumo (decisión 0011)
 - [ ] Máquina de estados del bot sobre `bot_nodos`, con horario de atención y paso a asesor
-- [ ] Usuarios, roles y permisos (RLS) definidos
+- [x] Usuarios, roles y permisos (RLS) definidos → [USUARIOS-Y-PERMISOS.md](../USUARIOS-Y-PERMISOS.md), decisión 0018
 - [ ] Seguimientos y SLA: cómo se programan y quién los dispara
 - [ ] Maqueta de la bandeja, el kanban, el editor del bot y las métricas
 - [ ] Esquema reproducible desde cero: migraciones numeradas y probadas contra una instancia vacía
@@ -58,5 +58,5 @@ Meta Cloud API ─webhook─►  /api/canal/meta       ──►  normalizar  �
 | `respuestas_rapidas` | Atajos de texto del equipo |
 | `bot_nodos` | Árbol del menú: texto, opciones y acción (ir a nodo, enviar catálogo, ficha, cotizar o asesor) |
 | `horario_atencion` | Días y horas, con el mensaje fuera de horario |
-| `usuarios`, `roles` | Con Supabase Auth |
+| `usuarios`, `roles`, `rol_permisos`, `permisos` | Con Supabase Auth ([USUARIOS-Y-PERMISOS.md](../USUARIOS-Y-PERMISOS.md)) |
 | `productos` | Inventario migrado de Baserow: código, specs, precio, stock, fotos y video |

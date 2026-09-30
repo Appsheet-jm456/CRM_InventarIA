@@ -1,14 +1,16 @@
 # Pendientes y dónde retomar
 
-**Última sesión:** 30 sep 2026 · **Fase actual:** 1 de 5 (Planeación), con F2·8 hecha y F2·2/F3·2 en curso · **Código nuevo escrito:** ninguno
-(todo el trabajo fue documentación, decisiones y una simulación). La v0 sigue viva en el puerto 3000
-sin tocar.
+**Última sesión:** 30 sep 2026 · **Fase actual:** Fase 3 (Implementación) empezando por **F3·1**, con pendientes
+de las Fases 1 y 2 abajo. **Código nuevo:** el bot de prueba sobre Supabase (`herramientas/`) y las migraciones
+0001–0002. La app nueva **CRM InventarIA** nace en `crm/` (decisión 0017). La v0 sigue viva en el 3000 sin tocar.
 
 ## Dónde retomar (en este orden)
 
-1. **Registrar la llave de despliegue en GitHub** (la hace el dueño) y subir los commits. Tarea F1·4.
-2. **Cerrar la Fase 1**: faltan F1·5 a F1·9 (abajo).
-3. **Abrir la Fase 2** (Diseño): empezar por F2·8 (levantar Supabase) y F2·2 (modelo de datos).
+1. **F3·1 Esqueleto: login, panel, usuarios y roles** — diseño listo en
+   [USUARIOS-Y-PERMISOS.md](USUARIOS-Y-PERMISOS.md) (F2·5) y [ARQUITECTURA-FRONTEND.md](ARQUITECTURA-FRONTEND.md)
+   (F2·9). Pasos: migración 0003 → app en `crm/` (puerto 3020) → Usuarios y Roles → `next build` → servicio.
+2. Luego F3·2 a F3·9 en orden. En **F3·5** la app pasa al puerto **8096** y el visor de Python se apaga.
+3. En paralelo, lo que depende del dueño: F1·4 (deploy key), F1·6, F1·7, F1·8, clave de Gemini, PDF y enlace de Drive, hoja Excel.
 
 ## Estado de las tareas de la Fase 1
 
@@ -91,7 +93,7 @@ de Baserow, y refleja cada cliente en el **kanban de la v0 (puerto 3000)**. Es u
 
 ## Estado del repositorio
 
-- Rama `main`, **11 commits sin subir** (5 de la v0, 6 de esta sesión). Remoto `inventaria` →
+- Rama `main`, **21 commits sin subir** a `inventaria` (más el del bloque F2·5/F2·9). Remoto `inventaria` →
   `git@github-inventaria:Appsheet-jm456/inventaria.git` (el dueño eligió este). El remoto `origin`
   (`chat_bot-inventario`) no se tocó y sigue con el último fetch del 24 jun.
 - Autor de los commits: `Appsheet-jm456`. **Push solo con autorización.**
@@ -119,6 +121,8 @@ presupuesto en 4 rangos según el inventario (<$1 M, $1–1,5 M, $1,5–2 M, >$2
 | [00-BRIEF.md](00-BRIEF.md) | Alcance, problema, riesgos y stack del CRM nuevo (v1.0) |
 | [ARBOL-DE-RESPUESTA.md](ARBOL-DE-RESPUESTA.md) | El árbol del Salesbot adaptado, campos, etapas y puntos P-01 a P-11 |
 | [SIMULACION-CHAT.md](SIMULACION-CHAT.md) · [simulacion/](simulacion/simulacion-chat.html) | Prototipo del chat guiado y del tipo agente; aprobado, se va a perfeccionar (F2·12) |
+| [USUARIOS-Y-PERMISOS.md](USUARIOS-Y-PERMISOS.md) | Roles, permisos y RLS de la app nueva (F2·5, decisión 0018) |
+| [ARQUITECTURA-FRONTEND.md](ARQUITECTURA-FRONTEND.md) | Carpeta `crm/`, puertos, `Shell` y lista de módulos (F2·9, decisión 0017) |
 | [PLAN-META-API.md](PLAN-META-API.md) | Trámites en Meta paso a paso (sección de costos ya corregida) |
 | [BRIEF.md](BRIEF.md) | La v0 (referencia de lo que se reutiliza) |
 | [sdlc/](sdlc/) | Las 5 fases con su criterio de cierre |

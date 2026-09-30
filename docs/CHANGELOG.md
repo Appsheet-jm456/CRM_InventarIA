@@ -1,5 +1,12 @@
 # Changelog del brief
 
+## v1.0 · 30 sep 2026 (F2·5 y F2·9)
+
+- Usuarios propios y permisos por rol configurables: administrador y asesor, RLS por permiso (0018,
+  `docs/USUARIOS-Y-PERMISOS.md`).
+- La app nueva CRM InventarIA vive en `crm/`, corre en el 3020 mientras se construye y pasa al 8096 en
+  F3·5 (0017, `docs/ARQUITECTURA-FRONTEND.md`).
+
 ## v1.0 · 29 sep 2026 (simulación del chat)
 
 - Prototipo `docs/simulacion/simulacion-chat.html`: chat guiado y chat tipo agente sobre el
