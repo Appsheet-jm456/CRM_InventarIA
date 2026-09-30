@@ -19,7 +19,7 @@ export const MODULOS: readonly Modulo[] = [
 
   { clave: 'bandeja', titulo: 'Bandeja', subtitulo: 'Conversaciones de WhatsApp', grupo: 'Atención', ruta: '/bandeja', icono: 'bandeja', permisos: ['atender_bandeja'] },
   { clave: 'embudo', titulo: 'Embudo', subtitulo: 'Oportunidades por etapa', grupo: 'Atención', ruta: '/embudo', icono: 'embudo', permisos: ['gestionar_oportunidades'] },
-  { clave: 'seguimientos', titulo: 'Seguimientos', subtitulo: 'Seguimientos y SLA', grupo: 'Atención', ruta: '/seguimientos', icono: 'seguimientos', permisos: ['gestionar_oportunidades'], paso: 'F3·6' },
+  { clave: 'seguimientos', titulo: 'Seguimientos', subtitulo: 'Seguimientos y SLA', grupo: 'Atención', ruta: '/seguimientos', icono: 'seguimientos', permisos: ['gestionar_oportunidades'] },
 
   { clave: 'inventario', titulo: 'Inventario', subtitulo: 'Portátiles, fichas y catálogos', grupo: 'Ventas', ruta: '/inventario', icono: 'inventario', permisos: [], paso: 'F3·9' },
   { clave: 'chat', titulo: 'Chat InventarIA', subtitulo: 'Pregúntale al inventario', grupo: 'Ventas', ruta: '/chat', icono: 'chat', permisos: [], paso: 'F3·9' },
@@ -29,7 +29,7 @@ export const MODULOS: readonly Modulo[] = [
   { clave: 'bot', titulo: 'Bot y horario', subtitulo: 'Árbol del bot y horario de atención', grupo: 'Configuración', ruta: '/bot', icono: 'bot', permisos: ['administrar_bot'], paso: 'F3·7' },
   { clave: 'etapas', titulo: 'Etapas', subtitulo: 'Etapas del embudo y motivos de pérdida', grupo: 'Configuración', ruta: '/etapas', icono: 'etapas', permisos: ['administrar_embudo'] },
   { clave: 'respuestas-rapidas', titulo: 'Respuestas rápidas', subtitulo: 'Atajos de texto del equipo', grupo: 'Configuración', ruta: '/respuestas-rapidas', icono: 'respuestas', permisos: ['administrar_bot'], paso: 'F3·7' },
-  { clave: 'canal', titulo: 'Canal WhatsApp', subtitulo: 'Conexión con Meta y consumo', grupo: 'Configuración', ruta: '/canal', icono: 'canal', permisos: ['administrar_canal'], paso: 'F3·3' },
+  { clave: 'canal', titulo: 'Canal WhatsApp', subtitulo: 'Plantillas de Meta', grupo: 'Configuración', ruta: '/canal', icono: 'canal', permisos: ['administrar_canal'] },
   { clave: 'usuarios', titulo: 'Usuarios', subtitulo: 'Usuarios', grupo: 'Configuración', ruta: '/usuarios', icono: 'usuarios', permisos: ['administrar_usuarios'] },
   { clave: 'roles', titulo: 'Roles y permisos', subtitulo: 'Roles y permisos', grupo: 'Configuración', ruta: '/roles', icono: 'roles', permisos: ['administrar_usuarios'] },
 ]

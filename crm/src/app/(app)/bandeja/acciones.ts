@@ -1,6 +1,6 @@
 'use server'
 
-import { enviarTexto } from '@/lib/meta'
+import { enviarPlantilla, enviarTexto, listarPlantillas, llenarPlantilla, type Plantilla } from '@/lib/meta'
 import { crearCliente } from '@/lib/supabase/server'
 
 export type Resultado = { error?: string; ok?: string }
@@ -62,6 +62,31 @@ export async function responder(lead: number, texto: string): Promise<Resultado>
   const envio = await enviarTexto(fila.telefono, limpio)
   if (envio.error) return { error: envio.error }
   const { error } = await supabase.rpc('registrar_mensaje_asesor', { p_lead: lead, p_texto: limpio, p_wamid: envio.wamid ?? '' })
+  if (error) return { error: `Se envió, pero no se pudo registrar: ${error.message}` }
+  return {}
+}
+
+// RS-06: fuera de la ventana solo plantillas aprobadas, con sus variables llenas.
+export async function plantillasParaEnviar(): Promise<{ plantillas: Plantilla[]; error?: string }> {
+  const { plantillas, error } = await listarPlantillas()
+  return { plantillas: plantillas.filter((p) => p.usable), error }
+}
+
+export async function responderConPlantilla(lead: number, nombre: string, idioma: string, valores: string[]): Promise<Resultado> {
+  const supabase = crearCliente()
+  const { data: fila } = await supabase.from('leads').select('telefono').eq('id', lead).maybeSingle()
+  if (!fila) return { error: 'Esta conversación la atiende otro asesor.' }
+
+  const { plantillas } = await listarPlantillas()
+  const plantilla = plantillas.find((p) => p.nombre === nombre && p.idioma === idioma && p.usable)
+  if (!plantilla) return { error: 'Esa plantilla no está aprobada en Meta.' }
+  const limpios = valores.slice(0, plantilla.variables).map((v) => v.trim())
+  if (limpios.length < plantilla.variables || limpios.some((v) => !v)) return { error: 'Llena todos los datos de la plantilla.' }
+
+  const envio = await enviarPlantilla(fila.telefono, nombre, idioma, limpios)
+  if (envio.error) return { error: envio.error }
+  const texto = `📋 ${llenarPlantilla(plantilla.cuerpo, limpios)}`
+  const { error } = await supabase.rpc('registrar_mensaje_asesor', { p_lead: lead, p_texto: texto, p_wamid: envio.wamid ?? '', p_tipo: 'template' })
   if (error) return { error: `Se envió, pero no se pudo registrar: ${error.message}` }
   return {}
 }

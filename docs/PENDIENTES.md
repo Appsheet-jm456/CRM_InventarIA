@@ -6,9 +6,10 @@ de las Fases 1 y 2 abajo. **Código nuevo:** el bot de prueba sobre Supabase (`h
 
 ## Dónde retomar (en este orden)
 
-1. **F3·1 a F3·5 hechas** (30 sep 2026). El dueño ya tiene su usuario `admin`. Sigue **F3·6** (seguimientos,
-   alertas de SLA y plantillas de Meta para escribir fuera de la ventana de 24 h).
-2. Luego F3·7 a F3·9 en orden.
+1. **F3·1 a F3·6 hechas** (30 sep 2026). El dueño ya tiene su usuario `admin`. Sigue **F3·7** (editor del bot con
+   `bot_nodos`, horario de atención y respuesta fuera de horario).
+2. Luego F3·8 y F3·9. **Pendiente del dueño en F3·6:** aprobar los textos de las 3 plantillas del CRM y enviarlas a
+   Meta desde Configuración → Canal WhatsApp (hoy solo hay plantillas de ejemplo en inglés).
 3. En paralelo, lo que depende del dueño: F1·4 (deploy key), F1·6, F1·7, F1·8, clave de Gemini, PDF y enlace de Drive, hoja Excel.
 
 ## Estado de las tareas de la Fase 1
@@ -37,6 +38,10 @@ ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIONAxvcI3oR3igFtPME4BMX2UWaT1Ju6LFxZQosRf0GN
   devolver, asignar, cerrar, devolver al bot, responder por Meta (solo dentro de 24 h), media del cliente,
   embudo por arrastre y etapas editables. Tiempo real con Supabase Realtime (el navegador llega a la API por
   `<ip>:8020`). La cookie de sesión tiene nombre fijo (`sb-crm-inventaria-auth-token`).
+- **Seguimientos, SLA y plantillas (F3·6, decisión 0021, [SEGUIMIENTOS-Y-SLA.md](SEGUIMIENTOS-Y-SLA.md)):**
+  seguimientos que solo recuerdan al asesor; SLA en minutos hábiles (`horario_atencion` y `festivos` 2026–2027,
+  hay que sembrar los de 2028); avisos con sonido y notificación (botón 🔔 Avisos en la Bandeja) y contador junto a
+  Bandeja; fuera de 24 h se responde con plantilla aprobada. Las fechas que escribe el asesor son hora de Colombia.
 - Servicio `crm-inventaria-app` (usuario atlasjm, arranca solo): `systemctl --user status crm-inventaria-app`.
   Copia de la unidad en `crm/systemd/`. Tras cambiar código: `cd crm && npx next build && systemctl --user restart crm-inventaria-app`.
 - Secretos en `crm/.env.local` (fuera de git, plantilla en `crm/.env.example`).

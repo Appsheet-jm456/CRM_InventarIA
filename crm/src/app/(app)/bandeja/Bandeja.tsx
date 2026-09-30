@@ -3,6 +3,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { clienteNavegador, prepararTiempoReal } from '@/lib/supabase/navegador'
 import { asignar, cerrar, liberar, moverEtapa, reanudarBot, responder, tomar, type Resultado } from './acciones'
+import { ComponerPlantilla } from './Plantilla'
+import { SeguimientosCliente } from './SeguimientosCliente'
+import { activarAvisos, avisosActivos } from '@/components/avisos'
 
 type Lead = {
   id: number
@@ -15,6 +18,7 @@ type Lead = {
   fecha_ultimo_contacto: string | null
   en_cola_desde: string | null
   primera_respuesta_en: string | null
+  minutos_espera: number | null
   paso_menu: string
   categoria_interes: string
   uso_equipo: string
@@ -46,7 +50,7 @@ type Filtro = 'cola' | 'mias' | 'bot' | 'todas' | 'cerradas'
 const COLUMNAS =
   'id, telefono, nombre, etapa, estado_chat, asignado_a, ultimo_mensaje, fecha_ultimo_contacto, en_cola_desde, ' +
   'primera_respuesta_en, paso_menu, categoria_interes, uso_equipo, presupuesto, marca_interes, cotiz_producto, ' +
-  'valor_estimado, etiquetas, motivo_perdido, notas'
+  'valor_estimado, etiquetas, motivo_perdido, notas, minutos_espera'
 const VENTANA_MS = 24 * 60 * 60 * 1000
 const MOTIVOS = ['Precio', 'Sin respuesta', 'No calificado', 'Compró en otro lado', 'Solo preguntaba', 'Otro']
 const ESTADOS: Record<Lead['estado_chat'], { texto: string; clase: string }> = {
@@ -63,7 +67,6 @@ const hora = (t: string) => {
     ? { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/Bogota' }
     : { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/Bogota' })
 }
-const minutos = (desde: string) => Math.max(0, Math.floor((Date.now() - new Date(desde).getTime()) / 60000))
 const iniciales = (s: string) => (s || '?').split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]).join('').toUpperCase()
 const pesos = (n: number) => n.toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 })
 
@@ -103,6 +106,8 @@ export function Bandeja({ yo, usuarios, asesores, etapas, inicial }: {
   const [vivo, setVivo] = useState(false)
   const [perdido, setPerdido] = useState<string | null>(null)
   const [verFicha, setVerFicha] = useState(false)
+  const [avisos, setAvisos] = useState(true)
+  useEffect(() => setAvisos(avisosActivos()), [])
   const [, tic] = useState(0)
   const selRef = useRef<number | null>(inicial)
   const chat = useRef<HTMLDivElement>(null)
@@ -238,6 +243,11 @@ export function Bandeja({ yo, usuarios, asesores, etapas, inicial }: {
       <div className="col b-lista">
         <div className="col-h">
           <h2>Conversaciones</h2>
+          {!avisos && (
+            <button className="btn chico" onClick={async () => setAvisos(await activarAvisos())} title="Activar sonido y notificación al entrar a la cola y al pasar el SLA">
+              🔔 Avisos
+            </button>
+          )}
           <span className={`vivo${vivo ? '' : ' off'}`} title={vivo ? 'Se actualiza al instante' : 'Reconectando; se actualiza cada 30 s'}>
             {vivo ? 'En vivo' : 'Sin conexión'}
           </span>
@@ -256,7 +266,7 @@ export function Bandeja({ yo, usuarios, asesores, etapas, inicial }: {
           {!cargado && <p className="vacio">Cargando…</p>}
           {cargado && visibles.length === 0 && <p className="vacio">No hay conversaciones aquí.</p>}
           {visibles.map((l) => {
-            const espera = l.estado_chat === 'cola' && l.en_cola_desde ? minutos(l.en_cola_desde) : null
+            const espera = l.minutos_espera
             return (
               <button key={l.id} className={`conv${l.id === sel ? ' on' : ''}`} onClick={() => setSel(l.id)}>
                 <span className="avatar">{iniciales(l.nombre || l.telefono)}</span>
@@ -266,8 +276,8 @@ export function Bandeja({ yo, usuarios, asesores, etapas, inicial }: {
                 <span className="conv-pie">
                   <span className={`chip ${ESTADOS[l.estado_chat].clase}`}>{ESTADOS[l.estado_chat].texto}</span>
                   {espera !== null && (
-                    <span className={`chip ${espera >= 15 ? 'bad' : espera >= 10 ? 'warn' : 'neu'}`} title="Tiempo en cola (SLA 10 min)">
-                      {espera} min
+                    <span className={`chip ${espera >= 15 ? 'bad' : espera >= 10 ? 'warn' : 'neu'}`} title="Minutos hábiles sin respuesta de un asesor (SLA 10 min)">
+                      {espera} min sin respuesta
                     </span>
                   )}
                   {l.estado_chat === 'asignada' && l.asignado_a && l.asignado_a !== yo.id && (
@@ -315,10 +325,11 @@ export function Bandeja({ yo, usuarios, asesores, etapas, inicial }: {
             <div className="b-responder">
               {aviso.error && <div className="aviso bad" role="alert">{aviso.error}</div>}
               {aviso.ok && <div className="aviso ok">{aviso.ok}</div>}
-              {!enVentana ? (
-                <div className="aviso">
-                  {mensajes.length === 0 ? 'Cargando…' : 'Pasaron más de 24 horas desde el último mensaje del cliente: Meta solo deja escribirle con una plantilla (llega en F3·6).'}
-                </div>
+              {mensajes.length === 0 ? (
+                <small className="muted">Cargando…</small>
+              ) : !enVentana ? (
+                <ComponerPlantilla key={lead.id} lead={lead.id} nombreCliente={lead.nombre}
+                  alEnviar={() => { cargarMensajes(lead.id); cargarLista() }} />
               ) : (
                 <>
                   {lead.estado_chat !== 'asignada' && (
@@ -402,6 +413,7 @@ export function Bandeja({ yo, usuarios, asesores, etapas, inicial }: {
               </div>
             )}
             <Dato titulo="Notas" valor={lead.notas} />
+            <SeguimientosCliente key={lead.id} lead={lead.id} nombres={nombres} puedeAgendar={yo.moverEtapas} />
           </div>
         )}
       </div>

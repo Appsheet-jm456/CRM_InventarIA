@@ -4,12 +4,15 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { cerrarSesion } from '@/app/login/acciones'
+import { useAvisosBandeja } from '@/components/avisos'
 import { Icono } from '@/components/Iconos'
 import type { Modulo } from '@/lib/modulos'
 
 type Props = {
   modulos: Modulo[]
   usuario: { nombre: string; rol: string }
+  // Con atender_bandeja: número de clientes esperando respuesta y avisos (RS-05).
+  alertas?: boolean
   children: React.ReactNode
 }
 
@@ -21,7 +24,8 @@ const iniciales = (nombre: string) =>
     .map((p) => p[0])
     .join('')
 
-export function Shell({ modulos, usuario, children }: Props) {
+export function Shell({ modulos, usuario, alertas = false, children }: Props) {
+  const espera = useAvisosBandeja(alertas)
   const ruta = usePathname()
   const [plegado, setPlegado] = useState(false)
   const [cajon, setCajon] = useState(false)
@@ -76,6 +80,12 @@ export function Shell({ modulos, usuario, children }: Props) {
                 >
                   <Icono nombre={m.icono} />
                   <span>{m.titulo}</span>
+                  {m.clave === 'bandeja' && espera.pendientes > 0 && (
+                    <span className={`contador${espera.vencidas > 0 ? ' vencido' : ''}`}
+                      title={`${espera.pendientes} esperando respuesta${espera.vencidas ? `, ${espera.vencidas} fuera de SLA` : ''}`}>
+                      {espera.pendientes}
+                    </span>
+                  )}
                   {m.paso && (
                     <span className="paso" title={`Se construye en ${m.paso}`}>
                       {m.paso.split(' ')[0]}

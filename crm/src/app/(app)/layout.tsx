@@ -11,6 +11,7 @@ export default async function LayoutApp({ children }: { children: React.ReactNod
     <Shell
       modulos={MODULOS.filter((m) => puede(sesion, m.permisos))}
       usuario={{ nombre: sesion.nombre, rol: sesion.rol }}
+      alertas={puede(sesion, ['atender_bandeja'])}
     >
       {children}
     </Shell>

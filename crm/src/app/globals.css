@@ -437,3 +437,14 @@ a.pastilla { text-decoration: none; display: inline-block }
 .k-nombre:hover { color: var(--accent) }
 .k-pie { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-top: 6px }
 .k-pie select { border: 1px solid var(--line); background: var(--bg); border-radius: 6px; padding: 3px 6px; font-size: 12px; color: var(--ink); max-width: 140px }
+
+/* ---------- seguimientos, plantillas y avisos (F3·6) ---------- */
+.nav .contador { margin-left: auto; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px; background: var(--warn); color: #fff; font: 600 11px var(--f-mono); display: grid; place-items: center }
+.nav .contador.vencido { background: var(--bad) }
+.app.plegado .nav .contador { position: absolute; margin: -18px 0 0 18px; min-width: 16px; height: 16px; font-size: 10px; padding: 0 4px }
+.nav a { position: relative }
+.plantilla { display: flex; flex-direction: column; gap: 8px; max-height: 45vh; overflow-y: auto }
+.plantilla-vista { max-width: 100%; align-self: stretch }
+.seg { display: flex; flex-direction: column; gap: 6px; padding: 8px 0; border-bottom: 1px dashed var(--line); font-weight: 400 }
+.seg-nuevo { display: flex; flex-direction: column; gap: 6px; margin-top: 8px }
+.seg-nuevo input { border: 1px solid var(--line); background: var(--bg); border-radius: 6px; padding: 6px 8px; font-size: 13px; color: var(--ink); min-width: 0 }

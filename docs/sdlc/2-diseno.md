@@ -13,7 +13,7 @@
 - [ ] Bot de un mensaje por respuesta con botones y listas interactivas, y contador de consumo (decisión 0011)
 - [ ] Máquina de estados del bot sobre `bot_nodos`, con horario de atención y paso a asesor
 - [x] Usuarios, roles y permisos (RLS) definidos → [USUARIOS-Y-PERMISOS.md](../USUARIOS-Y-PERMISOS.md), decisión 0018
-- [ ] Seguimientos y SLA: cómo se programan y quién los dispara
+- [x] Seguimientos y SLA: cómo se programan y quién los dispara → [SEGUIMIENTOS-Y-SLA.md](../SEGUIMIENTOS-Y-SLA.md), decisión 0021
 - [ ] Maqueta de la bandeja, el kanban, el editor del bot y las métricas
 - [ ] Esquema reproducible desde cero: migraciones numeradas y probadas contra una instancia vacía
 

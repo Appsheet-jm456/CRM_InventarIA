@@ -11,9 +11,19 @@ const dinero = (n: number) =>
 export default async function Inicio() {
   const sesion = (await obtenerSesion())!
   const supabase = crearCliente()
-  const [{ data: productos }, { data: etapas }] = await Promise.all([
+  const atiende = puede(sesion, ['atender_bandeja'])
+  const sigue = puede(sesion, ['gestionar_oportunidades'])
+  const [{ data: productos }, { data: etapas }, { data: esperando }, { count: vencidos }] = await Promise.all([
     supabase.from('productos').select('precio, stock, marca'),
     supabase.from('etapas').select('nombre').order('orden'),
+    atiende
+      ? supabase.from('leads').select('id, minutos_espera').in('estado_chat', ['cola', 'asignada'])
+          .is('primera_respuesta_en', null).not('en_cola_desde', 'is', null)
+      : Promise.resolve({ data: [] as { id: number; minutos_espera: number | null }[] }),
+    sigue
+      ? supabase.from('seguimientos').select('id', { count: 'exact', head: true }).eq('asignado_a', sesion.id)
+          .eq('estado', 'pendiente').lt('vence_en', new Date().toISOString())
+      : Promise.resolve({ count: 0 }),
   ])
 
   const conStock = (productos ?? []).filter((p) => p.stock > 0)
@@ -22,7 +32,16 @@ export default async function Inicio() {
   const marcas = new Set(conStock.map((p) => p.marca).filter(Boolean))
   const pendientes = MODULOS.filter((m) => m.paso && puede(sesion, m.permisos))
 
+  const fueraSla = (esperando ?? []).filter((l) => (l.minutos_espera ?? 0) >= 10).length
   const tiles = [
+    ...(atiende
+      ? [{ titulo: 'Esperando respuesta', valor: String(esperando?.length ?? 0), alerta: fueraSla > 0,
+           detalle: fueraSla ? `${fueraSla} fuera del SLA de 10 min` : 'Todos dentro del SLA', href: '/bandeja' }]
+      : []),
+    ...(sigue
+      ? [{ titulo: 'Seguimientos vencidos', valor: String(vencidos ?? 0), alerta: (vencidos ?? 0) > 0,
+           detalle: 'Tuyos, sin cerrar', href: '/seguimientos' }]
+      : []),
     { titulo: 'Equipos con stock', valor: String(conStock.length), detalle: `${unidades} unidades`, href: '/inventario' },
     { titulo: 'Valor del inventario', valor: dinero(valor), detalle: 'Precio de venta × stock', href: '/inventario' },
     { titulo: 'Marcas', valor: String(marcas.size), detalle: [...marcas].join(', ') || 'Sin datos', href: '/inventario' },
@@ -44,7 +63,7 @@ export default async function Inicio() {
           {tiles.map((t) => (
             <Link key={t.titulo} href={t.href} className="kpi">
               <span className="k">{t.titulo}</span>
-              <span className="v">{t.valor}</span>
+              <span className="v" style={{ color: 'alerta' in t && t.alerta ? 'var(--bad)' : undefined }}>{t.valor}</span>
               <span className="s">{t.detalle}</span>
             </Link>
           ))}
