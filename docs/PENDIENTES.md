@@ -1,6 +1,6 @@
 # Pendientes y dónde retomar
 
-**Última sesión:** 29 sep 2026 · **Fase actual:** 1 de 5 (Planeación) · **Código nuevo escrito:** ninguno
+**Última sesión:** 30 sep 2026 · **Fase actual:** 1 de 5 (Planeación) · **Código nuevo escrito:** ninguno
 (todo el trabajo fue documentación, decisiones y una simulación). La v0 sigue viva en el puerto 3000
 sin tocar.
 
@@ -16,7 +16,7 @@ sin tocar.
 |---|---|---|
 | F1·1 Flujo de atención · F1·2 Etapas · F1·3 Metas y SLA | ✅ Hechas | — |
 | **F1·4** Subir commits a GitHub | 🔴 Bloqueada | El dueño debe pegar la llave pública de abajo en GitHub → `Appsheet-jm456/inventaria` → Settings → Deploy keys, con **write access**. Después: `git push inventaria main` |
-| **F1·5** Trámites en Meta | Pendiente | Negocio, app, número de prueba y token permanente (Fases 1–3 de [PLAN-META-API.md](PLAN-META-API.md)). **Empezar ya: Meta tarda días** |
+| **F1·5** Trámites en Meta | 🔵 En curso | ✅ App *Futur Green bot* (portafolio Futur Green) con número de prueba +1 555 190 4296 · ✅ token permanente en `.env.meta` (no vence) · ✅ envío desde el servidor. Falta: webhook para recibir (túnel HTTPS) y, para el número real, verificar el negocio |
 | **F1·6** Confirmar precios de Meta del 1 oct 2026 | Pendiente | Solo hay fuentes de terceros; la documentación oficial no lo muestra. Confirmar en WhatsApp Manager y Billing Hub, y agregar medio de pago |
 | **F1·7** Ramas del árbol sin definir | Pendiente | Las define el dueño: Torres Tiny, SFF, Partes, Distribuidores, Servicio al cliente. Mientras tanto van a asesor |
 | **F1·8** Qué equipo es Hogar, Ejecutivo o Diseño | Pendiente | El inventario no tiene ese dato: deducirlo (procesador, RAM) o agregar un campo |
