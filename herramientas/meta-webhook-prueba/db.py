@@ -151,6 +151,20 @@ def guardar_media_id(catalogo_id, media_id):
           "return=minimal")
 
 
+def descargar(bucket, ruta):
+    """Baja un archivo de un bucket privado con la clave de servicio."""
+    url = REST.replace("/rest/v1", f"/storage/v1/object/{bucket}/{urllib.parse.quote(ruta)}")
+    peticion = urllib.request.Request(url, headers={"apikey": _CLAVE, "Authorization": f"Bearer {_CLAVE}"})
+    with urllib.request.urlopen(peticion, timeout=60) as r:
+        return r.read()
+
+
+def guardar_foto_meta(producto_id, media_id):
+    pedir(f"productos?id=eq.{producto_id}", "PATCH", {"foto_meta_id": media_id, "foto_meta_en": "now"},
+          "return=minimal")
+    _cache["t"] = 0
+
+
 def descargar_pdf(ruta):
     """Baja un PDF del bucket privado 'catalogos' con la clave de servicio."""
     url = REST.replace("/rest/v1", f"/storage/v1/object/catalogos/{urllib.parse.quote(ruta)}")

@@ -9,7 +9,8 @@ Reglas:
   - empareja por CÓDIGO: crea los nuevos y actualiza los existentes;
   - un producto que NO viene en la hoja queda con stock 0 (no se borra);
   - rechaza la hoja entera si hay códigos repetidos o vacíos, o precios/stock que no son números;
-  - sin --aplicar no escribe nada.
+  - sin --aplicar no escribe nada; --json solo lee la hoja y la imprime (lo usa la app).
+Las reglas de la carga viven en la función cargar_inventario de la base (decisión 0025).
 
 Columnas que reconoce (en cualquier orden, con o sin tildes y mayúsculas; las demás se ignoran):
   código · categoría · descripción · marca · modelo · procesador · generación · ram · almacenamiento (disco)
@@ -178,7 +179,17 @@ def pedir(ruta, metodo="GET", cuerpo=None, prefer="return=minimal"):
 def main():
     if len(sys.argv) < 2:
         sys.exit(__doc__)
-    ruta, aplicar = sys.argv[1], "--aplicar" in sys.argv
+    ruta = sys.argv[1]
+    if "--json" in sys.argv:
+        # Solo lee la hoja y la imprime: así la app usa el mismo lector (F3·9, decisión 0025).
+        try:
+            hoja, errores, ignoradas = productos_de(ruta)
+        except SystemExit as e:
+            print(json.dumps({"error": str(e.code)}, ensure_ascii=False))
+            return
+        print(json.dumps({"productos": hoja, "errores": errores, "ignoradas": ignoradas}, ensure_ascii=False))
+        return
+    aplicar = "--aplicar" in sys.argv
     hoja, errores, ignoradas = productos_de(ruta)
     if ignoradas:
         print(f"· columnas que no se usan: {', '.join(ignoradas)}")
@@ -186,44 +197,23 @@ def main():
         print("✗ La hoja tiene errores; no se cargó nada:\n  " + "\n  ".join(errores))
         sys.exit(1)
 
-    actuales = {p["codigo"].upper(): p for p in pedir("productos?select=*", prefer="")}
-    nuevos = [p for p in hoja if p["codigo"].upper() not in actuales]
-    cambian = []
-    for p in hoja:
-        a = actuales.get(p["codigo"].upper())
-        if a and any(str(a[c]) != str(v) and not (c == "precio" and float(a[c]) == float(v)) for c, v in p.items()):
-            cambian.append(p)
-    en_hoja = {p["codigo"].upper() for p in hoja}
-    sin_stock = [a for c, a in actuales.items() if c not in en_hoja and a["stock"] != 0]
-
-    print(f"Hoja: {len(hoja)} productos · nuevos: {len(nuevos)} · cambian: {len(cambian)} · "
-          f"quedan sin stock (no vienen en la hoja): {len(sin_stock)}")
-    for p in nuevos[:15]:
-        print(f"  + {p['codigo']}  {p.get('marca', '')} {p.get('modelo', '')}  ${p['precio']:,.0f}".replace(",", "."))
-    for p in cambian[:15]:
-        a = actuales[p["codigo"].upper()]
-        difs = [f"{c}: {a[c]} → {v}" for c, v in p.items() if str(a[c]) != str(v) and c != "codigo"
-                and not (c == "precio" and float(a[c]) == float(v))]
-        print(f"  ~ {p['codigo']}  " + "; ".join(difs))
-    for a in sin_stock[:15]:
-        print(f"  0 {a['codigo']}  (stock {a['stock']} → 0)")
-
+    # Las reglas viven en la base (cargar_inventario, RI-04): la misma función que usa la app.
+    r = pedir("rpc/cargar_inventario", "POST", {"p_productos": hoja, "p_aplicar": aplicar}, prefer="")
+    if r["errores"]:
+        print("✗ La hoja tiene errores; no se cargó nada:\n  " +
+              "\n  ".join(f"fila {e.get('fila')}: {e.get('codigo', '')} {e['error']}" for e in r["errores"]))
+        sys.exit(1)
+    print(f"Hoja: {r['total']} productos · nuevos: {len(r['nuevos'])} · cambian: {len(r['cambian'])} · "
+          f"quedan sin stock (no vienen en la hoja): {len(r['sin_stock'])}")
+    for p in r["nuevos"][:15]:
+        print(f"  + {p['codigo']}  {p['marca']} {p['modelo']}  ${p['precio']:,.0f}".replace(",", "."))
+    for p in r["cambian"][:15]:
+        print(f"  ~ {p['codigo']}  " + "; ".join(f"{c}: {a} → {d}" for c, (a, d) in p["cambios"].items()))
+    for p in r["sin_stock"][:15]:
+        print(f"  0 {p['codigo']}  (stock {p['stock']} → 0)")
     if not aplicar:
         print("\nNo se escribió nada. Para cargar: agrega --aplicar")
         return
-    for p in nuevos + cambian:
-        p["actualizado_en"] = "now"
-    if nuevos or cambian:
-        # Upsert por código: se envía cada producto con sus columnas (las que no vienen en la hoja no se tocan).
-        for p in nuevos + cambian:
-            a = actuales.get(p["codigo"].upper())
-            if a:
-                pedir(f"productos?id=eq.{a['id']}", "PATCH", {k: v for k, v in p.items() if k != "codigo"})
-            else:
-                pedir("productos", "POST", p)
-    if sin_stock:
-        ids = ",".join(str(a["id"]) for a in sin_stock)
-        pedir(f"productos?id=in.({ids})", "PATCH", {"stock": 0, "actualizado_en": "now"})
     total = len(pedir("productos?select=id&stock=gt.0", prefer=""))
     print(f"\n✅ Cargado. Productos con stock en Supabase: {total}")
 

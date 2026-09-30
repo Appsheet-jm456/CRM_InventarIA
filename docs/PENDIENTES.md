@@ -6,9 +6,11 @@ de las Fases 1 y 2 abajo. **Código nuevo:** el bot de prueba sobre Supabase (`h
 
 ## Dónde retomar (en este orden)
 
-1. **F3·1 a F3·8 y F3·10 hechas** (30 sep 2026). El dueño ya tiene su usuario `admin`. Sigue **F3·9** (inventario,
-   fichas y catálogo PDF).
-2. **Pendiente del dueño en F3·6:** aprobar los textos de las 3 plantillas del CRM y enviarlas a
+1. **F3·1 a F3·10 hechas** (30 sep 2026): la construcción de la Fase 3 está completa. Para cerrarla falta revisar su
+   criterio (RLS en todo, `next build` sin errores) y pasar a la Fase 4 (pruebas con el dueño).
+2. **Pendiente del dueño en F3·9:** subir las fotos de los equipos (hoy los 17 están sin foto), los catálogos PDF y el
+   enlace de Drive con todos, desde Inventario → Catálogos.
+3. **Pendiente del dueño en F3·6:** aprobar los textos de las 3 plantillas del CRM y enviarlas a
    Meta desde Configuración → Canal WhatsApp (hoy solo hay plantillas de ejemplo en inglés).
 3. En paralelo, lo que depende del dueño: F1·4 (deploy key), F1·6, F1·7, F1·8, clave de Gemini, PDF y enlace de Drive, hoja Excel.
 
@@ -36,6 +38,14 @@ ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIONAxvcI3oR3igFtPME4BMX2UWaT1Ju6LFxZQosRf0GN
   `/bot` edita textos y títulos de botones (no la estructura; restaura el original) y el horario con festivos;
   el bot los lee de la base cada 30 s y, fuera de horario, avisa al pasar a asesor cuándo le responden.
   `/respuestas-rapidas` y el atajo `/` en la Bandeja. Migración 0007. Hay que sembrar los festivos de 2028 (la app avisa).
+
+- **Inventario, catálogos y Chat InventarIA (F3·9, decisión 0025, [INVENTARIO.md](INVENTARIO.md)):** `/inventario`
+  con filtros, ficha (con la vista de cómo la ve el cliente), crear y editar con **foto subida** (bucket `productos`; el
+  bot la sube a Meta y la envía por id, reutilizado 25 días), **carga del Excel con vista previa** (función
+  `cargar_inventario`, que también usa el script de consola) y **Catálogos** (PDF o Drive). `/chat` pregunta al
+  inventario con el intérprete del bot por `POST /interno/buscar` del receptor (token `CRM_INTERNO_TOKEN` en
+  `.env.meta` y `crm/.env.local`; no responde por el túnel). Escribir pide `administrar_inventario`. Migración 0009.
+  **Ojo:** no correr `next dev` en `crm/` con el servicio arriba: comparte `.next` y rompe la app hasta el próximo build.
 
 - **Métricas (F3·8, decisión 0024, [METRICAS.md](METRICAS.md)):** `/metricas` abre en el mes actual con selector de
   período y embudo: conversión por etapa, primera respuesta en SLA, ganadas y perdidas con motivos, sin respuesta ahora,

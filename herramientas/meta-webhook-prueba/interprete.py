@@ -62,9 +62,10 @@ def monto(n, contexto_presupuesto=False):
     m = re.search(r"(\d+(?:[.,]\d+)?)\s*(millones|millon|mill|m|palos?|barras?)\b", n)
     if m:
         return int(float(m.group(1).replace(",", ".")) * 1_000_000)
-    m = re.search(r"\b(un|uno|dos|tres|cuatro)\s*(palos?|barras?|millones|millon)\b", n)
-    if m:
-        return {"un": 1, "uno": 1, "dos": 2, "tres": 3, "cuatro": 4}[m.group(1)] * 1_000_000
+    m = re.search(r"\b(un|uno|dos|tres|cuatro)\s*(palos?|barras?|millones|millon)(\s*y\s*medio)?\b", n)
+    if m:  # "un palo y medio" = 1.500.000
+        base = {"un": 1, "uno": 1, "dos": 2, "tres": 3, "cuatro": 4}[m.group(1)] * 1_000_000
+        return base + (500_000 if m.group(3) else 0)
     m = re.search(r"\b(\d{1,3}(?:[.,]\d{3}){1,2}|\d{6,7})\b", n)
     if m:
         return int(re.sub(r"[.,]", "", m.group(1)))

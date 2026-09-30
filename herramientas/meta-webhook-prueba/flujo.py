@@ -135,13 +135,20 @@ def _foto(campo):
     return url or None
 
 
+def _foto_de(p):
+    """La foto subida a la app (RI-03) la resuelve el receptor subiéndola a Meta; si no hay, el enlace."""
+    if p.get("foto_ruta"):
+        return {"_producto": {k: p.get(k) for k in ("id", "foto_ruta", "foto_meta_id", "foto_meta_en")}}
+    return _foto(p["foto"])
+
+
 def inventario():
     """Portátiles con stock, de la tabla productos de Supabase."""
     return [{
         "cod": p["codigo"], "marca": p["marca"], "modelo": p["modelo"], "cpu": p["procesador"],
         "gen": interprete.generacion(p["procesador"], p["generacion"]), "ram": p["ram"],
         "disco": p["almacenamiento"], "estado": p["estado"], "precio": int(float(p["precio"])),
-        "stock": p["stock"], "foto": _foto(p["foto"]),
+        "stock": p["stock"], "foto": _foto_de(p),
     } for p in db.productos_con_stock() if "portatil" in normalizar(p["categoria"])]
 
 
@@ -200,8 +207,8 @@ def m_botones(texto, opciones, imagen=None):
     """Hasta 3 botones de respuesta; título ≤ 20 caracteres. Imagen opcional en la cabecera."""
     interactivo = {"type": "button", "body": {"text": texto[:1024]}, "action": {"buttons": [
         {"type": "reply", "reply": {"id": i, "title": t[:20]}} for i, t in opciones[:3]]}}
-    if imagen:
-        interactivo["header"] = {"type": "image", "image": {"link": imagen}}
+    if imagen:  # enlace, o {"_producto": …} que el receptor cambia por el id del medio en Meta
+        interactivo["header"] = {"type": "image", "image": imagen if isinstance(imagen, dict) else {"link": imagen}}
     return {"type": "interactive", "interactive": interactivo}
 
 

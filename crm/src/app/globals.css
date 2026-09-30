@@ -335,6 +335,36 @@ a.pastilla { text-decoration: none; display: inline-block }
 .barras { display: flex; flex-direction: column; gap: 9px }
 .barras .barra { grid-template-columns: minmax(90px, 170px) 1fr 110px }
 .barra-etq { overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.filtro-inv { justify-content: flex-start }
+.filtro-inv input[type=search], .filtro-inv select { border: 1px solid var(--line); background: var(--bg); border-radius: 6px; padding: 6px 9px; font-size: 13px; color: var(--ink) }
+.filtro-inv input[type=search] { min-width: 240px; flex: 1 1 240px }
+.celda-foto { width: 56px }
+.celda-foto img { width: 48px; height: 36px; object-fit: cover; border-radius: 4px; display: block; background: var(--surface-2) }
+.sin-foto { display: grid; place-items: center; width: 48px; height: 36px; border-radius: 4px; background: var(--surface-2); color: var(--muted) }
+.ficha-cols { display: grid; grid-template-columns: minmax(200px, 300px) 1fr; gap: 20px; align-items: start }
+.ficha-foto { display: flex; flex-direction: column; gap: 8px; align-items: flex-start }
+.ficha-foto .foto-caja { width: 100%; aspect-ratio: 4 / 3; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2); display: grid; place-items: center; overflow: hidden }
+.ficha-foto .foto-caja img { width: 100%; height: 100%; object-fit: contain }
+.panel-b .form-panel { padding: 0; align-content: start }
+.form-panel .span-2 { grid-column: span 2 } .form-panel .span-3 { grid-column: 1 / -1 }
+.solo-lectura { opacity: .7 }
+.precio-ficha { font: 600 26px var(--f-mono); margin-bottom: 10px }
+.datos-ficha { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px 16px; margin: 0 0 12px }
+.datos-ficha dt { font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted) }
+.datos-ficha dd { margin: 0; font-size: 14px }
+h3.sub { font: 600 13px var(--f-display); margin: 18px 0 8px; color: var(--muted) }
+.ficha-whatsapp { max-width: 420px; margin-bottom: 6px }
+.chat-inv-hilo { display: flex; flex-direction: column; gap: 14px; min-height: 260px; max-height: calc(100vh - 300px); overflow-y: auto }
+.chat-inv-turno, .chat-inv-resp { display: flex; flex-direction: column; gap: 8px }
+.chat-inv-turno .m.asesor { align-self: flex-end } .chat-inv-resp .m.bot { align-self: flex-start }
+.chat-inv-escribir { display: flex; gap: 8px; border-top: 1px solid var(--line) }
+.chat-inv-escribir input { flex: 1; min-width: 0; border: 1px solid var(--line); background: var(--bg); border-radius: 8px; padding: 9px 12px; font-size: 14px; color: var(--ink) }
+.tarjetas-equipo { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px }
+.tarjeta-equipo { display: flex; flex-direction: column; gap: 5px; padding: 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); text-decoration: none }
+.tarjeta-equipo:hover { border-color: var(--accent) }
+.tarjeta-equipo-foto { aspect-ratio: 4 / 3; border-radius: 6px; background: var(--surface-2); display: grid; place-items: center; overflow: hidden }
+.tarjeta-equipo-foto img { width: 100%; height: 100%; object-fit: cover }
+@media (max-width: 760px) { .ficha-cols { grid-template-columns: 1fr } .form-panel .span-2 { grid-column: 1 / -1 } .filtro-inv input[type=search] { min-width: 0 } }
 .grid-metricas { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 16px; align-items: start }
 .grid-metricas .panel { margin: 0 }
 @media (max-width: 560px) { .grid-metricas { grid-template-columns: 1fr } .barras .barra { grid-template-columns: 90px 1fr 80px } }

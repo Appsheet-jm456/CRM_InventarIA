@@ -24,5 +24,5 @@
 | F3·6 Seguimientos y alertas de SLA | ✅ Hecho 30 sep 2026 · migración 0005 |
 | F3·7 Editor del bot, horario y respuestas rápidas | ✅ Hecho 30 sep 2026 · migración 0007, [BOT-Y-HORARIO.md](../BOT-Y-HORARIO.md) |
 | F3·8 Métricas del embudo | ✅ Hecho 30 sep 2026 · migración 0008, [METRICAS.md](../METRICAS.md) |
-| F3·9 Inventario, fichas y catálogo PDF | Pendiente |
+| F3·9 Inventario, fichas y catálogo PDF | ✅ Hecho 30 sep 2026 · migración 0009, [INVENTARIO.md](../INVENTARIO.md) |
 | F3·10 Varios embudos: Cliente Final, Pos Venta y Distribuidor (va antes de F3·7) | ✅ Hecho 30 sep 2026 · migración 0006 |

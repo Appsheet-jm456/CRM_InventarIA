@@ -8,6 +8,7 @@ solo comprueba que Meta entrega los mensajes al servidor antes de diseñar F3·3
 
 Qué hace:
   GET  /webhook  verificación de Meta (hub.verify_token == META_VERIFY_TOKEN)
+  POST /interno/buscar  Chat InventarIA de la app (token CRM_INTERNO_TOKEN; no responde por el túnel)
   POST /webhook  valida la firma X-Hub-Signature-256 con META_APP_SECRET, anota el evento en
                  eventos.log y responde con el árbol de respuesta de prueba (flujo.py)
 
@@ -29,6 +30,7 @@ from urllib.parse import parse_qs, urlparse
 
 import db
 import flujo
+import interprete
 import visor
 
 RAIZ = Path(__file__).resolve().parents[2]
@@ -97,24 +99,44 @@ def guardar_media(lead_id, wamid, media):
     return {"ruta": ruta, "mime": mime, "nombre": media.get("nombre", "")}
 
 
-def subir_pdf(catalogo):
-    """Sube el PDF del bucket a Meta y devuelve su id de medio (reutiliza el guardado si tiene < 25 días)."""
-    guardado, fecha = catalogo.get("meta_media_id"), catalogo.get("meta_media_en")
-    if guardado and fecha and (datetime.now().astimezone() - datetime.fromisoformat(fecha)).days < 25:
-        return guardado
-    contenido = db.descargar_pdf(catalogo["archivo"])
+def subir_a_meta(contenido, mime, nombre):
+    """Sube un archivo a Meta y devuelve su id de medio (dura unos 30 días; se reutiliza 25)."""
     limite = f"----crm{secrets.token_hex(8)}"
-    nombre = Path(catalogo["archivo"]).name
     cuerpo = (f"--{limite}\r\nContent-Disposition: form-data; name=\"messaging_product\"\r\n\r\nwhatsapp\r\n"
-              f"--{limite}\r\nContent-Disposition: form-data; name=\"type\"\r\n\r\napplication/pdf\r\n"
+              f"--{limite}\r\nContent-Disposition: form-data; name=\"type\"\r\n\r\n{mime}\r\n"
               f"--{limite}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"{nombre}\"\r\n"
-              f"Content-Type: application/pdf\r\n\r\n").encode() + contenido + f"\r\n--{limite}--\r\n".encode()
+              f"Content-Type: {mime}\r\n\r\n").encode() + contenido + f"\r\n--{limite}--\r\n".encode()
     peticion = urllib.request.Request(
         f"{API}/{ENV['META_PHONE_NUMBER_ID']}/media", method="POST", data=cuerpo,
         headers={"Authorization": f"Bearer {ENV['META_TOKEN']}",
                  "Content-Type": f"multipart/form-data; boundary={limite}"})
-    media_id = json.load(urllib.request.urlopen(peticion, timeout=60))["id"]
+    return json.load(urllib.request.urlopen(peticion, timeout=60))["id"]
+
+
+def vigente(media_id, fecha):
+    return bool(media_id and fecha and (datetime.now().astimezone() - datetime.fromisoformat(fecha)).days < 25)
+
+
+def subir_pdf(catalogo):
+    """El PDF del bucket catalogos en Meta (decisión 0015)."""
+    if vigente(catalogo.get("meta_media_id"), catalogo.get("meta_media_en")):
+        return catalogo["meta_media_id"]
+    media_id = subir_a_meta(db.descargar_pdf(catalogo["archivo"]), "application/pdf", Path(catalogo["archivo"]).name)
     db.guardar_media_id(catalogo["id"], media_id)
+    return media_id
+
+
+MIME_FOTO = {"jpg": "image/jpeg", "jpeg": "image/jpeg", "png": "image/png", "webp": "image/webp"}
+
+
+def subir_foto(p):
+    """La foto del bucket productos en Meta (decisión 0025, RI-03)."""
+    if vigente(p.get("foto_meta_id"), p.get("foto_meta_en")):
+        return p["foto_meta_id"]
+    nombre = Path(p["foto_ruta"]).name
+    mime = MIME_FOTO.get(nombre.rsplit(".", 1)[-1].lower(), "image/jpeg")
+    media_id = subir_a_meta(db.descargar("productos", p["foto_ruta"]), mime, nombre)
+    db.guardar_foto_meta(p["id"], media_id)
     return media_id
 
 
@@ -128,6 +150,13 @@ def resolver(mensaje):
         except Exception as e:
             anotar(f"  ✗ no se pudo subir el catálogo {c['nombre']}: {e!r}")
             return None
+    imagen = mensaje.get("interactive", {}).get("header", {}).get("image", {})
+    if "_producto" in imagen:
+        try:
+            mensaje["interactive"]["header"]["image"] = {"id": subir_foto(imagen["_producto"])}
+        except Exception as e:  # sin foto, la ficha sale igual
+            anotar(f"  ✗ no se pudo subir la foto: {e!r}")
+            mensaje["interactive"].pop("header")
     return mensaje
 
 
@@ -270,7 +299,26 @@ class Webhook(BaseHTTPRequestHandler):
         anotar("✗ verificación rechazada: el token no coincide")
         self.responder(403)
 
+    def buscar_interno(self):
+        """Solo para la app en este servidor: con token y nunca por el túnel (decisión 0025)."""
+        token = ENV.get("CRM_INTERNO_TOKEN", "")
+        por_tunel = any(self.headers.get(h) for h in ("Cf-Ray", "Cf-Connecting-Ip", "X-Forwarded-For"))
+        if por_tunel or not token or not hmac.compare_digest(token, self.headers.get("X-Interno-Token", "")):
+            return self.responder(403)
+        try:
+            texto = str(json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))))["texto"])[:500]
+            cuerpo = json.dumps(buscar(texto), ensure_ascii=False)
+        except Exception as e:
+            anotar(f"✗ búsqueda interna falló: {e!r}")
+            return self.responder(500)
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.end_headers()
+        self.wfile.write(cuerpo.encode())
+
     def do_POST(self):
+        if urlparse(self.path).path == "/interno/buscar":
+            return self.buscar_interno()
         if urlparse(self.path).path != "/webhook":
             return self.responder(404)
         crudo = self.rfile.read(int(self.headers.get("Content-Length", 0)))
@@ -285,6 +333,24 @@ class Webhook(BaseHTTPRequestHandler):
             threading.Thread(target=procesar, args=(json.loads(crudo),), daemon=True).start()
         except json.JSONDecodeError:
             anotar("✗ cuerpo no es JSON")
+
+
+def buscar(texto):
+    """Chat InventarIA (RI-06): el mismo intérprete del bot; la IA solo arma filtros, los equipos salen de la base."""
+    todos = flujo.inventario()
+    p = flujo.buscar_codigo(texto)
+    if p:
+        return {"fuente": "codigo", "filtros": {}, "descripcion": f"el código {p['cod']}", "codigos": [p["cod"]],
+                "cercanos": []}
+    filtros, fuente = interprete.reglas(texto, [p["marca"] for p in todos]), "reglas"
+    if not filtros and interprete.vale_la_pena_ia(flujo.normalizar(texto)):
+        filtros, fuente = interprete.con_ia(texto), "ia"
+    if not filtros:
+        return {"fuente": "nada", "filtros": {}, "descripcion": "", "codigos": [], "cercanos": []}
+    r = interprete.filtrar(todos, filtros, flujo.es_diseno)
+    return {"fuente": fuente, "filtros": filtros, "descripcion": interprete.describir(filtros),
+            "codigos": [p["cod"] for p in r],
+            "cercanos": [] if r else [p["cod"] for p in interprete.cercanos(todos, filtros)]}
 
 
 if __name__ == "__main__":

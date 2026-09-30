@@ -1,5 +1,11 @@
 # Changelog del brief
 
+## v1.0 · 30 sep 2026 (F3·9)
+
+- Inventario en la app (0025, `docs/INVENTARIO.md`): ficha editable con foto subida que el bot envía por id de Meta,
+  carga del Excel con vista previa (las reglas pasan a la base), catálogos PDF y Drive, y Chat InventarIA con el
+  intérprete del bot. El intérprete ahora entiende "un palo y medio" (antes lo leía como 1.000.000).
+
 ## v1.0 · 30 sep 2026 (F3·8)
 
 - Métricas del embudo en `/metricas` (0024, `docs/METRICAS.md`): conversión por etapa, SLA de primera respuesta por
