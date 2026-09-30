@@ -1,18 +1,23 @@
 """
-Árbol de respuesta de PRUEBA sobre WhatsApp real (docs/ARBOL-DE-RESPUESTA.md), con el inventario leído
-en vivo de Baserow. Es la simulación (docs/simulacion/simulacion-chat.html) llevada al número de prueba
-de Meta. No es el motor definitivo (F3·4): el estado vive en memoria y se pierde al reiniciar.
+Árbol de respuesta de PRUEBA sobre WhatsApp real (docs/ARBOL-DE-RESPUESTA.md), con el inventario de la
+Supabase del CRM (decisión 0014). Es la simulación (docs/simulacion/simulacion-chat.html) llevada al número
+de prueba de Meta. No es el motor definitivo (F3·4).
 
-Los menús van como lista interactiva de WhatsApp o botones (P-01): el cliente toca la opción o escribe
-el número, y las dos cosas funcionan igual. "reiniciar" quita la pausa de asesor para seguir probando.
+- El estado de cada cliente (nodo, datos, pausa) lo carga y guarda el receptor en la tabla leads: un
+  reinicio del servidor no lo borra.
+- Los menús van como lista interactiva o botones (P-01): el cliente toca la opción o escribe el número.
+- Si escribe libre ("¿qué equipos tienes i5 10 en Dell?"), el intérprete saca filtros con reglas o IA y la
+  respuesta sale de la base (decisión 0016).
+- Los catálogos PDF y el enlace de Drive salen de la tabla catalogos (decisión 0015).
+- "reiniciar" quita la pausa de asesor para seguir probando.
 """
 
-import json
 import re
-import time
 import unicodedata
-import urllib.request
 from pathlib import Path
+
+import db
+import interprete
 
 RAIZ = Path(__file__).resolve().parents[2]
 
@@ -22,11 +27,13 @@ RANGOS = [
     (1_500_000, 2_000_000, "$1.500.000 – $2.000.000", "$1,5 M – $2 M"),
     (2_000_000, 10**12, "Más de $2.000.000", "> $2 M"),
 ]
+# Etapas que mueve el bot; las demás (Negociación en adelante, Perdido) solo las mueve un asesor.
 ETAPAS = ["Nuevo", "En Conversación", "Cotización"]
 HORARIO = "🕗 Lunes a viernes: 8:00 am – 6:00 pm\n🕘 Sábados: 9:00 am – 2:00 pm\nFestivos: cerrado."
 
-estados = {}          # número → estado del cliente (en memoria: es una prueba)
-_cache = {"t": 0, "filas": []}
+
+def estado_vacio():
+    return {"nodo": None, "etapa": "Nuevo", "campos": {}, "errores": 0, "pausa": False}
 
 
 # --------------------------------------------------------------------------- #
@@ -42,16 +49,8 @@ def _env_local():
     return env
 
 
-def _numero(v):
-    s = re.sub(r"[^\d.]", "", str(v or "").replace(",", ""))
-    try:
-        return int(float(s)) if s else 0
-    except ValueError:
-        return 0
-
-
 def _foto(campo):
-    """Primera URL del campo Foto; los enlaces de Google Drive pasan a miniatura directa (lib/media.js)."""
+    """Primera URL del campo foto; los enlaces de Google Drive pasan a miniatura directa (lib/media.js)."""
     url = (str(campo or "").split(",")[0]).strip()
     m = re.search(r"/d/([\w-]+)|[?&]id=([\w-]+)", url)
     if m and re.search(r"drive\.google\.com|docs\.google\.com", url):
@@ -60,34 +59,13 @@ def _foto(campo):
 
 
 def inventario():
-    """Portátiles con stock, leídos de Baserow. Se refresca cada 60 s."""
-    if time.time() - _cache["t"] < 60:
-        return _cache["filas"]
-    env = _env_local()
-    base = env.get("BASEROW_API_URL") or "https://api.baserow.io"
-    url = f"{base}/api/database/rows/table/{env['BASEROW_TABLE_ID']}/?user_field_names=true&size=200"
-    filas = []
-    while url:
-        # Baserow devuelve 403 al agente por defecto de urllib: se manda uno explícito.
-        peticion = urllib.request.Request(url, headers={
-            "Authorization": f"Token {env['BASEROW_API_TOKEN']}", "User-Agent": "crm-inventaria-prueba/1.0"})
-        datos = json.load(urllib.request.urlopen(peticion, timeout=20))
-        filas += datos.get("results", [])
-        url = datos.get("next")
-    valor = lambda x: (x.get("value") if isinstance(x, dict) else x) or ""
-    productos = []
-    for r in filas:
-        if "portatil" not in normalizar(valor(r.get("Categoría"))) or _numero(r.get("Stock")) <= 0:
-            continue
-        productos.append({
-            "cod": str(valor(r.get("Código"))).strip(), "marca": str(valor(r.get("Marca"))).strip(),
-            "modelo": str(valor(r.get("Modelo"))).strip(), "cpu": str(valor(r.get("Procesador"))).strip(),
-            "ram": str(valor(r.get("RAM"))).strip(), "disco": str(valor(r.get("Almacenamiento"))).strip(),
-            "estado": str(valor(r.get("Estado"))).strip(), "precio": _numero(r.get("Precio")),
-            "stock": _numero(r.get("Stock")), "foto": _foto(valor(r.get("Foto"))),
-        })
-    _cache.update(t=time.time(), filas=productos)
-    return productos
+    """Portátiles con stock, de la tabla productos de Supabase."""
+    return [{
+        "cod": p["codigo"], "marca": p["marca"], "modelo": p["modelo"], "cpu": p["procesador"],
+        "gen": interprete.generacion(p["procesador"], p["generacion"]), "ram": p["ram"],
+        "disco": p["almacenamiento"], "estado": p["estado"], "precio": int(float(p["precio"])),
+        "stock": p["stock"], "foto": _foto(p["foto"]),
+    } for p in db.productos_con_stock() if "portatil" in normalizar(p["categoria"])]
 
 
 # --------------------------------------------------------------------------- #
@@ -116,6 +94,13 @@ def es_diseno(p):
     """Provisional hasta F1·8: 16 GB de RAM o procesador serie H/HQ."""
     sufijo = p["cpu"].split("-")[-1] if "-" in p["cpu"] else ""
     return "16" in p["ram"] or bool(re.search(r"H", sufijo))
+
+
+def rango_de_monto(monto):
+    for r in RANGOS:
+        if r[0] <= monto < r[1]:
+            return r
+    return RANGOS[-1]
 
 
 # --------------------------------------------------------------------------- #
@@ -152,17 +137,42 @@ def menu(texto, opciones):
     return m_lista(cuerpo, opciones)
 
 
+def lista_equipos(titulo, equipos, pie="Toca un equipo en la lista o escríbenos su *código*. 0️⃣ Menú principal"):
+    texto = (f"{titulo}\n\n"
+             + "\n".join(f"• {p['cod']} · {p['modelo']} · {p['cpu']} · {p['ram']} · {cop(p['precio'])}" for p in equipos)
+             + f"\n\n{pie}")
+    filas = [(p["cod"], p["cod"], f"{p['modelo']} · {p['ram']} · {cop(p['precio'])}") for p in equipos[:9]]
+    filas.append(("0", "Menú principal", ""))
+    return m_lista(texto, filas, "Ver equipos")
+
+
+def mensajes_catalogo(categoria, marca):
+    """El catálogo más específico (PDF o enlace) y el enlace de Drive con todos (decisión 0015)."""
+    elegido, todos = db.catalogo_para(categoria, marca)
+    salida = []
+    if elegido and elegido["tipo"] == "pdf":
+        salida.append({"_pdf": elegido})  # el receptor lo sube a Meta y lo envía como documento
+    elif elegido:
+        salida.append(m_texto(f"📚 *{elegido['nombre']}*\n{elegido['url']}"))
+    if todos and (not elegido or todos["id"] != elegido["id"]):
+        salida.append(m_texto(f"🗂 Todos nuestros catálogos en Drive:\n{todos['url']}"))
+    return salida
+
+
 # --------------------------------------------------------------------------- #
 # Nodos del árbol
 # --------------------------------------------------------------------------- #
 
 def etapa(st, nueva):
-    if not st["etapa"] or ETAPAS.index(nueva) > ETAPAS.index(st["etapa"]):
+    """El embudo solo avanza (decisión 0006), y el bot no toca etapas que ya movió un asesor."""
+    actual = st.get("etapa") or "Nuevo"
+    if actual in ETAPAS and ETAPAS.index(nueva) > ETAPAS.index(actual):
         st["etapa"] = nueva
 
 
 def ir(st, nodo):
     st["nodo"], st["errores"] = nodo, 0
+    st["campos"].pop("Errores bot", None)
     return NODOS[nodo](st)
 
 
@@ -170,7 +180,8 @@ def b00(st):
     etapa(st, "Nuevo")
     st["campos"]["Etiqueta"] = "WhatsApp-Bot"
     return [menu("¡Hola! 👋 Bienvenido a *Ventas Virtuales Colombia*, distribuidores al por mayor y detal de "
-                 "equipos de cómputo en Cali.\nSoy el *Bot Ventas Virtuales* 🤖 ¿En qué te podemos ayudar hoy?",
+                 "equipos de cómputo en Cali.\nSoy el *Bot Ventas Virtuales* 🤖 ¿En qué te podemos ayudar hoy?\n\n"
+                 "_También puedes escribirme lo que buscas, por ejemplo: \"Dell i5 de décima\"._",
                  [("1", "Productos", ""), ("2", "Distribuidores", ""), ("3", "Servicio al cliente", "")])]
 
 
@@ -187,7 +198,7 @@ def b001a1(st):
 
 
 def b001a2(st):
-    return [menu("¿Cuál es tu presupuesto aproximado?",
+    return [menu("¿Cuál es tu presupuesto aproximado?\n_(también puedes escribir el monto, por ejemplo 1.5 millones)_",
                  [(str(i + 1), r[3], r[2]) for i, r in enumerate(RANGOS)])]
 
 
@@ -217,22 +228,21 @@ def filtrar(st):
 
 def b001a5(st):
     st["campos"]["Etiqueta"] = "Catalogo-Enviado"
+    marca = st["campos"].get("Marca interés", "Todas")
+    catalogos = mensajes_catalogo("Portátiles", "" if marca == "Todas" else marca)
     r = filtrar(st)
     if not r:
         st["nodo"] = "B001A5-vacio"
-        return [menu("😕 No tenemos equipos con stock en ese rango ahora mismo.",
-                     [("1", "Cambiar presupuesto", ""), ("9", "Hablar con asesor", "")])]
-    texto = (f"📎 Catálogo de *{st['campos']['Marca interés']}* armado desde el inventario "
-             f"({len(r)} {'equipo' if len(r) == 1 else 'equipos'} con stock):\n\n"
-             + "\n".join(f"• {p['cod']} · {p['modelo']} · {p['cpu']} · {p['ram']} · {cop(p['precio'])}" for p in r)
-             + "\n\nToca un equipo en la lista o escríbenos su *código*. 0️⃣ Menú principal")
-    filas = [(p["cod"], p["cod"], f"{p['modelo']} · {p['ram']} · {cop(p['precio'])}") for p in r[:9]]
-    filas.append(("0", "Menú principal", ""))
-    return [m_lista(texto, filas, "Ver equipos")]
+        return catalogos + [menu("😕 No tenemos equipos con stock en ese rango ahora mismo.",
+                                 [("1", "Cambiar presupuesto", ""), ("9", "Hablar con asesor", "")])]
+    titulo = (f"📎 Equipos *{marca}* con stock en tu rango, desde el inventario "
+              f"({len(r)} {'equipo' if len(r) == 1 else 'equipos'}):")
+    return catalogos + [lista_equipos(titulo, r)]
 
 
 def r11(st, p):
     st["nodo"], st["errores"] = "R11", 0
+    st["campos"].pop("Errores bot", None)
     st["campos"].update({"Código producto": p["cod"], "Valor estimado": cop(p["precio"])})
     st["valor"] = p["precio"]
     etapa(st, "Cotización")
@@ -258,6 +268,29 @@ def error(st):
     return [m_texto("🤔 No entendí tu respuesta. Toca una opción o escribe el *número*, o *MENU* para volver al inicio.")]
 
 
+def busqueda(st, filtros):
+    """Respuesta a texto libre: filtra productos con lo que entendió el intérprete (decisión 0016)."""
+    todos = inventario()
+    r = interprete.filtrar(todos, filtros, es_diseno)
+    st["nodo"], st["errores"] = "BUSQUEDA", 0
+    st["campos"].pop("Errores bot", None)
+    st["campos"]["Búsqueda"] = interprete.describir(filtros)
+    etapa(st, "En Conversación")
+    if filtros.get("marca"):
+        st["campos"]["Marca interés"] = filtros["marca"].upper()
+    if filtros.get("precio_max"):
+        st["campos"]["Presupuesto"] = f"hasta {cop(filtros['precio_max'])}"
+    if not r:
+        cercanos = interprete.cercanos(todos, filtros)
+        texto = f"😕 No tengo equipos con *{interprete.describir(filtros)}* en este momento."
+        if cercanos:
+            return [lista_equipos(texto + "\nLo más parecido que hay:", cercanos,
+                                  "Toca uno para ver la ficha, 9️⃣ para hablar con un asesor o 0️⃣ menú.")]
+        return [menu(texto, [("9", "Hablar con asesor", ""), ("0", "Menú principal", "")])]
+    return [lista_equipos(f"🔎 Encontré {len(r)} {'equipo' if len(r) == 1 else 'equipos'} con "
+                          f"*{interprete.describir(filtros)}*:", r)]
+
+
 NODOS = {"B00": b00, "B001A": b001a, "B001A1": b001a1, "B001A2": b001a2,
          "B001A3": b001a3, "B001A4": b001a4, "B001A5": b001a5}
 
@@ -266,17 +299,24 @@ NODOS = {"B00": b00, "B001A": b001a, "B001A1": b001a1, "B001A2": b001a2,
 # Entrada
 # --------------------------------------------------------------------------- #
 
-def responder(numero, texto):
-    """Devuelve (mensajes a enviar, estado) para lo que escribió o tocó el cliente."""
-    st = estados.setdefault(numero, {"nodo": None, "etapa": None, "campos": {}, "errores": 0, "pausa": False})
+SALUDOS = ("hola", "menu", "inicio", "buenas", "buenos dias", "buenas tardes", "buenas noches")
+
+
+def responder(st, texto, avisar=None):
+    """Devuelve (mensajes, estado) para lo que escribió o tocó el cliente. st viene de leads.
+
+    avisar(texto) envía un aviso inmediato ("Estoy buscando…") cuando la respuesta va a tardar.
+    """
     n = normalizar(texto)
 
     if n == "reiniciar":
-        estados[numero] = st = {"nodo": None, "etapa": None, "campos": {}, "errores": 0, "pausa": False}
+        etapa_actual = st.get("etapa") or "Nuevo"  # reiniciar la charla no devuelve el embudo
+        st.clear()
+        st.update(estado_vacio(), etapa=etapa_actual)
         return ir(st, "B00"), st
     if st["pausa"]:
         return [], st
-    if not st["nodo"] or n in ("hola", "menu", "inicio", "buenas", "buenos dias", "buenas tardes"):
+    if not st["nodo"] or n in SALUDOS:
         return ir(st, "B00"), st
 
     p = buscar_codigo(texto) if st["nodo"] != "B001A2" else None
@@ -284,15 +324,17 @@ def responder(numero, texto):
         return r11(st, p), st
     if n == "9" or "asesor" in n:
         return asesor(st), st
+    if n == "0" and st["nodo"] in ("BUSQUEDA", "B001A5", "R11"):
+        return ir(st, "B00"), st
 
     k = st["nodo"]
     if k == "B00":
-        if n == "1" or re.search(r"producto|portatil|torre", n):
+        if n == "1" or re.fullmatch(r"productos?|portatil(es)?|torres?", n):
             return ir(st, "B001A"), st
-        if n in ("2", "3") or re.search(r"distribuidor|mayor|servicio|garantia|soporte", n):
+        if n in ("2", "3") or re.fullmatch(r"distribuidor(es)?|mayorista|servicio( al cliente)?|garantia|soporte", n):
             return asesor(st, motivo="Esta opción aún no está en el bot (F1·7)."), st
     elif k == "B001A":
-        if n == "1" or re.search(r"portatil|laptop", n):
+        if n == "1" or re.fullmatch(r"portatil(es)?( corporativos)?|laptops?", n):
             st["campos"].update({"Categoría interés": "Portátiles", "Etiqueta": "Interes-Productos"})
             return ir(st, "B001A1"), st
         if n in ("2", "3", "4"):
@@ -300,22 +342,21 @@ def responder(numero, texto):
         if n in ("0", "volver"):
             return ir(st, "B00"), st
     elif k == "B001A1":
-        uso = {"1": "Hogar", "2": "Ejecutivo", "3": "Diseño"}.get(n) or (
-            "Hogar" if re.search(r"hogar|casa|estudio", n) else "Ejecutivo" if re.search(r"ejecutivo|oficina", n)
-            else "Diseño" if re.search(r"diseno|edicion", n) else None)
+        uso = {"1": "Hogar", "2": "Ejecutivo", "3": "Diseño"}.get(n) or interprete.uso(n)
         if uso:
             st["campos"].update({"Uso equipo": uso, "Etiqueta": "Interes-Portatil"})
             return ir(st, "B001A2"), st
         if n == "0":
             return ir(st, "B001A"), st
     elif k == "B001A2":
-        if n in ("1", "2", "3", "4"):
-            st["rango"] = RANGOS[int(n) - 1]
+        monto = interprete.monto(n, contexto_presupuesto=True) if n not in ("1", "2", "3", "4") else None
+        if n in ("1", "2", "3", "4") or monto:
+            st["rango"] = RANGOS[int(n) - 1] if not monto else rango_de_monto(monto)
             st["campos"]["Presupuesto"] = st["rango"][2]
             etapa(st, "En Conversación")
             return ir(st, "B001A3"), st
     elif k == "B001A3":
-        if n == "1" or re.match(r"^si|catalogo", n):
+        if n == "1" or re.match(r"^si\b|catalogo", n):
             return ir(st, "B001A4"), st
         if n == "2" or "cotizacion" in n:
             return asesor(st, "Cotizacion-Personalizada"), st
@@ -329,20 +370,30 @@ def responder(numero, texto):
         if n == str(len(marcas) + 1) or n == "todas":
             st["campos"]["Marca interés"] = "Todas"
             return ir(st, "B001A5"), st
-        if re.search(r"lenovo|hp|asus|acer|apple", n):
+        if normalizar(n).upper() in [m.upper() for m in marcas]:
+            st["campos"]["Marca interés"] = n.upper()
+            return ir(st, "B001A5"), st
+        if re.search(r"lenovo|hp|asus|acer|apple|mac", n):
             return [m_texto("Por ahora no tenemos esa marca en stock. Te muestro las que sí hay 👇")] + ir(st, "B001A4"), st
     elif k == "B001A5-vacio":
         if n == "1":
             return ir(st, "B001A2"), st
-    elif k == "B001A5":
-        if n == "0":
-            return ir(st, "B00"), st
     elif k == "R11":
-        if n in ("1", "lo quiero"):
+        if n == "1" or interprete.quiere_comprar(n):
             return asesor(st), st
         if n in ("2", "ver otro codigo"):
             st["nodo"] = "B001A5"
             return [m_texto("Envíame el código del equipo 👇")], st
         if n in ("0", "menu principal"):
             return ir(st, "B00"), st
+
+    # Texto libre: reglas primero; si no alcanzan, IA (Gemini o qwen3). La respuesta sale de la base.
+    if not re.fullmatch(r"\d{1,2}", n):
+        filtros = interprete.reglas(texto, [p["marca"] for p in inventario()])
+        if not filtros and interprete.vale_la_pena_ia(n):
+            if avisar:
+                avisar("🔎 Estoy buscando en el inventario…")
+            filtros = interprete.con_ia(texto)
+        if filtros:
+            return busqueda(st, filtros), st
     return error(st), st

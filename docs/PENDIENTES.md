@@ -75,14 +75,19 @@ de Baserow, y refleja cada cliente en el **kanban de la v0 (puerto 3000)**. Es u
 - **Quién puede probar:** solo números verificados en Meta → Tests de la API → paso 3 (máximo 5). Un número
   sin verificar escribe, pero Meta no le entrega las respuestas.
 - **Reiniciar una charla:** escribir `reiniciar` (también quita la pausa de asesor). `hola` o `menu` vuelven al inicio.
-- **Kanban de la v0:** crea o actualiza la tarjeta en `CRM_Leads` (etapa, último mensaje, paso, pausa, código y
-  valor). El embudo solo avanza y no toca Vendido ni Perdido. **La conversación no se ve en la tarjeta** (la v0
-  la lee de Evolution) y responder desde la v0 saldría por Evolution, no por Meta.
-- **Hallazgos de la prueba** (para el motor definitivo, F3·4):
-  1. En el presupuesto el cliente escribe montos ("1.5"): el bot debe ubicarlos en el rango.
-  2. En la ficha escribe "quiero comprar": debe valer como "Lo quiero".
-  3. El campo "Errores bot" no vuelve a 0 al avanzar (el contador interno sí).
-  4. Ningún equipo tiene foto en Baserow: las fichas salen sin imagen.
+- **Datos en Supabase (desde el 30 sep, decisión 0014):** el bot lee `productos` y guarda cada cliente en
+  `leads` (etapa, datos del árbol, etiquetas, estado del bot) y cada mensaje en `mensajes`. **Un reinicio ya no
+  borra dónde iba cada cliente.** El kanban de la v0 (Baserow) dejó de reflejarlos: la Bandeja (8096) los muestra.
+- **Texto libre (decisión 0016):** `interprete.py` — reglas (marca, i3–i9, generación, RAM, montos, "palos",
+  uso, "quiero comprar") y, si no alcanzan, Gemini (falta clave `AIza…`) o qwen3 local (10–12 s, el bot avisa
+  "Estoy buscando…"). La respuesta siempre sale de `productos`.
+- **Catálogos (decisión 0015):** tabla `catalogos` y bucket privado `catalogos`; el bot envía el más específico
+  para la marca y categoría y el enlace de Drive con todos. **Vacía hasta recibir los PDF y el enlace.**
+- **Carga de la lista por Excel (F2·14):** `python3 herramientas/carga-inventario/cargar_inventario.py lista.xlsx`
+  (muestra cambios) y `--aplicar` (escribe). Al usarla por primera vez hay que apagar la copia desde Baserow:
+  `systemctl --user disable --now crm-sync-inventario.timer`.
+- **Hallazgos de la prueba del 30 sep:** 1) montos escritos en el presupuesto, 2) "quiero comprar" en la ficha y
+  3) el contador de errores que no volvía a 0 — **corregidos**. 4) Ningún equipo tiene foto: las fichas salen sin imagen.
 
 ## Estado del repositorio
 

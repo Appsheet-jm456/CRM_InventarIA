@@ -89,7 +89,9 @@ def main():
         print(f"⚠ filas de Baserow sin código (se omiten): {sin_codigo}")
     origen = [p for p in origen if p["codigo"]]
 
-    actuales = {p["baserow_id"]: p for p in pedir(f"{REST}/productos?select=*", cabeceras=supa)}
+    # Solo las filas que vinieron de Baserow: las cargadas por Excel (sin baserow_id) no se tocan.
+    actuales = {p["baserow_id"]: p for p in pedir(f"{REST}/productos?select=*&baserow_id=not.is.null",
+                                                   cabeceras=supa)}
     columnas = list(CAMPOS.values()) + ["precio", "stock"]
     cambian = [p for p in origen if p["baserow_id"] not in actuales
                or any(str(actuales[p["baserow_id"]][c]) != str(p[c]) and
@@ -114,7 +116,7 @@ def main():
         pedir(f"{REST}/productos?baserow_id=in.({','.join(map(str, sobran))})", "DELETE",
               cabeceras={**supa, "Prefer": "return=minimal"})
 
-    total = len(pedir(f"{REST}/productos?select=id", cabeceras=supa))
+    total = len(pedir(f"{REST}/productos?select=id&baserow_id=not.is.null", cabeceras=supa))
     estado = "✅" if total == len(origen) else "✗ NO CUADRA"
     print(f"{estado} Supabase queda con {total} productos (Baserow tiene {len(origen)})")
     if total != len(origen):

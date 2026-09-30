@@ -17,6 +17,7 @@ Lee .env.meta de la raíz del repo. eventos.log tiene teléfonos y mensajes: no 
 import hashlib
 import hmac
 import json
+import secrets
 import sys
 import threading
 import urllib.error
@@ -26,8 +27,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
+import db
 import flujo
-import kanban
 import visor
 
 RAIZ = Path(__file__).resolve().parents[2]
@@ -61,39 +62,126 @@ def anotar(texto):
 
 
 def enviar(numero, mensaje):
+    """Envía por la API de Meta. Devuelve el id del mensaje (wamid) o None si falló."""
     cuerpo = {"messaging_product": "whatsapp", "to": numero, **mensaje}
     peticion = urllib.request.Request(
         f"{API}/{ENV['META_PHONE_NUMBER_ID']}/messages", method="POST",
         headers={"Authorization": f"Bearer {ENV['META_TOKEN']}", "Content-Type": "application/json"},
         data=json.dumps(cuerpo).encode())
     try:
-        urllib.request.urlopen(peticion, timeout=15)
+        respuesta = json.load(urllib.request.urlopen(peticion, timeout=15))
         anotar(f"  → enviado ({mensaje.get('interactive', {}).get('type') or mensaje['type']})")
-        return True
+        return (respuesta.get("messages") or [{}])[0].get("id", "enviado")
     except urllib.error.HTTPError as e:
         anotar(f"  ✗ envío falló: {e.read().decode()[:300]}")
-        return False
+        return None
 
 
-def contestar(numero, entrada, visible, nombre):
-    try:
-        mensajes, st = flujo.responder(numero, entrada)
-    except Exception as e:  # una falla del árbol no debe tumbar el receptor
-        anotar(f"  ✗ el árbol falló: {e!r}")
-        return
-    for m in mensajes:
-        # Si la foto de la cabecera no se puede descargar, la ficha sale igual sin imagen.
-        ok = enviar(numero, m)
-        if not ok and m.get("interactive", {}).pop("header", None):
-            ok = enviar(numero, m)
-        if ok:
-            visor.registrar(numero, nombre, "bot", visor.texto_saliente(m))
-    anotar(f"  · nodo {st['nodo']} · etapa {st['etapa']} · {st['campos']}"
-           + (" · BOT PAUSADO" if st["pausa"] else ""))
-    try:
-        anotar(f"  🗂 kanban v0: {kanban.sincronizar(numero, nombre, visible, st)}")
-    except Exception as e:  # el espejo es secundario: si Baserow falla, el bot sigue
-        anotar(f"  ✗ kanban v0 falló: {e!r}")
+def subir_pdf(catalogo):
+    """Sube el PDF del bucket a Meta y devuelve su id de medio (reutiliza el guardado si tiene < 25 días)."""
+    guardado, fecha = catalogo.get("meta_media_id"), catalogo.get("meta_media_en")
+    if guardado and fecha and (datetime.now().astimezone() - datetime.fromisoformat(fecha)).days < 25:
+        return guardado
+    contenido = db.descargar_pdf(catalogo["archivo"])
+    limite = f"----crm{secrets.token_hex(8)}"
+    nombre = Path(catalogo["archivo"]).name
+    cuerpo = (f"--{limite}\r\nContent-Disposition: form-data; name=\"messaging_product\"\r\n\r\nwhatsapp\r\n"
+              f"--{limite}\r\nContent-Disposition: form-data; name=\"type\"\r\n\r\napplication/pdf\r\n"
+              f"--{limite}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"{nombre}\"\r\n"
+              f"Content-Type: application/pdf\r\n\r\n").encode() + contenido + f"\r\n--{limite}--\r\n".encode()
+    peticion = urllib.request.Request(
+        f"{API}/{ENV['META_PHONE_NUMBER_ID']}/media", method="POST", data=cuerpo,
+        headers={"Authorization": f"Bearer {ENV['META_TOKEN']}",
+                 "Content-Type": f"multipart/form-data; boundary={limite}"})
+    media_id = json.load(urllib.request.urlopen(peticion, timeout=60))["id"]
+    db.guardar_media_id(catalogo["id"], media_id)
+    return media_id
+
+
+def resolver(mensaje):
+    """Convierte las marcas internas del árbol en mensajes de la API ({'_pdf': catálogo} → documento)."""
+    if "_pdf" in mensaje:
+        c = mensaje["_pdf"]
+        try:
+            return {"type": "document", "document": {"id": subir_pdf(c), "filename": Path(c["archivo"]).name,
+                                                     "caption": f"📚 {c['nombre']}"}}
+        except Exception as e:
+            anotar(f"  ✗ no se pudo subir el catálogo {c['nombre']}: {e!r}")
+            return None
+    return mensaje
+
+
+# --------------------------------------------------------------------------- #
+# Estado del cliente en Supabase (tabla leads, decisión 0014)
+# --------------------------------------------------------------------------- #
+
+_candados = {}
+
+
+def cargar_estado(lead):
+    guardado = lead.get("estado_bot") or {}
+    st = flujo.estado_vacio()
+    st.update({k: v for k, v in guardado.items() if k in ("campos", "rango", "marcas", "valor")})
+    st.update(nodo=lead["paso_menu"] or None, etapa=lead["etapa"], errores=lead["errores_bot"],
+              pausa=lead["pausar_bot"])
+    return st
+
+
+def guardar_estado(lead, st, visible, nombre):
+    campos = st["campos"]
+    etiquetas = list(lead.get("etiquetas") or [])
+    if campos.get("Etiqueta") and campos["Etiqueta"] not in etiquetas:
+        etiquetas.append(campos["Etiqueta"])
+    cambios = {
+        "paso_menu": st["nodo"] or "", "pausar_bot": bool(st["pausa"]), "errores_bot": st["errores"],
+        "etapa": st["etapa"] or lead["etapa"], "etiquetas": etiquetas,
+        "categoria_interes": campos.get("Categoría interés", lead["categoria_interes"]),
+        "uso_equipo": campos.get("Uso equipo", lead["uso_equipo"]),
+        "presupuesto": campos.get("Presupuesto", lead["presupuesto"]),
+        "marca_interes": campos.get("Marca interés", lead["marca_interes"]),
+        "cotiz_producto": campos.get("Código producto", lead["cotiz_producto"]),
+        "ultimo_mensaje": visible[:500], "fecha_ultimo_contacto": datetime.now().astimezone().isoformat(),
+        "estado_bot": {k: st[k] for k in ("campos", "rango", "marcas", "valor") if k in st},
+    }
+    if st.get("valor"):
+        cambios["valor_estimado"] = st["valor"]
+    if nombre and not lead["nombre"]:
+        cambios["nombre"] = nombre
+    db.actualizar_lead(lead["id"], cambios)
+
+
+def contestar(numero, entrada, visible, nombre, tipo, meta_id):
+    # Un cliente que escribe rápido manda mensajes casi a la vez: se atienden en orden, uno por uno.
+    with _candados.setdefault(numero, threading.Lock()):
+        try:
+            lead = db.lead(numero) or db.crear_lead(numero, nombre)
+            db.guardar_mensaje(lead["id"], "cliente", visible, tipo, meta_id)
+            st = cargar_estado(lead)
+
+            def avisar(texto):
+                if enviar(numero, flujo.m_texto(texto)):
+                    db.guardar_mensaje(lead["id"], "bot", texto)
+
+            mensajes, st = flujo.responder(st, entrada, avisar)
+        except Exception as e:  # una falla del árbol o de la base no debe tumbar el receptor
+            anotar(f"  ✗ el árbol falló: {e!r}")
+            return
+        for m in mensajes:
+            m = resolver(m)
+            if not m:
+                continue
+            # Si la foto de la cabecera no se puede descargar, la ficha sale igual sin imagen.
+            wamid = enviar(numero, m)
+            if not wamid and m.get("interactive", {}).pop("header", None):
+                wamid = enviar(numero, m)
+            if wamid:
+                db.guardar_mensaje(lead["id"], "bot", visor.texto_saliente(m), m["type"], wamid)
+        try:
+            guardar_estado(lead, st, visible, nombre)
+        except Exception as e:
+            anotar(f"  ✗ no se pudo guardar el estado: {e!r}")
+        anotar(f"  · nodo {st['nodo']} · etapa {st['etapa']} · {st['campos']}"
+               + (" · BOT PAUSADO" if st["pausa"] else ""))
 
 
 def procesar(evento):
@@ -116,8 +204,7 @@ def procesar(evento):
                 if tipo != "interactive":
                     visible = entrada if tipo in ("text", "button") else f"[{tipo}]"
                 anotar(f"📩 {de} ({nombres.get(de, '')}) · {tipo}: {entrada}")
-                visor.registrar(de, nombres.get(de, ""), "cliente", visible)
-                contestar(de, entrada, visible, nombres.get(de, ""))
+                contestar(de, entrada, visible, nombres.get(de, ""), tipo, m.get("id"))
             for s in valor.get("statuses", []):
                 errores = "; ".join(f"{e.get('code')} {e.get('title')}" for e in s.get("errors", []))
                 anotar(f"📬 estado {s.get('status')} · {s.get('recipient_id')}" + (f" · {errores}" if errores else ""))

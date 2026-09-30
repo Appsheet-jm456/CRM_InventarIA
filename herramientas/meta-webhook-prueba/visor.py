@@ -3,28 +3,27 @@ Visor de PRUEBA de las conversaciones con el número de prueba de Meta, para la 
 
 Corre dentro del receptor en OTRO puerto (8096) que el túnel NO expone: solo se ve en la red local, y pide
 la clave de lectura de la app (ACCESS_PASSWORD de .env.local) porque muestra teléfonos y mensajes.
-Las conversaciones se guardan en conversaciones.jsonl (fuera de git: datos personales).
+Las conversaciones y el estado de cada cliente salen de la Supabase del CRM (tablas leads y mensajes).
 """
 
 import base64
 import hmac
 import json
 import threading
-from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from pathlib import Path
 
+import db
 import flujo
 
-ARCHIVO = Path(__file__).with_name("conversaciones.jsonl")
 PUERTO = 8096
-_candado = threading.Lock()
 
 
 def texto_saliente(mensaje):
     """Lo que ve el cliente, en texto: el cuerpo y las opciones de la lista o los botones."""
     if mensaje.get("type") == "text":
         return mensaje["text"]["body"]
+    if mensaje.get("type") == "document":
+        return f"📄 {mensaje['document'].get('caption') or mensaje['document'].get('filename', 'Documento')}"
     i = mensaje.get("interactive", {})
     cuerpo = i.get("body", {}).get("text", "")
     accion = i.get("action", {})
@@ -37,29 +36,19 @@ def texto_saliente(mensaje):
     return f"[{mensaje.get('type')}]"
 
 
-def registrar(numero, nombre, lado, texto):
-    linea = {"t": datetime.now().isoformat(timespec="seconds"), "numero": numero,
-             "nombre": nombre, "lado": lado, "texto": texto}
-    with _candado, ARCHIVO.open("a", encoding="utf-8") as f:
-        f.write(json.dumps(linea, ensure_ascii=False) + "\n")
-
-
 def conversaciones():
-    chats = {}
-    if ARCHIVO.exists():
-        for linea in ARCHIVO.read_text(encoding="utf-8").splitlines():
-            try:
-                m = json.loads(linea)
-            except json.JSONDecodeError:
-                continue
-            c = chats.setdefault(m["numero"], {"numero": m["numero"], "nombre": "", "mensajes": []})
-            c["nombre"] = m.get("nombre") or c["nombre"]
-            c["mensajes"].append({k: m[k] for k in ("t", "lado", "texto")})
-    for numero, c in chats.items():
-        st = flujo.estados.get(numero)
-        c["estado"] = {"nodo": st["nodo"], "etapa": st["etapa"], "pausa": st["pausa"],
-                       "campos": st["campos"]} if st else None
-    return sorted(chats.values(), key=lambda c: c["mensajes"][-1]["t"], reverse=True)
+    salida = []
+    for l in db.conversaciones():
+        campos = dict((l.get("estado_bot") or {}).get("campos") or {})
+        if l.get("valor_estimado") and "Valor estimado" not in campos:
+            campos["Valor estimado"] = flujo.cop(float(l["valor_estimado"]))
+        salida.append({
+            "numero": l["telefono"], "nombre": l["nombre"],
+            "mensajes": [{"t": m["creado_en"], "lado": m["lado"], "texto": m["texto"]} for m in l["mensajes"]],
+            "estado": {"nodo": l["paso_menu"], "etapa": l["etapa"], "pausa": l["pausar_bot"],
+                       "campos": campos, "etiquetas": l.get("etiquetas") or []},
+        })
+    return salida
 
 
 PAGINA = """<!doctype html><html lang="es"><head><meta charset="utf-8">
@@ -175,7 +164,7 @@ const ETAPAS=["Nuevo","En Conversación","Cotización","Negociación","Confirmar
 let sel=null,firma="";
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const ini=s=>(s||"?").split(/\\s+/).filter(Boolean).slice(0,2).map(p=>p[0]).join("").toUpperCase();
-const hora=t=>t.slice(11,16);
+const hora=t=>new Date(t).toLocaleTimeString("es-CO",{hour:"2-digit",minute:"2-digit",hour12:false,timeZone:"America/Bogota"});
 function burbuja(m){let t=m.texto,opts="";const k=t.lastIndexOf("\\n\\n[");
   if(m.lado==="bot"&&k>=0&&t.endsWith("]")){const d=t.slice(k+3,-1).replace(/^\\s+|\\s+$/g,"");const p=d.includes(": ")?d.split(": ").slice(1).join(": "):d;
     opts='<div class="opts">'+p.split(" · ").map(o=>`<span>${esc(o)}</span>`).join("")+"</div>";t=t.slice(0,k)}
@@ -194,9 +183,10 @@ async function cargar(){let r;try{r=await fetch("api/conversaciones")}catch(e){r
   let h="";
   if(e){const i=ETAPAS.indexOf(e.etapa);
     h+=`<div class="dato"><small>Etapa del embudo</small><div class="embudo">${ETAPAS.slice(0,4).map((s,j)=>`<div class="paso-e ${j<i?"hecho":j===i?"actual":""}"><i class="ti ${j<i?"ti-circle-check":j===i?"ti-circle-dot":"ti-circle"}"></i>${s}</div>`).join("")}</div></div>`;
-    const cam=e.campos,orden=["Categoría interés","Uso equipo","Presupuesto","Marca interés","Código producto","Valor estimado"];
+    const cam=e.campos,orden=["Búsqueda","Categoría interés","Uso equipo","Presupuesto","Marca interés","Código producto","Valor estimado"];
     for(const k of orden)if(cam[k])h+=`<div class="dato"><small>${esc(k)}</small><div class="${k.includes("Código")||k.includes("Valor")?"mono":""}">${esc(cam[k])}</div></div>`;
-    if(cam["Etiqueta"])h+=`<div class="dato"><small>Etiqueta</small><div><span class="chip acc">${esc(cam["Etiqueta"])}</span></div></div>`;
+    const et=(e.etiquetas&&e.etiquetas.length)?e.etiquetas:(cam["Etiqueta"]?[cam["Etiqueta"]]:[]);
+    if(et.length)h+=`<div class="dato"><small>Etiquetas</small><div style="display:flex;flex-wrap:wrap;gap:4px">${et.map(x=>`<span class="chip acc">${esc(x)}</span>`).join("")}</div></div>`;
     h+=`<div class="dato"><small>Paso del bot</small><div class="mono">${esc(e.nodo||"—")}</div></div>`;
     if(cam["Errores bot"])h+=`<div class="dato"><small>Respuestas no entendidas</small><div>${esc(cam["Errores bot"])}</div></div>`;
   }else h='<p class="vacio">El receptor se reinició: el estado de esta conversación empieza con su próximo mensaje.</p>';
