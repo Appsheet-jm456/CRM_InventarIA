@@ -27,3 +27,4 @@ Thumbs.db
 # Registro del receptor de prueba del webhook (teléfonos y mensajes)
 herramientas/**/eventos.log
 herramientas/**/tunel-url.txt
+__pycache__/
