@@ -62,7 +62,7 @@ PAGINA = """<!doctype html><html lang="es"><head><meta charset="utf-8">
 @media (prefers-color-scheme:dark){:root{color-scheme:dark;--bg:#0F1714;--surface:#16211D;--surface-2:#1C2A25;--ink:#E2EAE5;--muted:#93A69C;--line:#2A3B34;--side:#0A1210;--side-ink:#D6E6DD;--side-muted:#7E9A8D;--side-hover:#15241F;--accent:#4FB08A;--accent-ink:#0B1A14;--accent-soft:#1B3A2E;--ok:#6CC592;--ok-soft:#173327;--warn:#E3AE57;--warn-soft:#3A2C14;--bad:#F08A80;--bad-soft:#3D1D1A;--cli:#1C2A25;--bot:#1B3A2E}}
 *{box-sizing:border-box}html,body{height:100%}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 var(--f-body)}
 button{font:inherit;color:inherit}.mono{font-family:var(--f-mono)}
-.app{display:grid;grid-template-columns:auto 1fr;height:100%}
+.app{display:grid;grid-template-columns:auto 1fr;grid-template-rows:100%;height:100vh;height:100dvh;overflow:hidden}
 .side{background:var(--side);color:var(--side-ink);width:252px;display:flex;flex-direction:column;transition:width .2s ease;overflow:hidden}
 .app.plegado .side{width:68px}
 .brand{display:flex;align-items:center;gap:10px;padding:18px 16px 14px;border-bottom:1px solid rgba(255,255,255,.08);min-height:72px}
@@ -78,7 +78,7 @@ button{font:inherit;color:inherit}.mono{font-family:var(--f-mono)}
 .side-foot{border-top:1px solid rgba(255,255,255,.08);padding:12px 16px;display:flex;align-items:center;gap:10px}
 .avatar{flex:none;width:32px;height:32px;border-radius:50%;background:#2A5A4B;display:grid;place-items:center;font:600 12px var(--f-body);color:#fff}
 .who{font-size:12.5px;line-height:1.3;min-width:0}.who b{display:block;font-weight:500}.who small{color:var(--side-muted)}
-.main{display:flex;flex-direction:column;min-width:0;height:100%}
+.main{display:flex;flex-direction:column;min-width:0;min-height:0;height:100%;overflow:hidden}
 .top{display:flex;align-items:center;gap:12px;padding:12px 24px;background:var(--surface);border-bottom:1px solid var(--line)}
 .iconbtn{border:1px solid var(--line);background:var(--surface);width:36px;height:36px;border-radius:8px;display:grid;place-items:center;cursor:pointer}
 .iconbtn:hover{background:var(--surface-2)}.iconbtn i{font-size:18px}
@@ -86,10 +86,10 @@ button{font:inherit;color:inherit}.mono{font-family:var(--f-mono)}
 .crumb h1{margin:0;font:700 20px/1.2 var(--f-display)}
 .vivo{margin-left:auto;display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
 .vivo:before{content:"";width:8px;height:8px;border-radius:50%;background:var(--ok)}
-.content{flex:1;min-height:0;padding:18px 24px;display:flex;flex-direction:column;gap:12px}
+.content{flex:1;min-height:0;overflow:hidden;padding:18px 24px;display:flex;flex-direction:column;gap:12px}
 .aviso{font-size:12.5px;padding:8px 12px;border-radius:8px;background:var(--accent-soft);color:var(--accent)}
-.bandeja{flex:1;min-height:0;display:grid;grid-template-columns:290px minmax(0,1fr) 290px;background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden}
-.col{min-height:0;display:flex;flex-direction:column}.col+.col{border-left:1px solid var(--line)}
+.bandeja{flex:1;min-height:0;display:grid;grid-template-columns:290px minmax(0,1fr) 290px;grid-template-rows:minmax(0,1fr);background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.col{min-height:0;overflow:hidden;display:flex;flex-direction:column}.col+.col{border-left:1px solid var(--line)}
 .col-h{padding:12px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;min-height:58px}
 .col-h h2{margin:0;font:600 15px var(--f-display)}.col-h small{color:var(--muted);font-size:12px}
 .lista{overflow-y:auto;flex:1}
@@ -98,7 +98,7 @@ button{font:inherit;color:inherit}.mono{font-family:var(--f-mono)}
 .conv .avatar{grid-row:span 2;background:var(--accent)}.conv b{font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .conv time{font:12px var(--f-mono);color:var(--muted)}
 .conv small{grid-column:2/4;color:var(--muted);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.chat{flex:1;overflow-y:auto;padding:18px;display:flex;flex-direction:column;gap:8px;background:var(--bg)}
+.chat{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;scroll-behavior:smooth;padding:18px;display:flex;flex-direction:column;gap:8px;background:var(--bg)}
 .m{max-width:72%;padding:8px 11px;border-radius:10px;font-size:13.5px;line-height:1.45;white-space:pre-wrap;border:1px solid var(--line)}
 .m.cliente{align-self:flex-start;background:var(--cli);border-top-left-radius:3px}
 .m.bot{align-self:flex-end;background:var(--bot);border-top-right-radius:3px}
@@ -161,7 +161,7 @@ const app=document.getElementById("app");
 try{if(localStorage.getItem("crm-plegado")==="1")app.classList.add("plegado")}catch(e){}
 document.getElementById("plegar").onclick=()=>{app.classList.toggle("plegado");try{localStorage.setItem("crm-plegado",app.classList.contains("plegado")?"1":"0")}catch(e){}};
 const ETAPAS=["Nuevo","En Conversación","Cotización","Negociación","Confirmar transfer","Vendido"];
-let sel=null,firma="";
+let sel=null,firma="",visto=null;
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const ini=s=>(s||"?").split(/\\s+/).filter(Boolean).slice(0,2).map(p=>p[0]).join("").toUpperCase();
 const hora=t=>new Date(t).toLocaleTimeString("es-CO",{hour:"2-digit",minute:"2-digit",hour12:false,timeZone:"America/Bogota"});
@@ -179,7 +179,13 @@ async function cargar(){let r;try{r=await fetch("api/conversaciones")}catch(e){r
   document.querySelectorAll(".conv").forEach(d=>d.onclick=()=>{sel=d.dataset.n;firma="";cargar()});
   const c=chats.find(x=>x.numero===sel),e=c.estado;
   document.getElementById("chat-h").innerHTML=`<div class="avatar" style="background:var(--accent)">${esc(ini(c.nombre))}</div><div style="min-width:0"><h2>${esc(c.nombre||"Cliente")}</h2><small class="mono">+${c.numero}</small></div><div style="margin-left:auto">${chipBot(e)}</div>`;
-  const chat=document.getElementById("chat");chat.innerHTML=c.mensajes.map(burbuja).join("");chat.scrollTop=chat.scrollHeight;
+  const chat=document.getElementById("chat");
+  const abajo=chat.scrollHeight-chat.scrollTop-chat.clientHeight<120, otro=visto!==sel, arriba=chat.scrollTop;
+  chat.innerHTML=c.mensajes.map(burbuja).join("");
+  if(otro){chat.style.scrollBehavior="auto";chat.scrollTop=chat.scrollHeight;chat.style.scrollBehavior=""}
+  else if(abajo)chat.scrollTop=chat.scrollHeight;
+  else chat.scrollTop=arriba;
+  visto=sel;
   let h="";
   if(e){const i=ETAPAS.indexOf(e.etapa);
     h+=`<div class="dato"><small>Etapa del embudo</small><div class="embudo">${ETAPAS.slice(0,4).map((s,j)=>`<div class="paso-e ${j<i?"hecho":j===i?"actual":""}"><i class="ti ${j<i?"ti-circle-check":j===i?"ti-circle-dot":"ti-circle"}"></i>${s}</div>`).join("")}</div></div>`;
