@@ -14,7 +14,9 @@ de prueba de Meta. No es el motor definitivo (F3·4).
 
 import re
 import unicodedata
+from datetime import datetime, timedelta
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import db
 import interprete
@@ -29,7 +31,82 @@ RANGOS = [
 ]
 # Etapas que mueve el bot; las demás (Negociación en adelante, Perdido) solo las mueve un asesor.
 ETAPAS = ["Nuevo", "En Conversación", "Cotización"]
-HORARIO = "🕗 Lunes a viernes: 8:00 am – 6:00 pm\n🕘 Sábados: 9:00 am – 2:00 pm\nFestivos: cerrado."
+BOGOTA = ZoneInfo("America/Bogota")
+DIAS = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"]  # 0 = domingo, como extract(dow)
+
+
+# --------------------------------------------------------------------------- #
+# Horario de atención (tabla horario_atencion, RBOT-06) y textos editables (bot_nodos, RBOT-01)
+# --------------------------------------------------------------------------- #
+
+def _hora(t):
+    """'08:00:00' → '8:00 am'."""
+    h, m = int(t[:2]), int(t[3:5])
+    return f"{(h % 12) or 12}:{m:02d} {'am' if h < 12 else 'pm'}"
+
+
+def texto_horario():
+    """El horario del cliente, armado con la misma tabla que usa el SLA. Une los días con las mismas franjas."""
+    por_dia = {}
+    for f in db.horario():
+        por_dia.setdefault(f["dia"], []).append(f"{_hora(f['abre'])} – {_hora(f['cierra'])}")
+    if not por_dia:
+        return "Horario por confirmar."
+    grupos = []  # [(franjas, [dias])] en orden de lunes a domingo
+    for d in [1, 2, 3, 4, 5, 6, 0]:
+        if d in por_dia:
+            if grupos and grupos[-1][0] == por_dia[d] and grupos[-1][1][-1] == (d - 1) % 7:
+                grupos[-1][1].append(d)
+            else:
+                grupos.append((por_dia[d], [d]))
+    lineas = []
+    for franjas, dias in grupos:
+        nombre = (f"{DIAS[dias[0]].capitalize()} a {DIAS[dias[-1]]}" if len(dias) > 1 else DIAS[dias[0]].capitalize() + "s"
+                  if dias[0] != 6 else "Sábados")
+        lineas.append(f"🕗 {nombre}: {' y '.join(franjas)}")
+    return "\n".join(lineas) + "\nFestivos: cerrado."
+
+
+def proxima_apertura(ahora=None):
+    """(abierto_ahora, cuándo abre) con la hora de Colombia. `cuándo` sirve para 'te responde ...'."""
+    ahora = (ahora or datetime.now(BOGOTA)).astimezone(BOGOTA).replace(tzinfo=None)
+    franjas, festivos = db.horario(), db.festivos()
+    if not franjas:
+        return True, ""
+    for salto in range(0, 15):
+        dia = ahora.date() + timedelta(days=salto)
+        if dia.isoformat() in festivos:
+            continue
+        for f in sorted((f for f in franjas if f["dia"] == (dia.weekday() + 1) % 7), key=lambda f: f["abre"]):
+            abre = datetime.combine(dia, datetime.strptime(f["abre"][:5], "%H:%M").time())
+            cierra = datetime.combine(dia, datetime.strptime(f["cierra"][:5], "%H:%M").time())
+            if abre <= ahora < cierra:
+                return True, ""
+            if ahora < abre:
+                if salto == 0:
+                    cuando = f"hoy a las {_hora(f['abre'])}"
+                elif salto == 1:
+                    cuando = f"mañana a las {_hora(f['abre'])}"
+                else:
+                    cuando = f"el {DIAS[(dia.weekday() + 1) % 7]} a las {_hora(f['abre'])}"
+                return False, cuando
+    return True, ""
+
+
+def texto_nodo(clave, defecto, **marcas):
+    """Texto del nodo desde bot_nodos; si falta, el del código. Las marcas {x} sin valor desaparecen."""
+    fila = db.nodos().get(clave)
+    texto = (fila or {}).get("texto") or defecto
+    for k, v in marcas.items():
+        texto = texto.replace("{" + k + "}", str(v))
+    return texto
+
+
+def opciones_nodo(clave, defecto):
+    """[(id, título, descripción)] con los títulos editados; los ids y el orden siempre son los del código."""
+    fila = db.nodos().get(clave)
+    editados = {o["id"]: o["titulo"] for o in (fila or {}).get("opciones") or []}
+    return [(i, editados.get(i) or t, d) for i, t, d in defecto]
 
 
 def estado_vacio():
@@ -179,33 +256,37 @@ def ir(st, nodo):
 def b00(st):
     etapa(st, "Nuevo")
     st["campos"]["Etiqueta"] = "WhatsApp-Bot"
-    return [menu("¡Hola! 👋 Bienvenido a *Ventas Virtuales Colombia*, distribuidores al por mayor y detal de "
-                 "equipos de cómputo en Cali.\nSoy el *Bot Ventas Virtuales* 🤖 ¿En qué te podemos ayudar hoy?\n\n"
-                 "_También puedes escribirme lo que buscas, por ejemplo: \"Dell i5 de décima\"._",
-                 [("1", "Productos", ""), ("2", "Distribuidores", ""), ("3", "Servicio al cliente", "")])]
+    return [menu(texto_nodo("B00", "¡Hola! 👋 Bienvenido a *Ventas Virtuales Colombia*, distribuidores al por mayor "
+                            "y detal de equipos de cómputo en Cali.\nSoy el *Bot Ventas Virtuales* 🤖 ¿En qué te "
+                            "podemos ayudar hoy?\n\n_También puedes escribirme lo que buscas, por ejemplo: "
+                            "\"Dell i5 de décima\"._"),
+                 opciones_nodo("B00", [("1", "Productos", ""), ("2", "Distribuidores", ""),
+                                       ("3", "Servicio al cliente", "")]))]
 
 
 def b001a(st):
-    return [menu("¡Perfecto! ¿Qué producto estás buscando?",
-                 [("1", "Portátiles corporativos", ""), ("2", "Torres Tiny", ""), ("3", "Torres SFF", ""),
-                  ("4", "Partes", ""), ("0", "Volver al menú", "")])]
+    return [menu(texto_nodo("B001A", "¡Perfecto! ¿Qué producto estás buscando?"),
+                 opciones_nodo("B001A", [("1", "Portátiles corporativos", ""), ("2", "Torres Tiny", ""),
+                                         ("3", "Torres SFF", ""), ("4", "Partes", ""), ("0", "Volver al menú", "")]))]
 
 
 def b001a1(st):
-    return [menu("¿Para qué tipo de trabajo necesitas el portátil?",
-                 [("1", "Hogar / estudio", ""), ("2", "Ejecutivo / oficina", ""),
-                  ("3", "Diseño / edición", ""), ("0", "Volver", "")])]
+    return [menu(texto_nodo("B001A1", "¿Para qué tipo de trabajo necesitas el portátil?"),
+                 opciones_nodo("B001A1", [("1", "Hogar / estudio", ""), ("2", "Ejecutivo / oficina", ""),
+                                          ("3", "Diseño / edición", ""), ("0", "Volver", "")]))]
 
 
 def b001a2(st):
-    return [menu("¿Cuál es tu presupuesto aproximado?\n_(también puedes escribir el monto, por ejemplo 1.5 millones)_",
+    return [menu(texto_nodo("B001A2", "¿Cuál es tu presupuesto aproximado?\n_(también puedes escribir el monto, "
+                            "por ejemplo 1.5 millones)_"),
                  [(str(i + 1), r[3], r[2]) for i, r in enumerate(RANGOS)])]
 
 
 def b001a3(st):
-    return [menu(f"¿Deseas que te enviemos el catálogo de portátiles disponibles para *{st['campos']['Uso equipo']}* "
-                 "y así revises cuál te interesa?",
-                 [("1", "Sí, el catálogo", ""), ("2", "Hablar con asesor", ""), ("3", "Volver", "")])]
+    return [menu(texto_nodo("B001A3", "¿Deseas que te enviemos el catálogo de portátiles disponibles para *{uso}* "
+                            "y así revises cuál te interesa?", uso=st["campos"]["Uso equipo"]),
+                 opciones_nodo("B001A3", [("1", "Sí, el catálogo", ""), ("2", "Hablar con asesor", ""),
+                                          ("3", "Volver", "")]))]
 
 
 def b001a4(st):
@@ -213,7 +294,8 @@ def b001a4(st):
     st["marcas"] = marcas
     opciones = [(str(i + 1), m.title(), "") for i, m in enumerate(marcas)]
     opciones.append((str(len(marcas) + 1), "Todas las marcas", ""))
-    return [menu("¿De qué marca quieres ver los portátiles?\n_(solo aparecen las marcas con stock)_", opciones)]
+    return [menu(texto_nodo("B001A4", "¿De qué marca quieres ver los portátiles?\n_(solo aparecen las marcas con "
+                            "stock)_"), opciones)]
 
 
 def filtrar(st):
@@ -248,24 +330,33 @@ def r11(st, p):
     etapa(st, "Cotización")
     ficha = (f"💻 *{p['marca']} {p['modelo']}* · Código {p['cod']}\n{p['cpu']} · {p['ram']} · {p['disco']}"
              f"{' · ' + p['estado'] if p['estado'] else ''}\n💰 {cop(p['precio'])} · ✅ Disponible")
-    return [m_botones(ficha, [("1", "Lo quiero"), ("2", "Ver otro código"), ("0", "Menú principal")], p["foto"])]
+    botones = opciones_nodo("R11", [("1", "Lo quiero", ""), ("2", "Ver otro código", ""), ("0", "Menú principal", "")])
+    return [m_botones(ficha, [(i, t) for i, t, _ in botones], p["foto"])]
 
 
 def asesor(st, etiqueta="Escalado-Asesor", motivo=None):
+    """Pasa el chat a la cola. Fuera de horario avisa cuándo lo atienden (RBOT-05); el chat entra igual."""
     st["campos"]["Etiqueta"] = etiqueta
     st["pausa"], st["nodo"] = True, "B-ASESOR"
     aviso = f"_{motivo}_\n\n" if motivo else ""
-    return [m_texto(f"{aviso}¡Entendido! 🙌 En breve un asesor de *Ventas Virtuales Colombia* te atenderá "
-                    f"personalmente.\n\n{HORARIO}\n\nSi nos escribes fuera del horario, te respondemos a primera "
-                    "hora del siguiente día hábil.\n\n_(Prueba: escribe *reiniciar* para volver a hablar con el bot)_")]
+    abierto, cuando = proxima_apertura()
+    if abierto:
+        texto = texto_nodo("B-ASESOR", "{motivo}¡Entendido! 🙌 En breve un asesor de *Ventas Virtuales Colombia* te "
+                           "atenderá personalmente.\n\n{horario}", motivo=aviso, horario=texto_horario())
+    else:
+        texto = texto_nodo("B-CERRADO", "{motivo}¡Entendido! 🙌 Ahora estamos fuera de horario, pero tu chat ya quedó "
+                           "en la fila: un asesor te responde {proxima}.\n\n{horario}",
+                           motivo=aviso, horario=texto_horario(), proxima=cuando)
+    return [m_texto(texto)]
 
 
 def error(st):
     st["errores"] += 1
     st["campos"]["Errores bot"] = st["errores"]
     if st["errores"] >= 3:
-        return asesor(st, motivo="Tres respuestas no reconocidas: te paso con un asesor.")
-    return [m_texto("🤔 No entendí tu respuesta. Toca una opción o escribe el *número*, o *MENU* para volver al inicio.")]
+        return asesor(st, motivo=texto_nodo("ERROR-3", "Tres respuestas no reconocidas: te paso con un asesor."))
+    return [m_texto(texto_nodo("ERROR", "🤔 No entendí tu respuesta. Toca una opción o escribe el *número*, o *MENU* "
+                               "para volver al inicio."))]
 
 
 def busqueda(st, filtros):

@@ -59,6 +59,39 @@ def productos_con_stock():
 
 
 # --------------------------------------------------------------------------- #
+# Nodos del bot, horario y festivos (F3·7, decisión 0023)
+# --------------------------------------------------------------------------- #
+
+_cache_bot = {}
+
+
+def _cacheado(clave, ruta, segundos=30):
+    """Lee de la base cada `segundos`; si la base falla, devuelve lo último que se leyó (o None)."""
+    t, valor = _cache_bot.get(clave, (0, None))
+    if time.time() - t > segundos:
+        try:
+            valor = pedir(ruta)
+        except Exception:
+            pass
+        _cache_bot[clave] = (time.time(), valor)
+    return valor
+
+
+def nodos():
+    """{clave: fila} de bot_nodos. Un cambio en la app se ve en el bot en menos de 30 s."""
+    filas = _cacheado("nodos", "bot_nodos?select=clave,texto,opciones")
+    return {f["clave"]: f for f in filas or []}
+
+
+def horario():
+    return _cacheado("horario", "horario_atencion?select=dia,abre,cierra&order=dia,abre") or []
+
+
+def festivos():
+    return {f["fecha"] for f in _cacheado("festivos", "festivos?select=fecha") or []}
+
+
+# --------------------------------------------------------------------------- #
 # Leads
 # --------------------------------------------------------------------------- #
 
