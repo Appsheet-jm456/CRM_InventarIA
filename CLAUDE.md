@@ -2,8 +2,8 @@
 
 Inventario, chat con IA y CRM de WhatsApp para **Ventas Virtuales Colombia** (portátiles usados).
 v0: Next.js 14 + Baserow + Evolution API. App nueva: Next.js 14 (TypeScript, panel lateral de
-Futur Green) + Supabase propio + WhatsApp Cloud API de Meta. La app nueva vive en `crm/` (puerto 3020;
-pasa al 8096 en F3·5, decisión 0017).
+Futur Green) + Supabase propio + WhatsApp Cloud API de Meta. La app nueva vive en `crm/` y corre en el
+puerto 8096 (servicio `crm-inventaria-app`, decisión 0017).
 
 ## Antes de empezar
 

@@ -283,5 +283,5 @@ class Webhook(BaseHTTPRequestHandler):
 
 if __name__ == "__main__":
     anotar(f"Receptor de prueba escuchando en 127.0.0.1:{PUERTO}/webhook")
-    anotar(f"Visor de conversaciones en el puerto {visor.arrancar()} (red local, clave de lectura)")
+    # El visor de la demo se apagó en F3·5: la Bandeja de CRM InventarIA ocupa el 8096 (decisión 0017).
     ThreadingHTTPServer(("127.0.0.1", PUERTO), Webhook).serve_forever()

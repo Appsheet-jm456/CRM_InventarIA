@@ -11,8 +11,8 @@
 | | |
 |---|---|
 | **Código** | Carpeta `crm/` del repo, con su propio `package.json`. La v0 (`app/` en la raíz) y los scripts de prueba (`herramientas/`) no se tocan |
-| **Mientras se construye (F3·1 a F3·4)** | `next start -p 3020` → `http://100.114.72.43:3020` (Tailscale) y `http://192.168.20.50:3020` (red local) |
-| **Desde F3·5** | Pasa al **8096**: su Bandeja reemplaza al visor de Python de la demo, que se apaga |
+| **Dirección** | **`http://100.114.72.43:8096`** (Tailscale) y `http://192.168.20.50:8096` (red local), `next start -p 8096`. Del 3020 pasó al 8096 en F3·5 y el visor de Python se apagó |
+| **Desarrollo** | `npm run dev` en el 3020, para no chocar con el servicio |
 | **Servicio** | Unidad de usuario `crm-inventaria-app` (systemd, arranca con el servidor, `Linger=yes`), igual que los servicios del bot. Copia en `crm/systemd/` |
 | **Base** | Supabase del CRM (`http://192.168.20.50:8020`). La app habla con ella desde el servidor |
 | **Secretos** | `crm/.env.local` (fuera de git): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` |

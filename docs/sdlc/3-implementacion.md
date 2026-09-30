@@ -20,7 +20,7 @@
 | F3·2 Migración de datos desde Baserow (productos, etapas y leads) | ✅ Hecho 30 sep 2026 · Supabase manda, datos de prueba (0019) |
 | F3·3 Webhook de Meta, adaptador y registro de mensajes | Pendiente |
 | F3·4 Motor del bot sobre `bot_nodos` | Pendiente |
-| F3·5 Bandeja multiasesor y kanban en tiempo real | Pendiente |
+| F3·5 Bandeja multiasesor y kanban en tiempo real | ✅ Hecho 30 sep 2026 · migración 0004, app en el 8096 |
 | F3·6 Seguimientos y alertas de SLA | Pendiente |
 | F3·7 Editor del bot y horario de atención | Pendiente |
 | F3·8 Métricas del embudo | Pendiente |

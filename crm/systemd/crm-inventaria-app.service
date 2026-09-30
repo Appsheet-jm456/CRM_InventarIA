@@ -1,11 +1,11 @@
 [Unit]
-Description=CRM InventarIA · app nueva (Next.js, puerto 3020; pasa al 8096 en F3·5)
+Description=CRM InventarIA · app nueva (Next.js, puerto 8096 desde F3·5)
 After=network-online.target
 
 [Service]
 WorkingDirectory=/home/atlasjm/chat_bot-inventario/crm
 Environment=NODE_ENV=production
-ExecStart=/home/atlasjm/.local/bin/node node_modules/next/dist/bin/next start -p 3020
+ExecStart=/home/atlasjm/.local/bin/node node_modules/next/dist/bin/next start -p 8096
 Restart=always
 RestartSec=5
 

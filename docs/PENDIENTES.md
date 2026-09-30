@@ -2,13 +2,13 @@
 
 **Última sesión:** 30 sep 2026 · **Fase actual:** Fase 3 (Implementación) empezando por **F3·1**, con pendientes
 de las Fases 1 y 2 abajo. **Código nuevo:** el bot de prueba sobre Supabase (`herramientas/`) y las migraciones
-0001–0002. La app nueva **CRM InventarIA** nace en `crm/` (decisión 0017). La v0 sigue viva en el 3000 sin tocar.
+0001–0004. La app nueva **CRM InventarIA** corre en **http://100.114.72.43:8096** (`crm/`, decisión 0017). La v0 sigue viva en el 3000 sin tocar.
 
 ## Dónde retomar (en este orden)
 
-1. **F3·1 y F3·2 hechas.** Falta que el dueño cree su usuario: `bash supabase/crear-admin.sh admin "Nombre"`
-   (pide la contraseña). Sigue **F3·3** (webhook de Meta en la app nueva).
-2. Luego F3·3 a F3·9 en orden. En **F3·5** la app pasa al puerto **8096** y el visor de Python se apaga.
+1. **F3·1 a F3·5 hechas** (30 sep 2026). El dueño ya tiene su usuario `admin`. Sigue **F3·6** (seguimientos,
+   alertas de SLA y plantillas de Meta para escribir fuera de la ventana de 24 h).
+2. Luego F3·7 a F3·9 en orden.
 3. En paralelo, lo que depende del dueño: F1·4 (deploy key), F1·6, F1·7, F1·8, clave de Gemini, PDF y enlace de Drive, hoja Excel.
 
 ## Estado de las tareas de la Fase 1
@@ -31,8 +31,12 @@ ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIONAxvcI3oR3igFtPME4BMX2UWaT1Ju6LFxZQosRf0GN
 
 ## App nueva CRM InventarIA (F3·1, 30 sep 2026)
 
-- Código en `crm/` (Next.js 14 + TypeScript, copia del esqueleto de Futur Green). **http://100.114.72.43:3020**
-  (Tailscale) o `http://192.168.20.50:3020`. En F3·5 pasa al 8096 (decisión 0017).
+- Código en `crm/` (Next.js 14 + TypeScript, copia del esqueleto de Futur Green). **http://100.114.72.43:8096**
+  (Tailscale) o `http://192.168.20.50:8096` (decisión 0017; hasta F3·5 corrió en el 3020).
+- **Bandeja, Embudo y Etapas (F3·5, decisión 0020, [BANDEJA-Y-EMBUDO.md](BANDEJA-Y-EMBUDO.md)):** cola, tomar,
+  devolver, asignar, cerrar, devolver al bot, responder por Meta (solo dentro de 24 h), media del cliente,
+  embudo por arrastre y etapas editables. Tiempo real con Supabase Realtime (el navegador llega a la API por
+  `<ip>:8020`). La cookie de sesión tiene nombre fijo (`sb-crm-inventaria-auth-token`).
 - Servicio `crm-inventaria-app` (usuario atlasjm, arranca solo): `systemctl --user status crm-inventaria-app`.
   Copia de la unidad en `crm/systemd/`. Tras cambiar código: `cd crm && npx next build && systemctl --user restart crm-inventaria-app`.
 - Secretos en `crm/.env.local` (fuera de git, plantilla en `crm/.env.example`).
@@ -81,11 +85,8 @@ de Baserow, y refleja cada cliente en el **kanban de la v0 (puerto 3000)**. Es u
   - Estado: `systemctl --user status crm-meta-receptor crm-meta-tunel`
   - Reiniciar: `systemctl --user restart crm-meta-receptor crm-meta-tunel`
   - Conversaciones: `tail -f herramientas/meta-webhook-prueba/eventos.log` · URL actual: `tunel-url.txt`
-  - Apagar después de la demo: `systemctl --user disable --now crm-meta-tunel crm-meta-receptor`
-- **Visor de conversaciones:** `http://192.168.20.50:8096` (red local; usuario cualquiera, contraseña =
-  `ACCESS_PASSWORD` de la app). Muestra el chat con burbujas, la etapa, el nodo y los datos guardados, y se
-  actualiza solo. Va en otro puerto que el túnel no expone. Las conversaciones quedan en `conversaciones.jsonl`
-  (fuera de git). El panel de la v0 no puede mostrarlas: las pide a Evolution.
+  - **No apagarlos:** el receptor es hoy el canal de la app (recibe, responde con el bot y guarda los mensajes).
+- **Visor de conversaciones:** apagado en F3·5; lo reemplazó la Bandeja de la app en el mismo 8096.
 - **Quién puede probar:** solo números verificados en Meta → Tests de la API → paso 3 (máximo 5). Un número
   sin verificar escribe, pero Meta no le entrega las respuestas.
 - **Reiniciar una charla:** escribir `reiniciar` (también quita la pausa de asesor). `hola` o `menu` vuelven al inicio.

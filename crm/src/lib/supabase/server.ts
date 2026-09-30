@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
+import { COOKIE_SESION } from '@/lib/supabase/cookie'
 
 // Cliente con la sesión del usuario: la base aplica su rol en RLS y en cada función.
 export function crearCliente() {
@@ -8,6 +9,7 @@ export function crearCliente() {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      cookieOptions: { name: COOKIE_SESION },
       cookies: {
         getAll: () => almacen.getAll(),
         setAll: (lista) => {

@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { COOKIE_SESION } from '@/lib/supabase/cookie'
 
 // Refresca la sesión en cada petición y manda al login a quien no la tiene.
 export async function middleware(request: NextRequest) {
@@ -9,6 +10,7 @@ export async function middleware(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      cookieOptions: { name: COOKIE_SESION },
       cookies: {
         getAll: () => request.cookies.getAll(),
         setAll: (lista) => {

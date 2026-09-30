@@ -1,6 +1,6 @@
 # 0017 · La app nueva vive en `crm/` y termina en el puerto 8096
 
-**Estado:** Aceptada · 30 sep 2026 · Aplica la 0008 y la 0009
+**Estado:** Aceptada · 30 sep 2026 · Aplica la 0008 y la 0009 · Cumplida en F3·5 (la app corre en el 8096)
 
 ## Contexto
 

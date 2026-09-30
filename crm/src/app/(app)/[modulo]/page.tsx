@@ -21,8 +21,8 @@ export default async function ModuloEnConstruccion({ params }: { params: { modul
         <span className="chip neu">En construcción</span>
       </div>
       <div className="panel-b muted">
-        Aparece aquí para que el panel ya tenga su lugar y respete los permisos de tu rol. Mientras tanto, las
-        conversaciones de la demo siguen en la Bandeja del puerto 8096.
+        Aparece aquí para que el panel ya tenga su lugar y respete los permisos de tu rol. Las conversaciones se
+        atienden en la Bandeja.
       </div>
     </section>
   )

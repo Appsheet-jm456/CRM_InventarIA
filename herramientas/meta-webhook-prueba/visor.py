@@ -1,6 +1,9 @@
 """
 Visor de PRUEBA de las conversaciones con el número de prueba de Meta, para la demo.
 
+APAGADO desde F3·5 (30 sep 2026): la Bandeja de CRM InventarIA lo reemplazó en el 8096 (decisión 0017).
+El receptor solo usa de aquí texto_saliente(). arrancar() queda por si hiciera falta verlo otra vez.
+
 Corre dentro del receptor en OTRO puerto (8096) que el túnel NO expone: solo se ve en la red local, y pide
 la clave de lectura de la app (ACCESS_PASSWORD de .env.local) porque muestra teléfonos y mensajes.
 Las conversaciones y el estado de cada cliente salen de la Supabase del CRM (tablas leads y mensajes).

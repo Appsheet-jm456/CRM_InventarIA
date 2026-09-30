@@ -56,7 +56,7 @@ export default async function Inicio() {
           <div className="panel-h">
             <div>
               <h2>Lo que viene</h2>
-              <small>Módulos de tu rol que se construyen en la Fase 3. Las conversaciones de la demo siguen en el puerto 8096.</small>
+              <small>Módulos de tu rol que se construyen en la Fase 3.</small>
             </div>
           </div>
           <div className="tablewrap">

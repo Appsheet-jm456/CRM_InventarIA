@@ -17,8 +17,8 @@ export type Modulo = {
 export const MODULOS: readonly Modulo[] = [
   { clave: 'inicio', titulo: 'Inicio', subtitulo: 'Resumen del día', grupo: null, ruta: '/', icono: 'inicio', permisos: [] },
 
-  { clave: 'bandeja', titulo: 'Bandeja', subtitulo: 'Conversaciones de WhatsApp', grupo: 'Atención', ruta: '/bandeja', icono: 'bandeja', permisos: ['atender_bandeja'], paso: 'F3·5' },
-  { clave: 'embudo', titulo: 'Embudo', subtitulo: 'Oportunidades por etapa', grupo: 'Atención', ruta: '/embudo', icono: 'embudo', permisos: ['gestionar_oportunidades'], paso: 'F3·5' },
+  { clave: 'bandeja', titulo: 'Bandeja', subtitulo: 'Conversaciones de WhatsApp', grupo: 'Atención', ruta: '/bandeja', icono: 'bandeja', permisos: ['atender_bandeja'] },
+  { clave: 'embudo', titulo: 'Embudo', subtitulo: 'Oportunidades por etapa', grupo: 'Atención', ruta: '/embudo', icono: 'embudo', permisos: ['gestionar_oportunidades'] },
   { clave: 'seguimientos', titulo: 'Seguimientos', subtitulo: 'Seguimientos y SLA', grupo: 'Atención', ruta: '/seguimientos', icono: 'seguimientos', permisos: ['gestionar_oportunidades'], paso: 'F3·6' },
 
   { clave: 'inventario', titulo: 'Inventario', subtitulo: 'Portátiles, fichas y catálogos', grupo: 'Ventas', ruta: '/inventario', icono: 'inventario', permisos: [], paso: 'F3·9' },
@@ -27,7 +27,7 @@ export const MODULOS: readonly Modulo[] = [
   { clave: 'metricas', titulo: 'Métricas', subtitulo: 'Embudo, tiempos y asesores', grupo: 'Análisis', ruta: '/metricas', icono: 'metricas', permisos: ['ver_metricas', 'atender_bandeja'], paso: 'F3·8' },
 
   { clave: 'bot', titulo: 'Bot y horario', subtitulo: 'Árbol del bot y horario de atención', grupo: 'Configuración', ruta: '/bot', icono: 'bot', permisos: ['administrar_bot'], paso: 'F3·7' },
-  { clave: 'etapas', titulo: 'Etapas', subtitulo: 'Etapas del embudo y motivos de pérdida', grupo: 'Configuración', ruta: '/etapas', icono: 'etapas', permisos: ['administrar_embudo'], paso: 'F3·5' },
+  { clave: 'etapas', titulo: 'Etapas', subtitulo: 'Etapas del embudo y motivos de pérdida', grupo: 'Configuración', ruta: '/etapas', icono: 'etapas', permisos: ['administrar_embudo'] },
   { clave: 'respuestas-rapidas', titulo: 'Respuestas rápidas', subtitulo: 'Atajos de texto del equipo', grupo: 'Configuración', ruta: '/respuestas-rapidas', icono: 'respuestas', permisos: ['administrar_bot'], paso: 'F3·7' },
   { clave: 'canal', titulo: 'Canal WhatsApp', subtitulo: 'Conexión con Meta y consumo', grupo: 'Configuración', ruta: '/canal', icono: 'canal', permisos: ['administrar_canal'], paso: 'F3·3' },
   { clave: 'usuarios', titulo: 'Usuarios', subtitulo: 'Usuarios', grupo: 'Configuración', ruta: '/usuarios', icono: 'usuarios', permisos: ['administrar_usuarios'] },
