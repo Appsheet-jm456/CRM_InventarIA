@@ -6,9 +6,9 @@ de las Fases 1 y 2 abajo. **Código nuevo:** el bot de prueba sobre Supabase (`h
 
 ## Dónde retomar (en este orden)
 
-1. **F3·1 a F3·7 y F3·10 hechas** (30 sep 2026). El dueño ya tiene su usuario `admin`. Sigue **F3·8** (métricas del embudo,
-   con categoría de Meta, cobrable y estados de entrega).
-2. Luego F3·9. **Pendiente del dueño en F3·6:** aprobar los textos de las 3 plantillas del CRM y enviarlas a
+1. **F3·1 a F3·8 y F3·10 hechas** (30 sep 2026). El dueño ya tiene su usuario `admin`. Sigue **F3·9** (inventario,
+   fichas y catálogo PDF).
+2. **Pendiente del dueño en F3·6:** aprobar los textos de las 3 plantillas del CRM y enviarlas a
    Meta desde Configuración → Canal WhatsApp (hoy solo hay plantillas de ejemplo en inglés).
 3. En paralelo, lo que depende del dueño: F1·4 (deploy key), F1·6, F1·7, F1·8, clave de Gemini, PDF y enlace de Drive, hoja Excel.
 
@@ -36,6 +36,13 @@ ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIONAxvcI3oR3igFtPME4BMX2UWaT1Ju6LFxZQosRf0GN
   `/bot` edita textos y títulos de botones (no la estructura; restaura el original) y el horario con festivos;
   el bot los lee de la base cada 30 s y, fuera de horario, avisa al pasar a asesor cuándo le responden.
   `/respuestas-rapidas` y el atajo `/` en la Bandeja. Migración 0007. Hay que sembrar los festivos de 2028 (la app avisa).
+
+- **Métricas (F3·8, decisión 0024, [METRICAS.md](METRICAS.md)):** `/metricas` abre en el mes actual con selector de
+  período y embudo: conversión por etapa, primera respuesta en SLA, ganadas y perdidas con motivos, sin respuesta ahora,
+  entrega de mensajes y tabla por asesor (el asesor ve solo lo suyo). Cada paso a la cola queda en `atenciones`. El
+  receptor guarda cada estado de Meta (`estados_meta`) y la Bandeja muestra ✓ / ✓✓ / ✓✓ azul / ✗. Consumo de Meta del mes
+  contra los 1.000 gratis, con aviso al 80 % en Métricas e Inicio; **sin pesos hasta F1·6**. Migración 0008, 16 pruebas
+  en `supabase/pruebas/` (`supabase/migrar.sh --probar`).
 
 - Código en `crm/` (Next.js 14 + TypeScript, copia del esqueleto de Futur Green). **http://100.114.72.43:8096**
   (Tailscale) o `http://192.168.20.50:8096` (decisión 0017; hasta F3·5 corrió en el 3020).

@@ -332,6 +332,12 @@ a.pastilla { text-decoration: none; display: inline-block }
 .barra { display: grid; grid-template-columns: 110px 1fr 100px; gap: 10px; align-items: center; font-size: 13px }
 .barra-pista { height: 14px; background: var(--surface-2); border-radius: 4px; overflow: hidden }
 .barra-relleno { height: 100%; background: var(--accent) }
+.barras { display: flex; flex-direction: column; gap: 9px }
+.barras .barra { grid-template-columns: minmax(90px, 170px) 1fr 110px }
+.barra-etq { overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.grid-metricas { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 16px; align-items: start }
+.grid-metricas .panel { margin: 0 }
+@media (max-width: 560px) { .grid-metricas { grid-template-columns: 1fr } .barras .barra { grid-template-columns: 90px 1fr 80px } }
 @media (max-width: 1000px) { .grid-gastos { grid-template-columns: 1fr } }
 
 /* ---------- gráfica apilada (dataviz: paleta validada, relevo = tabla y leyenda) ---------- */
@@ -393,6 +399,9 @@ a.pastilla { text-decoration: none; display: inline-block }
 .m.bot { align-self: flex-end; background: var(--bot); border-top-right-radius: 3px }
 .m.asesor { align-self: flex-end; background: var(--ase); border-top-right-radius: 3px }
 .m time { display: block; font: 11px var(--f-mono); color: var(--muted); text-align: right; margin-top: 3px }
+.m-entrega { margin-left: 4px; letter-spacing: -2px; font-weight: 600 }
+.m-entrega.leido { color: #1E88D8 }
+.m-entrega.fallido { color: var(--bad); letter-spacing: 0; font-family: var(--f-body) }
 .m-quien { display: block; font-size: 11.5px; font-weight: 600; color: var(--accent); margin-bottom: 2px }
 .m .opts { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px }
 .m .opts span { font-size: 12px; padding: 3px 9px; border-radius: 20px; background: var(--surface); border: 1px solid var(--line); color: var(--accent) }

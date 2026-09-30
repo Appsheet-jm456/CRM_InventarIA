@@ -1,5 +1,11 @@
 # Changelog del brief
 
+## v1.0 · 30 sep 2026 (F3·8)
+
+- Métricas del embudo en `/metricas` (0024, `docs/METRICAS.md`): conversión por etapa, SLA de primera respuesta por
+  atención, motivos de pérdida, sin respuesta, entrega y por asesor. Estados de entrega de Meta guardados y visibles
+  en la Bandeja; contador de mensajes de servicio del mes contra los 1.000 gratis con aviso al 80 %.
+
 ## v1.0 · 30 sep 2026 (F3·7)
 
 - Editor del bot: textos y títulos de botones desde la app, sin tocar la estructura (0023,

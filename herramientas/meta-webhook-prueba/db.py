@@ -7,6 +7,7 @@ las tablas tienen RLS sin políticas, así que la clave pública no ve nada.
 
 import json
 import time
+from datetime import datetime, timezone
 import urllib.parse
 import urllib.request
 from pathlib import Path
@@ -180,6 +181,21 @@ def guardar_mensaje(lead_id, lado, texto, tipo="text", meta_id=None, media=None)
         fila.update(media_ruta=media["ruta"], media_mime=media["mime"], media_nombre=media.get("nombre", ""))
     pedir("mensajes?on_conflict=meta_id" if meta_id else "mensajes", "POST", fila,
           "resolution=ignore-duplicates,return=minimal" if meta_id else "return=minimal")
+
+
+def registrar_estado(estado, error=""):
+    """Un estado del webhook (sent, delivered, read, failed) con su precio: la base lo aplica al mensaje (RM-07)."""
+    precio = estado.get("pricing") or {}
+    marca = estado.get("timestamp")
+    pedir("rpc/registrar_estado_meta", "POST", {
+        "p_wamid": estado.get("id", ""),
+        "p_estado": estado.get("status", ""),
+        "p_ocurrido_en": datetime.fromtimestamp(int(marca), timezone.utc).isoformat() if marca else None,
+        "p_categoria": precio.get("category", ""),
+        "p_cobrable": precio.get("billable"),
+        "p_tipo_precio": precio.get("type", ""),
+        "p_error": error,
+    }, "return=minimal")
 
 
 def conversaciones(limite=30):

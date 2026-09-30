@@ -42,6 +42,8 @@ type Mensaje = {
   media_ruta: string
   media_mime: string
   media_nombre: string
+  estado_entrega: '' | 'enviado' | 'entregado' | 'leido' | 'fallido'
+  error_meta: string
 }
 
 type Persona = { id: string; nombre: string }
@@ -76,6 +78,15 @@ function partirOpciones(texto: string) {
   const dentro = texto.slice(k + 3, -1).trim()
   const lista = dentro.includes(': ') ? dentro.split(': ').slice(1).join(': ') : dentro
   return { cuerpo: texto.slice(0, k), opciones: lista.split(' · ').filter(Boolean) }
+}
+
+// RM-07: el último estado que informó Meta, como en WhatsApp.
+function Entrega({ m }: { m: Mensaje }) {
+  if (m.lado === 'cliente' || !m.estado_entrega) return null
+  if (m.estado_entrega === 'fallido')
+    return <span className="m-entrega fallido" title={m.error_meta || 'Meta no lo entregó'}>✗ No entregado</span>
+  const titulo = { enviado: 'Enviado', entregado: 'Entregado', leido: 'Leído' }[m.estado_entrega]
+  return <span className={`m-entrega ${m.estado_entrega}`} title={titulo} aria-label={titulo}>{m.estado_entrega === 'enviado' ? '✓' : '✓✓'}</span>
 }
 
 function Media({ m }: { m: Mensaje }) {
@@ -137,7 +148,7 @@ export function Bandeja({ yo, usuarios, asesores, embudos, etapas, rapidas, inic
   const cargarMensajes = useCallback(async (id: number) => {
     const { data } = await clienteNavegador()
       .from('mensajes')
-      .select('id, lado, tipo, texto, creado_en, usuario_id, media_ruta, media_mime, media_nombre')
+      .select('id, lado, tipo, texto, creado_en, usuario_id, media_ruta, media_mime, media_nombre, estado_entrega, error_meta')
       .eq('lead_id', id)
       .order('creado_en')
       .limit(500)
@@ -169,6 +180,13 @@ export function Bandeja({ yo, usuarios, asesores, embudos, etapas, rapidas, inic
         if (nuevo.lead_id === selRef.current)
           setMensajes((ms) => (ms.some((m) => m.id === nuevo.id) ? ms : [...ms, nuevo]))
         programar()
+      })
+      // El estado de entrega llega después, como una actualización del mensaje (RM-07).
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'mensajes' }, (p: { new: Record<string, unknown> }) => {
+        const cambio = p.new as unknown as Mensaje & { lead_id: number }
+        if (cambio.lead_id === selRef.current)
+          setMensajes((ms) => ms.map((m) => (m.id === cambio.id
+            ? { ...m, estado_entrega: cambio.estado_entrega, error_meta: cambio.error_meta } : m)))
       })
       .subscribe((estado: string) => setVivo(estado === 'SUBSCRIBED'))
     })
@@ -337,7 +355,7 @@ export function Bandeja({ yo, usuarios, asesores, embudos, etapas, rapidas, inic
                     {opciones.length > 0 && (
                       <div className="opts">{opciones.map((o, i) => <span key={i}>{o}</span>)}</div>
                     )}
-                    <time>{hora(m.creado_en)}</time>
+                    <time>{hora(m.creado_en)} <Entrega m={m} /></time>
                   </div>
                 )
               })}

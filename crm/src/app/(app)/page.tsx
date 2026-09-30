@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { MODULOS } from '@/lib/modulos'
 import { obtenerSesion, puede } from '@/lib/sesion'
 import { crearCliente } from '@/lib/supabase/server'
+import { ConsumoMeta, type Consumo } from './metricas/graficas'
 
 const dinero = (n: number) =>
   n.toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 })
@@ -13,7 +14,8 @@ export default async function Inicio() {
   const supabase = crearCliente()
   const atiende = puede(sesion, ['atender_bandeja'])
   const sigue = puede(sesion, ['gestionar_oportunidades'])
-  const [{ data: productos }, { data: opsAbiertas }, { data: esperando }, { count: vencidos }] = await Promise.all([
+  const mide = puede(sesion, ['ver_metricas'])
+  const [{ data: productos }, { data: opsAbiertas }, { data: esperando }, { count: vencidos }, { data: consumo }] = await Promise.all([
     supabase.from('productos').select('precio, stock, marca'),
     supabase.from('oportunidades').select('embudos(nombre)').eq('estado', 'abierta'),
     atiende
@@ -24,7 +26,10 @@ export default async function Inicio() {
       ? supabase.from('seguimientos').select('id', { count: 'exact', head: true }).eq('asignado_a', sesion.id)
           .eq('estado', 'pendiente').lt('vence_en', new Date().toISOString())
       : Promise.resolve({ count: 0 }),
+    mide ? supabase.rpc('consumo_meta') : Promise.resolve({ data: null }),
   ])
+  const meta = consumo as Consumo | null
+  const usoMeta = meta ? Math.round((meta.servicio / meta.limite_gratis) * 100) : 0
 
   const conStock = (productos ?? []).filter((p) => p.stock > 0)
   const unidades = conStock.reduce((s, p) => s + p.stock, 0)
@@ -45,6 +50,10 @@ export default async function Inicio() {
       ? [{ titulo: 'Seguimientos vencidos', valor: String(vencidos ?? 0), alerta: (vencidos ?? 0) > 0,
            detalle: 'Tuyos, sin cerrar', href: '/seguimientos' }]
       : []),
+    ...(meta
+      ? [{ titulo: 'Consumo de Meta', valor: `${usoMeta} %`, alerta: usoMeta >= 80,
+           detalle: `${meta.servicio} de ${meta.limite_gratis} mensajes de servicio del mes`, href: '/metricas' }]
+      : []),
     { titulo: 'Equipos con stock', valor: String(conStock.length), detalle: `${unidades} unidades`, href: '/inventario' },
     { titulo: 'Valor del inventario', valor: dinero(valor), detalle: 'Precio de venta × stock', href: '/inventario' },
     { titulo: 'Marcas', valor: String(marcas.size), detalle: [...marcas].join(', ') || 'Sin datos', href: '/inventario' },
@@ -60,6 +69,8 @@ export default async function Inicio() {
           entraste como <b>{sesion.rol}</b>
         </p>
       </div>
+
+      {meta && usoMeta >= 80 && <ConsumoMeta c={meta} compacto />}
 
       <section className="panel">
         <div className="kpis">

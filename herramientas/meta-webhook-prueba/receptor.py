@@ -185,8 +185,9 @@ def contestar(numero, entrada, visible, nombre, tipo, meta_id, media=None):
             st = cargar_estado(lead)
 
             def avisar(texto):
-                if enviar(numero, flujo.m_texto(texto)):
-                    db.guardar_mensaje(lead["id"], "bot", texto)
+                wamid = enviar(numero, flujo.m_texto(texto))
+                if wamid:
+                    db.guardar_mensaje(lead["id"], "bot", texto, meta_id=wamid if wamid != "enviado" else None)
 
             mensajes, st = flujo.responder(st, entrada, avisar)
         except Exception as e:  # una falla del árbol o de la base no debe tumbar el receptor
@@ -201,7 +202,8 @@ def contestar(numero, entrada, visible, nombre, tipo, meta_id, media=None):
             if not wamid and m.get("interactive", {}).pop("header", None):
                 wamid = enviar(numero, m)
             if wamid:
-                db.guardar_mensaje(lead["id"], "bot", visor.texto_saliente(m), m["type"], wamid)
+                db.guardar_mensaje(lead["id"], "bot", visor.texto_saliente(m), m["type"],
+                                   wamid if wamid != "enviado" else None)
         try:
             guardar_estado(lead, st, visible, nombre)
         except Exception as e:
@@ -241,6 +243,10 @@ def procesar(evento):
             for s in valor.get("statuses", []):
                 errores = "; ".join(f"{e.get('code')} {e.get('title')}" for e in s.get("errors", []))
                 anotar(f"📬 estado {s.get('status')} · {s.get('recipient_id')}" + (f" · {errores}" if errores else ""))
+                try:  # entrega, categoría y cobrable para Métricas y la Bandeja (F3·8, RM-07)
+                    db.registrar_estado(s, errores)
+                except Exception as e:
+                    anotar(f"  ✗ no se pudo guardar el estado: {e!r}")
 
 
 class Webhook(BaseHTTPRequestHandler):

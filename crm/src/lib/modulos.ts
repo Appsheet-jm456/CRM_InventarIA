@@ -24,7 +24,7 @@ export const MODULOS: readonly Modulo[] = [
   { clave: 'inventario', titulo: 'Inventario', subtitulo: 'Portátiles, fichas y catálogos', grupo: 'Ventas', ruta: '/inventario', icono: 'inventario', permisos: [], paso: 'F3·9' },
   { clave: 'chat', titulo: 'Chat InventarIA', subtitulo: 'Pregúntale al inventario', grupo: 'Ventas', ruta: '/chat', icono: 'chat', permisos: [], paso: 'F3·9' },
 
-  { clave: 'metricas', titulo: 'Métricas', subtitulo: 'Embudo, tiempos y asesores', grupo: 'Análisis', ruta: '/metricas', icono: 'metricas', permisos: ['ver_metricas', 'atender_bandeja'], paso: 'F3·8' },
+  { clave: 'metricas', titulo: 'Métricas', subtitulo: 'Embudo, tiempos y asesores', grupo: 'Análisis', ruta: '/metricas', icono: 'metricas', permisos: ['ver_metricas', 'atender_bandeja'] },
 
   { clave: 'bot', titulo: 'Bot y horario', subtitulo: 'Árbol del bot y horario de atención', grupo: 'Configuración', ruta: '/bot', icono: 'bot', permisos: ['administrar_bot'] },
   { clave: 'etapas', titulo: 'Etapas', subtitulo: 'Etapas del embudo y motivos de pérdida', grupo: 'Configuración', ruta: '/etapas', icono: 'etapas', permisos: ['administrar_embudo'] },
