@@ -7,7 +7,7 @@ de este repositorio. Git manda: Notion es el espejo.
     python3 docs/notion/sincronizar.py --revisar  # muestra que haria, sin escribir
     python3 docs/notion/sincronizar.py --todo     # el dia a dia: --tareas + --paginas
     python3 docs/notion/sincronizar.py --tareas   # Fases y Tareas: solo las filas que cambiaron
-    python3 docs/notion/sincronizar.py --paginas  # portada, modelo, reglas y decisiones: solo el tramo que cambio
+    python3 docs/notion/sincronizar.py --paginas  # portada, modelo, reglas y decisiones: solo los bloques que cambian
     python3 docs/notion/sincronizar.py --version  # copia nueva del brief (solo con autorizacion) + --paginas
 
 Requiere .env.notion en la raiz con:
@@ -378,56 +378,83 @@ def firma(bloque, filas=None):
     return (tipo, _firma_texto(d.get("rich_text", [])), d.get("checked"))
 
 
-def sincronizar_contenido(pagina_id, nuevos):
-    """Deja la página igual al documento tocando solo el tramo que cambió.
+def _editable_en_su_lugar(viejo, nuevo):
+    """Un bloque de texto que solo cambió su contenido se edita (PATCH) en vez de borrarlo y crearlo."""
+    tipo = nuevo["type"]
+    return viejo["type"] == tipo and tipo not in ("table", "divider") and not nuevo.get(tipo, {}).get("children")
 
-    Compara los bloques de Notion con los del documento: lo que coincide al
-    principio y al final se queda intacto; el tramo del medio se borra y se
-    escribe en su lugar. Reescribir todo borraba bloque por bloque a ~3 req/s y
-    una sincronización tardaba 8–20 minutos. Devuelve un resumen para imprimir.
+
+def sincronizar_contenido(pagina_id, nuevos):
+    """Deja la página igual al documento tocando solo los bloques que cambiaron.
+
+    Compara bloque a bloque (difflib) los de Notion con los del documento: lo igual no se toca, un texto que cambió
+    se edita en su lugar y solo se borra o se inserta lo que de verdad sale o entra. Antes se reemplazaba todo el
+    tramo entre el primer y el último cambio: dos cambios lejanos movían decenas de bloques (el dueño, 30 sep 2026:
+    "solo modifica los bloques que cambie"). Devuelve un resumen para imprimir; con --revisar no escribe.
     """
+    import difflib
+
     existentes = listar_hijos(pagina_id)
     viejos = [b for b in existentes if b["type"] not in PRESERVAR]
-    firmas = {}
 
-    def igual(viejo, nuevo):
-        if viejo["id"] not in firmas:
-            filas = listar_hijos(viejo["id"]) if viejo["type"] == "table" else None
-            firmas[viejo["id"]] = firma(viejo, filas)
-        return firmas[viejo["id"]] == firma(nuevo)
+    def firma_vieja(b):
+        filas = listar_hijos(b["id"]) if b["type"] == "table" else None
+        return firma(b, filas)
 
-    tope = min(len(viejos), len(nuevos))
-    i = 0
-    while i < tope and igual(viejos[i], nuevos[i]):
-        i += 1
-    j = 0
-    while j < tope - i and igual(viejos[-1 - j], nuevos[-1 - j]):
-        j += 1
-    borrar, insertar = viejos[i:len(viejos) - j], nuevos[i:len(nuevos) - j]
-    if not borrar and not insertar:
+    fv = [firma_vieja(b) for b in viejos]
+    fn = [firma(b) for b in nuevos]
+    pasos = [op for op in difflib.SequenceMatcher(None, fv, fn, autojunk=False).get_opcodes() if op[0] != "equal"]
+    if not pasos:
         return "sin cambios"
 
-    # Notion solo inserta "después de" un bloque. El ancla es el último bloque que
-    # se queda antes del tramo; sin ancla, lo nuevo iría al final de la página.
-    if i:
-        ancla = viejos[i - 1]["id"]
-    else:
-        pos = next((k for k, b in enumerate(existentes) if b["id"] == viejos[0]["id"]), 0) if viejos else len(existentes)
-        ancla = existentes[pos - 1]["id"] if pos else None
-    # Un tramo sin ancla con contenido después, o de más de 100 bloques (un
-    # lote), no se puede encadenar con seguridad: se reescribe la página.
-    if (ancla is None and j) or (ancla and len(insertar) > 100):
-        reemplazar_contenido(pagina_id, nuevos)
-        return f"reescrita ({len(nuevos)} bloques)"
+    editados = borrados = insertados = 0
+    # Notion solo inserta "después de" un bloque: el ancla es el último que queda antes de cada cambio. Si el cambio
+    # está al principio, sirve el bloque que no sale del repositorio (base o subpágina) que lo preceda.
+    pos0 = next((k for k, b in enumerate(existentes) if viejos and b["id"] == viejos[0]["id"]), len(existentes))
+    ancla_inicial = existentes[pos0 - 1]["id"] if pos0 else None
+    plan = []
+    for tipo, i1, i2, j1, j2 in pasos:
+        ancla = viejos[i1 - 1]["id"] if i1 else ancla_inicial
+        if tipo == "replace" and i2 - i1 == j2 - j1 and all(
+                _editable_en_su_lugar(viejos[i1 + k], nuevos[j1 + k]) for k in range(i2 - i1)):
+            plan += [("editar", viejos[i1 + k], nuevos[j1 + k]) for k in range(i2 - i1)]
+            continue
+        plan += [("borrar", v, None) for v in viejos[i1:i2]]
+        if j2 > j1:
+            if ancla is None and i1 < len(viejos):
+                # Insertar arriba de todo sin ancla no se puede: Notion lo pondría al final.
+                if SIMULAR:
+                    return "cambio al principio sin ancla: se reescribiría"
+                reemplazar_contenido(pagina_id, nuevos)
+                return f"reescrita ({len(nuevos)} bloques)"
+            plan.append(("insertar", ancla, nuevos[j1:j2]))
 
-    for b in borrar:
-        api("DELETE", f"/blocks/{b['id']}")
-    for k in range(0, len(insertar), 100):
-        cuerpo = {"children": insertar[k:k + 100]}
-        if ancla:
-            cuerpo["after"] = ancla
-        api("PATCH", f"/blocks/{pagina_id}/children", cuerpo)
-    return f"−{len(borrar)} +{len(insertar)} bloques"
+    for accion, a, b in plan:
+        if accion == "editar":
+            editados += 1
+        elif accion == "borrar":
+            borrados += 1
+        else:
+            insertados += len(b)
+    resumen = f"~{editados} editados, −{borrados}, +{insertados} bloques"
+    if SIMULAR:
+        return "(ensayo) " + resumen
+
+    for accion, a, b in plan:
+        if accion == "editar":
+            tipo = b["type"]
+            api("PATCH", f"/blocks/{a['id']}", {tipo: {k: v for k, v in b[tipo].items() if k != "children"}})
+        elif accion == "borrar":
+            api("DELETE", f"/blocks/{a['id']}")
+        else:
+            ancla = a
+            for k in range(0, len(b), 100):
+                cuerpo = {"children": b[k:k + 100]}
+                if ancla:
+                    cuerpo["after"] = ancla
+                r = api("PATCH", f"/blocks/{pagina_id}/children", cuerpo)
+                ancla = (r.get("results") or [{}])[-1].get("id", ancla)
+    return resumen
 
 
 def titulo_version(brief):

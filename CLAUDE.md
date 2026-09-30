@@ -20,6 +20,8 @@ Leer en este orden:
 Tareas y fases en `docs/notion/tareas.csv` y `fases.csv`, generados con el módulo `csv` de Python.
 Sincronizar con `python3 docs/notion/sincronizar.py --tareas` o `--paginas`, solo con cambios
 estructurales. Cerrar una tarea se hace con un `PATCH` a su fila, no con el script.
+En Notion **no se reescribe nada**: el script modifica solo los bloques que cambiaron. La única copia completa
+es la versión del brief (`--version`), y solo con autorización del dueño.
 
 ## Reglas del proyecto
 

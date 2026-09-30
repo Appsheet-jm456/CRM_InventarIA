@@ -180,7 +180,7 @@ presupuesto en 4 rangos según el inventario (<$1 M, $1–1,5 M, $1,5–2 M, >$2
 - Página **"CRM InventarIA"** bajo la página padre compartida (junto a Futur Green y ClaudePyme):
   <https://app.notion.com/p/CRM-InventarIA-3ea9ea128ea081c9a0d7fd8035fddf18>. Tiene Fases (5), Tareas (40),
   Brief v1.0, Decisiones técnicas (12), Árbol de respuesta y Simulación del chat.
-- Token en `.env.notion` de este repo (no se commitea). Sincronizar: `python3 docs/notion/sincronizar.py --todo`
+- Token en `.env.notion` de este repo (no se commitea). Sincronizar: `python3 docs/notion/sincronizar.py --todo` (solo toca los bloques que cambian; `--revisar` ensaya)
   (solo con cambios estructurales).
 - **El sincronizador empareja las tareas por título.** Si se renombra una, primero se renombra en Notion con
   un `PATCH`, o se duplica. Antes de tocar `tareas.csv`, comparar con Notion: el dueño también edita ahí.
