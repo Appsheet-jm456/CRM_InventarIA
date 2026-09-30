@@ -6,7 +6,7 @@
 
 ## Criterio de cierre
 
-- [ ] Todos los módulos del MVP funcionando sobre Supabase (F3·1 a F3·9)
+- [ ] Todos los módulos del MVP funcionando sobre Supabase (F3·1 a F3·10)
 - [ ] Permisos aplicados en el servidor (RLS), no solo escondiendo botones
 - [ ] `next build` compila sin errores
 
@@ -25,3 +25,4 @@
 | F3·7 Editor del bot y horario de atención | Pendiente |
 | F3·8 Métricas del embudo | Pendiente |
 | F3·9 Inventario, fichas y catálogo PDF | Pendiente |
+| F3·10 Varios embudos: Cliente Final, Pos Venta y Distribuidor (va antes de F3·7) | En curso |
