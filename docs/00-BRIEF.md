@@ -40,6 +40,7 @@ la sigue por las etapas del embudo hasta la venta y la posventa, y la mide.
 - **Demora en la atención.** Los clientes reciben respuesta entre **1 y 3 horas**; se desaniman o consultan a la competencia.
 - **Los catálogos se envían a mano.** El asesor debe mandar el PDF cada vez que alguien lo pide, una tarea operativa que le quita tiempo.
 - **No se sabe si hay disponibilidad.** Cuando el cliente pregunta por una referencia, el asesor tarda porque no sabe si el equipo está.
+- **Pérdidas de ventas.** Por una atención deficiente los clientes se van a la competencia o se llevan una mala imagen del local.
 
 **Cómo lo soluciona el CRM:**
 

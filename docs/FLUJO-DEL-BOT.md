@@ -1,7 +1,7 @@
-# Flujo del bot: lienzo, borrador, versiones y simulador (F4·4 a F4·8)
+# Flujo del bot: lienzo, borrador, versiones y simulador (F4·4 a F4·13)
 
-> Decisión 0026 (reemplaza RBOT-01 de la 0023). Sigue la 0005 (menú, sin IA libre) y la 0011 (un mensaje por
-> respuesta, botones y listas).
+> Decisiones 0026 (reemplaza RBOT-01 de la 0023) y 0027 (Condiciones, Catálogos y Pausa). Sigue la 0016 (bot
+> híbrido: la respuesta sale siempre de la base) y la 0011 (un mensaje por respuesta, botones y listas).
 
 ---
 
@@ -14,6 +14,11 @@
 | ✅ **F4·6** Lienzo (30 sep, migraciones 0012 y 0013) | Cuadros y flechas en `/bot`: crear, editar, unir y borrar mensajes; cuadros del sistema fijos; marca de editado |
 | ✅ **F4·7** Borrador, publicar e historial (30 sep, migración 0014) | Validación al publicar, lista de versiones con quién y cuándo, volver a una anterior |
 | ✅ **F4·8** Simulador (30 sep) | Probar el borrador como cliente, sin WhatsApp |
+| **F4·9** "+ Agregar" y mensaje sin botones (migración 0015) | Desplegable con Mensaje, Condiciones, Catálogos y Pausa; base preparada para los tipos nuevos; mensaje sin botones con la flecha "Cuando el cliente responda" |
+| **F4·10** Condiciones | Cuadro que compara el último mensaje del cliente ("es igual a", varias palabras por condición) y sale por la primera que se cumpla o por "Ninguna se cumple" |
+| **F4·11** Catálogos | Encabezado más un catálogo elegido de Inventario o subido en una ventana; envía y sigue |
+| **F4·12** Pausa y recordatorio | Espera horas, minutos y segundos; salidas "El cliente respondió" y "Pasó el tiempo"; reloj en el receptor |
+| **F4·13** Simulador y pruebas de los cuadros nuevos | Probar los tres en el simulador (la Pausa con "Simular que pasó el tiempo"), pruebas de la base y del motor |
 
 ## Reglas
 
@@ -35,6 +40,35 @@ bot. Volver a una anterior la copia como borrador para publicarla de nuevo.
 
 **RF-07 · El simulador corre el borrador con el mismo motor del bot**, sin escribir en `leads` ni en `mensajes` y
 sin enviar a WhatsApp.
+
+**RF-08 · El dueño crea cuatro cuadros** desde "+ Agregar": Mensaje, Condiciones, Catálogos y Pausa (0027). Todos se
+editan, se unen y se borran como el mensaje; los del sistema siguen fijos (RF-03).
+
+**RF-09 · Un mensaje puede no llevar botones.** Entonces tiene una sola salida, "Cuando el cliente responda", que
+lleva lo que escriba al cuadro siguiente. Sin botones no se agrega la opción 0 (RF-04 aplica a los que tienen opciones).
+
+**RF-10 · Condiciones no envía nada y decide con el último mensaje del cliente.** Revisa las condiciones en orden y
+sale por la primera que se cumpla; si ninguna, por "Ninguna se cumple", que es obligatoria. Cada condición es
+"es igual a" una o varias palabras, sin distinguir mayúsculas, tildes, espacios de más ni signos (`Uno!` = `uno`).
+De 1 a 10 condiciones, cada una con al menos una palabra; una palabra no se repite en dos condiciones.
+
+**RF-11 · Las reglas globales van primero.** `reiniciar`, saludos, código de equipo, `9` y `0` se atienden antes que
+las Condiciones, igual que antes que los botones. Si el dueño pone `9` en una condición, el lienzo lo avisa.
+
+**RF-12 · Catálogos envía y sigue.** Manda el encabezado (hasta 1.024 caracteres) y el catálogo (PDF como documento o
+el enlace de Drive) y pasa enseguida al cuadro de "Siguiente", que es obligatoria. El catálogo debe existir y estar
+activo para publicar; si se apaga después, el bot envía el encabezado con "catálogo no disponible" y sigue.
+
+**RF-13 · Subir un catálogo desde el lienzo** abre el mismo formulario de Inventario → Catálogos en una ventana y deja
+elegido el catálogo nuevo. Solo aparece para quien tiene `administrar_bot` y `administrar_inventario`.
+
+**RF-14 · La Pausa espera entre 1 s y 23 h 59 min 59 s** (ventana de 24 h de Meta) y no envía nada al entrar. Si el
+cliente escribe antes, sale por "El cliente respondió" con ese mensaje y la espera se cancela. Si no, al vencer sale
+por "Pasó el tiempo". Las dos salidas son obligatorias.
+
+**RF-15 · El recordatorio respeta la ventana y al asesor.** Al vencer la Pausa no se envía nada si el chat está con
+un asesor (bot en pausa), si el cliente ya está en otro cuadro o si pasaron 24 h desde su último mensaje; esto
+último queda registrado en el chat.
 
 ## Límites de WhatsApp (F4·4, migración 0010)
 
@@ -123,3 +157,50 @@ equipo, valor, paso a asesor). *Empezar de nuevo* borra la charla.
   WhatsApp (RF-07). La foto y el PDF se muestran como marcas, sin subirlos a Meta.
 - Lo pide `administrar_bot` (lo revisa la app antes de llamar al receptor, que lee con la llave de servicio).
 
+
+## Condiciones, Catálogos y Pausa (F4·9 a F4·13, decisión 0027, migración 0015)
+
+**Lienzo.** "+ Mensaje" pasa a **"+ Agregar ▾"** con los cuatro cuadros; cada uno se crea en el centro de la vista y
+queda elegido. Un mensaje sin botones muestra la flecha "Cuando el cliente responda". Cómo se ve cada cuadro nuevo:
+
+| Cuadro | En el lienzo | Panel |
+|---|---|---|
+| **Condiciones** 🔀 | Una fila por condición ("= 1 · uno · asesor") con su punto de flecha, y al final "Ninguna se cumple" | Lista de condiciones en orden (subir, bajar, borrar); cada una con sus palabras como etiquetas: se escribe y Enter |
+| **Catálogos** 📚 | Encabezado, nombre del catálogo y la flecha "Siguiente" | Encabezado con contador, desplegable de catálogos activos y "+ Subir catálogo" (ventana con el formulario de Inventario) |
+| **Pausa** ⏳ | "Espera 0 h 15 min 15 s" y las flechas "El cliente respondió" y "Pasó el tiempo" | Horas, minutos y segundos |
+
+**Modelo.** `bot_cuadros.tipo` admite además `condicion`, `catalogo` y `pausa`, y suma la columna `ajustes jsonb`
+(se agrega a las listas de columnas de `crear_borrador` y `borrador_desde_version`):
+
+- Condiciones: `opciones` = `[{id, titulo, palabras: [...], destino}]` (el título es el rótulo, por ejemplo
+  "Hablar con asesor"); `salidas.ninguna`.
+- Mensaje sin botones: `opciones = []` y `salidas.respuesta`.
+- Catálogos: `texto` (encabezado), `ajustes.catalogo_id`, `salidas.siguiente`.
+- Pausa: `ajustes.segundos` (1 a 86.399), `salidas.respondio` y `salidas.tiempo`.
+- `leads.pausa_vence_en` (cuándo vence la espera) y `leads.pausa_cuadro` (en qué cuadro empezó).
+
+Funciones nuevas o ampliadas: `borrador_crear_cuadro(tipo, x, y)` (reemplaza a `borrador_crear_mensaje`),
+`borrador_guardar_condiciones`, `borrador_guardar_catalogo`, `borrador_guardar_pausa`, y `borrador_conectar` para
+las salidas con nombre. `problemas_del_flujo()` revisa las reglas RF-09 a RF-14 y `borrador_borrar_cuadro` acepta los
+tipos nuevos.
+
+**Motor (`flujo.py`).**
+- Condiciones: `ir()` no envía; resuelve en el acto con el texto que llevó al cliente ahí (el mensaje que respondió
+  o el título del botón que tocó) y sigue al destino. Compara con `normalizar()` exacto.
+- Mensaje sin botones: al responder el cliente, sigue por `respuesta` llevando su texto.
+- Catálogos: envía el encabezado y `{"_pdf": catálogo}` (el receptor ya lo sube a Meta y lo reutiliza 25 días) o el
+  enlace, y sigue por `siguiente`. Lee el catálogo por id.
+- Pausa: anota `pausa_vence_en` y se queda. Si el cliente escribe, sigue por `respondio` con su texto.
+- Para no dar vueltas sin fin (Condiciones → Condiciones…), una respuesta encadena como máximo 10 cuadros sin
+  esperar al cliente; si pasa, va al error.
+
+**Reloj (receptor).** Un hilo revisa cada 5 s los `leads` con `pausa_vence_en` vencida; bajo el candado del número,
+comprueba RF-15, sigue por `tiempo`, envía y guarda. Si el receptor estuvo apagado, al volver atiende las vencidas
+que sigan dentro de la ventana.
+
+**Simulador.** Condiciones y Catálogos funcionan solos (mismo motor). La Pausa muestra "⏳ Esperando 0 h 15 min 15 s"
+con el botón **"Simular que pasó el tiempo"**; escribir antes prueba la salida "El cliente respondió".
+
+**Pruebas (F4·13).** `supabase/pruebas/0015_*.sql` (tipos, ajustes, validaciones al guardar y al publicar, copia en
+borradores) y una prueba del motor en Python que recorre la versión 1 con un juego fijo de conversaciones
+(mismos mensajes antes y después) más casos de cada cuadro nuevo, incluido el reloj con la hora simulada.
