@@ -6,7 +6,7 @@ import {
   useConnection, useEdgesState, useNodesState, useReactFlow, type Connection, type Edge, type Node, type NodeProps,
 } from '@xyflow/react'
 import { useRouter } from 'next/navigation'
-import { useEffect, useMemo, useState, useTransition } from 'react'
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { MenuAcciones } from '@/components/MenuAcciones'
 import { medir, revisarMarcas, type Formato, type Opcion } from '@/lib/bot'
 import {
@@ -210,7 +210,15 @@ function Panel({ bot, bots, cuadro, cuadros, editable, contexto, alTerminar }: {
   const titulosMal = (opciones ?? []).some((o) => !o.titulo.trim() || o.titulo.length > limite)
   const ids = (opciones ?? []).map((o) => o.id)
   const idsMal = ids.some((id, i) => !/^\d{1,2}$/.test(id) || id === '9' || ids.indexOf(id) !== i)
-  const bloqueado = medida.largo > medida.limite || desconocidas.length > 0 || titulosMal || idsMal || !texto.trim()
+  // Por qué no se puede guardar, dicho en claro (un cuadro sin conectar SÍ se guarda: las flechas se exigen al publicar).
+  const motivos = [
+    !texto.trim() && 'El mensaje no puede quedar vacío.',
+    medida.largo > medida.limite && `El mensaje pasa el límite de WhatsApp (${medida.largo} de ${medida.limite}): acórtalo.`,
+    desconocidas.length > 0 && `El bot no reemplaza ${desconocidas.map((m) => `{${m}}`).join(', ')}.`,
+    titulosMal && `Hay títulos vacíos o de más de ${limite} caracteres (el límite de WhatsApp): acórtalos; están en rojo.`,
+    idsMal && 'Revisa los números de las opciones: sin repetir, del 0 al 99 y sin el 9.',
+  ].filter(Boolean) as string[]
+  const bloqueado = motivos.length > 0
   const destinos = cuadros.filter((c) => DESTINOS.includes(c.tipo) && c.clave !== cuadro.clave)
   const elegido = bots.find((b) => String(b.id) === destinoBot)
   const ejemplos: Record<string, string> = { uso: 'Diseño', motivo: '', horario: contexto.horario, proxima: 'mañana a las 8:00 am' }
@@ -283,6 +291,8 @@ function Panel({ bot, bots, cuadro, cuadros, editable, contexto, alTerminar }: {
               <input className="mono" value={o.id} disabled={!editable || !mensaje || ocupado} aria-label="Número" maxLength={2}
                 onChange={(e) => cambiarOpcion(i, { id: e.target.value.replace(/\D/g, '') })} />
               <input value={o.titulo} disabled={!editable || ocupado} aria-label="Título" maxLength={40}
+                className={!o.titulo.trim() || o.titulo.length > limite ? 'mal' : undefined}
+                title={`${o.titulo.length} de ${limite} caracteres`}
                 onChange={(e) => cambiarOpcion(i, { titulo: e.target.value })} />
               {mensaje ? (
                 <select value={o.destino ?? ''} disabled={!editable || ocupado} aria-label="Lleva a"
@@ -328,13 +338,19 @@ function Panel({ bot, bots, cuadro, cuadros, editable, contexto, alTerminar }: {
       )}
       {editable && (
         <div className="row">
-          <button className="btn primary" disabled={ocupado || bloqueado} onClick={guardar}>{ocupado ? 'Guardando…' : 'Guardar en el borrador'}</button>
+          <button className="btn primary" data-guardar disabled={ocupado || bloqueado} onClick={guardar}>{ocupado ? 'Guardando…' : 'Guardar en el borrador'}</button>
           {delDueno(cuadro) && !cuadro.inicio && (
-            <button className="btn peligro" disabled={ocupado}
+            <button className="btn peligro" data-guardar disabled={ocupado}
               onClick={() => confirm(`¿Borrar el cuadro ${cuadro.nombre} del borrador? Las flechas que llegan quedan sueltas.`)
                 && iniciar(async () => alTerminar(await borrarCuadro(bot, cuadro.clave), true))}>Borrar cuadro</button>
           )}
         </div>
+      )}
+      {editable && motivos.length > 0 && (
+        <div className="aviso bad" role="alert">Aún no se puede guardar: {motivos.join(' ')}</div>
+      )}
+      {editable && mensaje && motivos.length === 0 && (
+        <small className="muted">Se puede guardar aunque una opción no esté conectada: las flechas se exigen al publicar.</small>
       )}
     </div>
   )
@@ -397,7 +413,7 @@ function PanelPublicar({ bot, borrador, publicada, choques, problemas, alTermina
         <textarea rows={2} value={nota} maxLength={300} onChange={(e) => setNota(e.target.value)} placeholder="Agrega la pregunta de ciudad de envío" />
       </label>
       <div className="row">
-        <button className="btn primary" disabled={ocupado || problemas > 0 || sinCambios || (hayChoque && !pisar)}
+        <button className="btn primary" data-guardar disabled={ocupado || problemas > 0 || sinCambios || (hayChoque && !pisar)}
           onClick={() => iniciar(async () => {
             const r = await publicar(bot, nota, pisar)
             if (r.choque) { setChoque(r.error ?? ''); setPisar(false); return }
@@ -455,6 +471,15 @@ function LienzoInterno({ bot, bots, catalogos, puedeSubirCatalogo, publicada, bo
   const [publicando, setPublicando] = useState(false)
   const [probando, setProbando] = useState(false)
   const [verProblemas, setVerProblemas] = useState(false)
+  // Cambios del panel sin guardar: no se pierden al tocar fuera, otro cuadro o cerrar la página.
+  const sinGuardar = useRef(false)
+  const puedeSalir = () => !sinGuardar.current
+    || (confirm('Hay cambios sin guardar en este cuadro. ¿Salir y descartarlos?') && ((sinGuardar.current = false), true))
+  useEffect(() => {
+    const avisar = (e: BeforeUnloadEvent) => { if (sinGuardar.current) e.preventDefault() }
+    window.addEventListener('beforeunload', avisar)
+    return () => window.removeEventListener('beforeunload', avisar)
+  }, [])
   const [aqui, setAqui] = useState<string | null>(null)
   const enElBot = archivada?.version === publicada.version
   const [aviso, setAviso] = useState<Resultado>({})
@@ -534,7 +559,7 @@ function LienzoInterno({ bot, bots, catalogos, puedeSubirCatalogo, publicada, bo
           </small>
         </div>
         <div className="row">
-          <button className="btn chico" onClick={() => { setElegido(null); setPublicando(false); setVerProblemas(false); setProbando(true) }}>▶ Probar</button>
+          <button className="btn chico" onClick={() => { if (!puedeSalir()) return; setElegido(null); setPublicando(false); setVerProblemas(false); setProbando(true) }}>▶ Probar</button>
           {editable && (
             <button className={`chip ${totalProblemas ? 'bad' : 'ok'}`} title="Lo que impediría publicar" disabled={!totalProblemas}
               onClick={() => { setElegido(null); setPublicando(false); setProbando(false); setVerProblemas(true) }}>
@@ -546,6 +571,7 @@ function LienzoInterno({ bot, bots, catalogos, puedeSubirCatalogo, publicada, bo
               <MenuAcciones etiqueta="Agregar un cuadro" boton="+ Agregar ▾" desactivado={ocupado} acciones={AGREGAR.map((a) => ({
                 ...a,
                 onClick: () => {
+                  if (!puedeSalir()) return
                   // El cuadro nuevo aparece en el primer hueco libre cerca del centro de lo que se ve y queda elegido.
                   const r = document.querySelector('.lienzo-area')?.getBoundingClientRect()
                   const centro = flujo.screenToFlowPosition({ x: (r?.left ?? 0) + (r?.width ?? 600) / 2, y: (r?.top ?? 0) + (r?.height ?? 400) / 2 })
@@ -553,7 +579,7 @@ function LienzoInterno({ bot, bots, catalogos, puedeSubirCatalogo, publicada, bo
                   hacer(() => crearCuadro(bot.id, a.tipo, x, y), (clave) => setElegido(String(clave)))
                 },
               }))} />
-              <button className="btn primary chico" disabled={ocupado} onClick={() => { setElegido(null); setProbando(false); setVerProblemas(false); setPublicando(true) }}>Publicar…</button>
+              <button className="btn primary chico" disabled={ocupado} onClick={() => { if (!puedeSalir()) return; setElegido(null); setProbando(false); setVerProblemas(false); setPublicando(true) }}>Publicar…</button>
               <button className="btn chico peligro" disabled={ocupado}
                 onClick={() => confirm('¿Descartar el borrador? Se pierden todos sus cambios; el bot sigue igual.')
                   && hacer(() => descartarBorrador(bot.id), () => setElegido(null))}>Descartar borrador</button>
@@ -597,8 +623,8 @@ function LienzoInterno({ bot, bots, catalogos, puedeSubirCatalogo, publicada, bo
           <ReactFlow
             nodes={nodos} edges={flechas} nodeTypes={TIPOS_NODO}
             onNodesChange={alCambiarNodos} onEdgesChange={alCambiarFlechas}
-            onNodeClick={(_, n) => { if (probando) return; setPublicando(false); setVerProblemas(false); setElegido(n.id) }}
-            onPaneClick={() => { setElegido(null); setVerProblemas(false) }}
+            onNodeClick={(_, n) => { if (probando || (n.id !== elegido && !puedeSalir())) return; setPublicando(false); setVerProblemas(false); setElegido(n.id) }}
+            onPaneClick={() => { if (!puedeSalir()) return; setElegido(null); setVerProblemas(false) }}
             onNodeDragStop={(_, n) => editable && hacer(() => moverCuadro(bot.id, n.id, n.position.x, n.position.y))}
             isValidConnection={validarUnion}
             onConnect={(u) => u.sourceHandle && hacer(() => conectar(bot.id, u.source, u.sourceHandle!, u.target))}
@@ -616,7 +642,13 @@ function LienzoInterno({ bot, bots, catalogos, puedeSubirCatalogo, publicada, bo
           </ReactFlow>
         </div>
         {ladoAbierto && (
-        <aside className="lienzo-lado">
+        <aside className="lienzo-lado"
+          // Cualquier cambio en un campo, o un botón que edita (no los de guardar o borrar), deja el cuadro "sin guardar".
+          onChangeCapture={() => { sinGuardar.current = true }}
+          onClickCapture={(e) => {
+            const b = (e.target as HTMLElement).closest('button')
+            if (b && elegidoCuadro && !b.dataset.guardar && b.closest('.lienzo-panel')) sinGuardar.current = true
+          }}>
           {probando ? (
             <Simulador bot={bot.id} version={(archivada ?? borrador ?? publicada).version!} nombres={new Map(cuadros.map((c) => [c.clave, c.nombre]))}
               pausas={new Map(cuadros.filter((c) => c.tipo === 'pausa').map((c) => [c.clave, Number(c.ajustes?.segundos ?? 0)]))}
@@ -630,7 +662,7 @@ function LienzoInterno({ bot, bots, catalogos, puedeSubirCatalogo, publicada, bo
               destinos={cuadros.filter((c) => DESTINOS.includes(c.tipo) && c.clave !== elegidoCuadro.clave)}
               alTerminar={(r, borrado) => {
                 setAviso(r)
-                if (!r.error) { if (borrado) setElegido(null); router.refresh() }
+                if (!r.error) { sinGuardar.current = false; if (borrado) setElegido(null); router.refresh() }
               }} />
           ) : elegidoCuadro?.tipo === 'catalogo' ? (
             <PanelCatalogo key={elegidoCuadro.clave + elegidoCuadro.actualizado_en} bot={bot.id} cuadro={elegidoCuadro} editable={editable}
@@ -638,20 +670,20 @@ function LienzoInterno({ bot, bots, catalogos, puedeSubirCatalogo, publicada, bo
               destinos={cuadros.filter((c) => DESTINOS.includes(c.tipo) && c.clave !== elegidoCuadro.clave)}
               alTerminar={(r, borrado) => {
                 setAviso(r)
-                if (!r.error) { if (borrado) setElegido(null); router.refresh() }
+                if (!r.error) { sinGuardar.current = false; if (borrado) setElegido(null); router.refresh() }
               }} />
           ) : elegidoCuadro?.tipo === 'condicion' ? (
             <PanelCondiciones key={elegidoCuadro.clave + elegidoCuadro.actualizado_en} bot={bot.id} cuadro={elegidoCuadro} editable={editable}
               destinos={cuadros.filter((c) => DESTINOS.includes(c.tipo) && c.clave !== elegidoCuadro.clave)}
               alTerminar={(r, borrado) => {
                 setAviso(r)
-                if (!r.error) { if (borrado) setElegido(null); router.refresh() }
+                if (!r.error) { sinGuardar.current = false; if (borrado) setElegido(null); router.refresh() }
               }} />
           ) : elegidoCuadro ? (
             <Panel key={elegidoCuadro.clave + elegidoCuadro.actualizado_en} bot={bot.id} bots={bots} cuadro={elegidoCuadro} cuadros={cuadros} editable={editable}
               contexto={contexto} alTerminar={(r, borrado) => {
                 setAviso(r)
-                if (!r.error) { if (borrado) setElegido(null); router.refresh() }
+                if (!r.error) { sinGuardar.current = false; if (borrado) setElegido(null); router.refresh() }
               }} />
           ) : (
             <div className="lienzo-panel">

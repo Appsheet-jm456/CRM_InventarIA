@@ -70,11 +70,11 @@ export function PanelPausa({ bot, cuadro, destinos, editable, alTerminar }: {
       {destino(tiempo, setTiempo, 'Pasó el tiempo, sigue a')}
       {editable && (
         <div className="row">
-          <button className="btn primary" disabled={ocupado || fuera}
+          <button className="btn primary" data-guardar disabled={ocupado || fuera}
             onClick={() => iniciar(async () => alTerminar(await guardarPausa(bot, cuadro.clave, nombre, total, respondio, tiempo)))}>
             {ocupado ? 'Guardando…' : 'Guardar en el borrador'}
           </button>
-          <button className="btn peligro" disabled={ocupado}
+          <button className="btn peligro" data-guardar disabled={ocupado}
             onClick={() => confirm(`¿Borrar el cuadro ${cuadro.nombre} del borrador? Las flechas que llegan quedan sueltas.`)
               && iniciar(async () => alTerminar(await borrarCuadro(bot, cuadro.clave), true))}>Borrar cuadro</button>
         </div>
