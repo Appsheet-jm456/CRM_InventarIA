@@ -36,7 +36,7 @@ SIMULAR = "--revisar" in sys.argv
 
 PROYECTO = "CRM InventarIA"   # título de la portada, colgando de NOTION_PARENT_PAGE
 ICONO = "💬"
-REPOSITORIO = "github.com/Appsheet-jm456/inventaria (privado) · /home/atlasjm/chat_bot-inventario"
+REPOSITORIO = "github.com/Appsheet-jm456/CRM_InventarIA (privado) · /home/atlasjm/chat_bot-inventario"
 
 
 # --------------------------------------------------------------------------- #

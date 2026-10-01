@@ -10,7 +10,7 @@ ya funciona en Futur Green y ClaudePyme.
 ## Decisión
 
 - **Git es la fuente de verdad** del código, el brief, las decisiones y las fases
-  (`Appsheet-jm456/inventaria`).
+  (`Appsheet-jm456/CRM_InventarIA`).
 - **Notion es el espejo** para leer y comentar, y es donde vive el **estado** de las tareas.
 - `docs/notion/sincronizar.py` copia de git a Notion. Nunca al revés.
 

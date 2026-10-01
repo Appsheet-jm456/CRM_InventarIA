@@ -17,25 +17,19 @@ de las Fases 1 y 2 abajo. **Código nuevo:** el bot de prueba sobre Supabase (`h
    enlace de Drive con todos, desde Inventario → Catálogos.
 3. **Pendiente del dueño en F3·6:** aprobar los textos de las 3 plantillas del CRM y enviarlas a
    Meta desde Configuración → Canal WhatsApp (hoy solo hay plantillas de ejemplo en inglés).
-3. En paralelo, lo que depende del dueño: F1·4 (deploy key), F1·6, F1·7, F1·8, clave de Gemini, PDF y enlace de Drive, hoja Excel.
+3. En paralelo, lo que depende del dueño: F1·6, F1·7, F1·8, clave de Gemini, PDF y enlace de Drive, hoja Excel.
 
 ## Estado de las tareas de la Fase 1
 
 | Tarea | Estado | Qué falta |
 |---|---|---|
 | F1·1 Flujo de atención · F1·2 Etapas · F1·3 Metas y SLA | ✅ Hechas | — |
-| **F1·4** Subir commits a GitHub | 🔴 Bloqueada | El dueño debe pegar la llave pública de abajo en GitHub → `Appsheet-jm456/inventaria` → Settings → Deploy keys, con **write access**. Después: `git push inventaria main` |
+| **F1·4** Subir commits a GitHub | ✅ Hecha | 1 oct 2026: 47 commits subidos a `Appsheet-jm456/CRM_InventarIA` (privado). Los siguientes: `git push` (solo con autorización) |
 | **F1·5** Trámites en Meta | 🔵 En curso | ✅ App *Futur Green bot* (portafolio Futur Green) con número de prueba +1 555 190 4296 · ✅ token permanente en `.env.meta` (no vence) · ✅ envío desde el servidor · ✅ **webhook de prueba de ida y vuelta** (recibe, responde, firma validada, estados de entrega). Falta: verificar el negocio y el número real |
 | **F1·6** Confirmar precios de Meta del 1 oct 2026 | Pendiente | Solo hay fuentes de terceros; la documentación oficial no lo muestra. Confirmar en WhatsApp Manager y Billing Hub, y agregar medio de pago |
 | **F1·7** Ramas del árbol sin definir | Pendiente | Las define el dueño: Torres Tiny, SFF, Partes, Distribuidores, Servicio al cliente. Mientras tanto van a asesor |
 | **F1·8** Qué equipo es Hogar, Ejecutivo o Diseño | Pendiente | El inventario no tiene ese dato: deducirlo (procesador, RAM) o agregar un campo |
 | **F1·9** Tipo de chat del MVP (P-11) | Pendiente | Guiado, guiado + agente, o híbrido. Elegir agente o híbrido obliga a revisar la decisión 0005 |
-
-Llave pública de despliegue (`~/.ssh/inventaria_deploy_ed25519.pub`, alias SSH `github-inventaria`):
-
-```
-ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIONAxvcI3oR3igFtPME4BMX2UWaT1Ju6LFxZQosRf0GN inventaria-deploy@atlasjm
-```
 
 ## App nueva CRM InventarIA (F3·1, 30 sep 2026)
 
@@ -141,8 +135,8 @@ de Baserow, y refleja cada cliente en el **kanban de la v0 (puerto 3000)**. Es u
 
 ## Estado del repositorio
 
-- Rama `main`, **47 commits, ninguno subido todavía** a `inventaria` (nunca se ha hecho push; falta F1·4). Remoto `inventaria` →
-  `git@github-inventaria:Appsheet-jm456/inventaria.git` (el dueño eligió este). El remoto `origin`
+- Rama `main`, subida el 1 oct 2026 al remoto `inventaria` → `git@github-crm-inventaria:Appsheet-jm456/CRM_InventarIA.git` (privado,
+  deploy key `~/.ssh/crm_inventaria_deploy_ed25519`, con escritura). El remoto `origin`
   (`chat_bot-inventario`) no se tocó y sigue con el último fetch del 24 jun.
 - Autor de los commits: `Appsheet-jm456`. **Push solo con autorización.**
 - Los `.bak` (uno con credenciales) se borraron; nunca estuvieron en git.
