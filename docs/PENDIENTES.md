@@ -29,7 +29,7 @@ de las Fases 1 y 2 abajo. **Código nuevo:** el bot de prueba sobre Supabase (`h
 | **F1·6** Confirmar precios de Meta del 1 oct 2026 | Pendiente | Solo hay fuentes de terceros; la documentación oficial no lo muestra. Confirmar en WhatsApp Manager y Billing Hub, y agregar medio de pago |
 | **F1·7** Ramas del árbol sin definir | Pendiente | Las define el dueño: Torres Tiny, SFF, Partes, Distribuidores, Servicio al cliente. Mientras tanto van a asesor |
 | **F1·8** Qué equipo es Hogar, Ejecutivo o Diseño | Pendiente | El inventario no tiene ese dato: deducirlo (procesador, RAM) o agregar un campo |
-| **F1·9** Tipo de chat del MVP (P-11) | Pendiente | Guiado, guiado + agente, o híbrido. Elegir agente o híbrido obliga a revisar la decisión 0005 |
+| **F1·9** Tipo de chat del MVP (P-11) | ✅ Hecha | Híbrido (decisión 0016), confirmado por el dueño el 1 oct 2026 |
 
 ## App nueva CRM InventarIA (F3·1, 30 sep 2026)
 
@@ -152,7 +152,7 @@ de Baserow, y refleja cada cliente en el **kanban de la v0 (puerto 3000)**. Es u
 | 0011 | Precios de Meta desde el 1 oct 2026: **un mensaje por respuesta**, contador de consumo. Cifras sin confirmar |
 | 0012 | Bot guiado **conectado a la base**: catálogo y fichas salen de la tabla de productos; cola compartida; SLA 10 min (alerta a los 15); L–V 8–18, Sáb 9–14, festivos cerrado |
 
-Otras reglas ya fijas: bot sin IA libre hasta que P-11 diga otra cosa (0005); el embudo solo avanza (0006);
+Otras reglas ya fijas: bot híbrido: la IA solo extrae filtros y la respuesta sale de la base (0016, modifica la 0005); el embudo solo avanza (0006);
 7 etapas (Nuevo, En Conversación, Cotización, Negociación, Confirmar transfer, Vendido, Perdido);
 presupuesto en 4 rangos según el inventario (<$1 M, $1–1,5 M, $1,5–2 M, >$2 M).
 
@@ -160,7 +160,7 @@ presupuesto en 4 rangos según el inventario (<$1 M, $1–1,5 M, $1,5–2 M, >$2
 
 | Archivo | Para qué |
 |---|---|
-| [00-BRIEF.md](00-BRIEF.md) | Alcance, problema, riesgos y stack del CRM nuevo (v1.0) |
+| [00-BRIEF.md](00-BRIEF.md) | Alcance, problema, riesgos y stack del CRM nuevo (v1.2) |
 | [ARBOL-DE-RESPUESTA.md](ARBOL-DE-RESPUESTA.md) | El árbol del Salesbot adaptado, campos, etapas y puntos P-01 a P-11 |
 | [SIMULACION-CHAT.md](SIMULACION-CHAT.md) · [simulacion/](simulacion/simulacion-chat.html) | Prototipo del chat guiado y del tipo agente; aprobado, se va a perfeccionar (F2·12) |
 | [USUARIOS-Y-PERMISOS.md](USUARIOS-Y-PERMISOS.md) | Roles, permisos y RLS de la app nueva (F2·5, decisión 0018) |

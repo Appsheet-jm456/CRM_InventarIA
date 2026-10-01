@@ -26,7 +26,7 @@ es la versión del brief (`--version`), y solo con autorización del dueño.
 ## Reglas del proyecto
 
 - Commit por bloque de trabajo terminado; push solo con autorización.
-- El bot de WhatsApp responde por **menú fijo, nunca con IA libre** — para que no improvise precios. Está en revisión (P-11, F1·9): no cambiarlo sin decisión del dueño.
+- El bot de WhatsApp es **híbrido** (decisión 0016, confirmado el 1 oct 2026): menú guiado y texto libre con IA que solo extrae filtros; **la respuesta y los precios salen siempre de la base**, nunca de la IA. No cambiarlo sin decisión del dueño.
 - El embudo del CRM **solo avanza**: nunca mover un lead a una etapa anterior automáticamente.
 - Dos claves distintas: `ACCESS_PASSWORD` para leer, `ACTION_PASSWORD` para escribir. No mezclarlas.
 - Nunca commitear `.env.local`, `.env.local.bak` ni `uploads/` (fotos de clientes).

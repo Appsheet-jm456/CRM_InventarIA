@@ -303,5 +303,5 @@ al inicio.
 | P-07 | Servicio al cliente | ⏳ **Lo define el dueño**; mientras tanto → B-ASESOR (tarea F1·7) |
 | P-08 | Reparto de chats | ✅ **Cola compartida**: el primer asesor libre toma el chat |
 | P-09 | SLA | ✅ **Meta 10 min, alerta a los 15 min**, solo en horario |
-| P-11 | Tipo de chat del MVP: guiado, agente o híbrido | ⏳ Pendiente: ver [SIMULACION-CHAT.md](SIMULACION-CHAT.md) (tarea F1·9) |
+| P-11 | Tipo de chat del MVP: guiado, agente o híbrido | ✅ Híbrido (decisión 0016, confirmado el 1 oct 2026) |
 | P-10 | Horario | ✅ **L–V 8:00–18:00 · Sáb 9:00–14:00 · festivos cerrado** |

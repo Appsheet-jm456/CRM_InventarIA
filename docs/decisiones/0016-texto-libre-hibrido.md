@@ -1,6 +1,6 @@
 # 0016 · Texto libre: reglas, Gemini y qwen3 local, con respuesta siempre desde la base
 
-**Estado:** Aceptada · 30 sep 2026 · Modifica la 0005 · Cierra P-11 (F1·9)
+**Estado:** Aceptada · 30 sep 2026 · Confirmada por el dueño el 1 oct 2026 (brief v1.2) · Modifica la 0005 · Cierra P-11 (F1·9)
 
 ## Contexto
 
