@@ -1,6 +1,6 @@
 # Pendientes y dónde retomar
 
-**Última sesión:** 30 sep 2026 · **Fase actual:** Fase 3 (Implementación) empezando por **F3·1**, con pendientes
+**Última sesión:** 1 oct 2026 · **Fase actual:** Fase 3 (Implementación) empezando por **F3·1**, con pendientes
 de las Fases 1 y 2 abajo. **Código nuevo:** el bot de prueba sobre Supabase (`herramientas/`) y las migraciones
 0001–0004. La app nueva **CRM InventarIA** corre en **http://100.114.72.43:8096** (`crm/`, decisión 0017). La v0 sigue viva en el 3000 sin tocar.
 
@@ -141,7 +141,7 @@ de Baserow, y refleja cada cliente en el **kanban de la v0 (puerto 3000)**. Es u
 
 ## Estado del repositorio
 
-- Rama `main`, **21 commits sin subir** a `inventaria` (más el del bloque F2·5/F2·9). Remoto `inventaria` →
+- Rama `main`, **47 commits, ninguno subido todavía** a `inventaria` (nunca se ha hecho push; falta F1·4). Remoto `inventaria` →
   `git@github-inventaria:Appsheet-jm456/inventaria.git` (el dueño eligió este). El remoto `origin`
   (`chat_bot-inventario`) no se tocó y sigue con el último fetch del 24 jun.
 - Autor de los commits: `Appsheet-jm456`. **Push solo con autorización.**
@@ -178,8 +178,8 @@ presupuesto en 4 rangos según el inventario (<$1 M, $1–1,5 M, $1,5–2 M, >$2
 ## Notion
 
 - Página **"CRM InventarIA"** bajo la página padre compartida (junto a Futur Green y ClaudePyme):
-  <https://app.notion.com/p/CRM-InventarIA-3ea9ea128ea081c9a0d7fd8035fddf18>. Tiene Fases (5), Tareas (40),
-  Brief v1.0, Decisiones técnicas (12), Árbol de respuesta y Simulación del chat.
+  <https://app.notion.com/p/CRM-InventarIA-3ea9ea128ea081c9a0d7fd8035fddf18>. Tiene Fases (5), Tareas (50),
+  Brief v1.0, Decisiones técnicas (26), Árbol de respuesta y Simulación del chat.
 - Token en `.env.notion` de este repo (no se commitea). Sincronizar: `python3 docs/notion/sincronizar.py --todo` (solo toca los bloques que cambian; `--revisar` ensaya)
   (solo con cambios estructurales).
 - **El sincronizador empareja las tareas por título.** Si se renombra una, primero se renombra en Notion con
