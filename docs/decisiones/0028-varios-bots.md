@@ -33,7 +33,7 @@ pantalla del lienzo queda apretada dentro de la pestaña.
 ## Consecuencias
 
 - `bot_flujos` cuelga de una tabla `bots`; "una sola publicada" y "un solo borrador" pasan a ser por bot.
-- El cliente guarda en qué bot va, además del cuadro. "hola", "menú" y `0` vuelven siempre al principal.
+- El cliente guarda en qué bot va (`leads.bot_id`, desde F4·10), además del cuadro. "hola", "menú" y `0` vuelven siempre al principal.
 - El arranque por etapa **envía un mensaje sin que el cliente escriba** y cuenta en el consumo (0011). Lo atiende el
   mismo reloj de la Pausa (0027).
 - **Ventana de 24 h de Meta:** el despacho suele ocurrir días después del último mensaje del cliente. Pasadas las 24 h
@@ -41,4 +41,4 @@ pantalla del lienzo queda apretada dentro de la pestaña.
   de despacho o entrega) elegida en el bot. Sin plantilla o sin aprobar, no se envía y queda registrado. La
   plantilla se redacta y aprueba como las de F3·6 (decisión 0021) y cuenta en el consumo (0011).
 - Cuando el cliente responde a la plantilla, se abre la ventana de 24 h y el bot sigue su flujo con texto normal.
-- Migraciones `0015` (bots) y `0017` (arranques); el detalle está en [FLUJO-DEL-BOT.md](../FLUJO-DEL-BOT.md).
+- Migraciones `0015` (bots), `0016` (cuadros nuevos, 0027) y `0017` (arranques); el detalle está en [FLUJO-DEL-BOT.md](../FLUJO-DEL-BOT.md).

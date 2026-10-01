@@ -22,7 +22,7 @@ const cuando = (t: string | null) => t
   : '—'
 
 // RF-06: cada publicación deja una versión; volver a una anterior la copia como borrador para publicarla de nuevo.
-export function Historial({ versiones, hayBorrador }: { versiones: VersionFila[]; hayBorrador: boolean }) {
+export function Historial({ bot, versiones, hayBorrador, archivado }: { bot: number; versiones: VersionFila[]; hayBorrador: boolean; archivado: boolean }) {
   const router = useRouter()
   const [aviso, setAviso] = useState<Resultado>({})
   const [ocupado, iniciar] = useTransition()
@@ -33,9 +33,9 @@ export function Historial({ versiones, hayBorrador }: { versiones: VersionFila[]
       : `¿Abrir un borrador con la versión ${version}? El bot no cambia hasta que lo publiques.`
     if (!confirm(texto)) return
     iniciar(async () => {
-      const r = await volverAVersion(version, hayBorrador)
+      const r = await volverAVersion(bot, version, hayBorrador)
       setAviso(r)
-      if (!r.error) router.push('/bot?t=flujo')
+      if (!r.error) router.push(`/bot/flujo/${bot}`)
     })
   }
 
@@ -43,7 +43,7 @@ export function Historial({ versiones, hayBorrador }: { versiones: VersionFila[]
     <section className="panel">
       <div className="panel-h">
         <div>
-          <h2>Historial de versiones del flujo</h2>
+          <h2>Historial de versiones</h2>
           <small>Cada vez que se publica queda una versión con quién y cuándo. Para volver a una anterior se abre como borrador, se revisa y se publica.</small>
         </div>
       </div>
@@ -62,10 +62,10 @@ export function Historial({ versiones, hayBorrador }: { versiones: VersionFila[]
                 <td className="r mono">{v.cuadros}</td>
                 <td className="r">
                   <div className="row" style={{ justifyContent: 'flex-end' }}>
-                    <Link className="btn chico" href={v.estado === 'borrador' ? '/bot?t=flujo' : `/bot?t=flujo&v=${v.version}`}>
+                    <Link className="btn chico" href={v.estado === 'borrador' ? `/bot/flujo/${bot}` : `/bot/flujo/${bot}?v=${v.version}`}>
                       {v.estado === 'borrador' ? 'Seguir editando' : 'Ver'}
                     </Link>
-                    {v.estado === 'archivada' && (
+                    {v.estado === 'archivada' && !archivado && (
                       <button className="btn chico" disabled={ocupado} onClick={() => volver(v.version)}>Volver a esta</button>
                     )}
                   </div>

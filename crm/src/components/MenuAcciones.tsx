@@ -3,7 +3,8 @@
 import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 
-export type Accion = { texto: string; href: string; nuevaPestana?: boolean }
+// Un enlace (href) o una acción de la página (onClick, para lo que no es navegar: renombrar, archivar…).
+export type Accion = { texto: string; href?: string; onClick?: () => void; nuevaPestana?: boolean; peligro?: boolean }
 
 // Botón de una fila que despliega sus acciones (imprimir, editar…). Se cierra al elegir, al
 // hacer clic fuera, con Escape o al desplazar. La lista va fija en pantalla, medida desde el
@@ -42,10 +43,15 @@ export function MenuAcciones({ acciones, etiqueta }: { acciones: Accion[]; etiqu
       </button>
       {abierto && (
         <div className="menu-acciones-lista" role="menu" style={{ top: lugar.top, right: lugar.right }}>
-          {acciones.map((a) => (
-            <Link key={a.href} role="menuitem" href={a.href} target={a.nuevaPestana ? '_blank' : undefined} onClick={() => setAbierto(false)}>
+          {acciones.map((a) => a.href ? (
+            <Link key={a.texto} role="menuitem" href={a.href} target={a.nuevaPestana ? '_blank' : undefined} onClick={() => setAbierto(false)}>
               {a.texto}
             </Link>
+          ) : (
+            <button key={a.texto} type="button" role="menuitem" className={a.peligro ? 'peligro' : undefined}
+              onClick={() => { setAbierto(false); a.onClick?.() }}>
+              {a.texto}
+            </button>
           ))}
         </div>
       )}

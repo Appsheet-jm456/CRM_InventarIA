@@ -25,7 +25,8 @@ function Burbuja({ m, alElegir }: { m: Mensaje; alElegir: (o: Opcion) => void })
 }
 
 // RF-07: el mismo motor del bot sobre la versión que se ve en el lienzo, sin escribir en la base ni enviar a WhatsApp.
-export function Simulador({ version, nombres, alMoverse, alCerrar }: {
+export function Simulador({ bot, version, nombres, alMoverse, alCerrar }: {
+  bot: number
   version: number
   nombres: Map<string, string>
   alMoverse: (clave: string | null) => void
@@ -46,7 +47,7 @@ export function Simulador({ version, nombres, alMoverse, alCerrar }: {
     setTurnos((t) => [...t, { id: base, lado: 'cliente', texto: visible }])
     setTexto('')
     iniciar(async () => {
-      const r = await simular(version, estado, entrada)
+      const r = await simular(bot, version, estado, entrada)
       if (r.error) {
         setTurnos((t) => [...t, { id: base + 1, lado: 'aviso', texto: r.error }])
         return

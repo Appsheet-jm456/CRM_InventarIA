@@ -79,16 +79,20 @@ def _cacheado(clave, ruta, segundos=30):
 
 
 def flujo():
-    """{clave: cuadro} de la versión publicada del flujo (F4·5, decisión 0026). Un cambio se ve en menos de 30 s."""
-    filas = _cacheado("flujo", "bot_flujos?estado=eq.publicada&select=version,bot_cuadros(*)")
+    """{clave: cuadro} de la versión publicada del bot principal (F4·5 y F4·9, decisiones 0026 y 0028). Los otros
+    bots no atienden a nadie hasta F4·10. Un cambio se ve en menos de 30 s."""
+    filas = _cacheado("flujo", "bot_flujos?estado=eq.publicada&select=version,bots!inner(principal),bot_cuadros(*)"
+                               "&bots.principal=eq.true")
     if not filas:
-        raise RuntimeError("No hay una versión publicada del flujo del bot")
+        raise RuntimeError("No hay una versión publicada del flujo del bot principal")
     return {c["clave"]: c for c in filas[0]["bot_cuadros"]}
 
 
-def cuadros_de_version(version):
-    """{clave: cuadro} de una versión cualquiera (simulador, F4·8). Sin caché: el borrador cambia a cada rato."""
-    filas = pedir(f"bot_flujos?version=eq.{int(version)}&select=version,bot_cuadros(*)")
+def cuadros_de_version(version, bot=None):
+    """{clave: cuadro} de una versión de un bot (simulador, F4·8; el principal si no se dice cuál). Sin caché: el
+    borrador cambia a cada rato."""
+    filtro = f"bot_id=eq.{int(bot)}" if bot else "bots.principal=eq.true"
+    filas = pedir(f"bot_flujos?{filtro}&version=eq.{int(version)}&select=version,bots!inner(principal),bot_cuadros(*)")
     return {c["clave"]: c for c in filas[0]["bot_cuadros"]} if filas else None
 
 

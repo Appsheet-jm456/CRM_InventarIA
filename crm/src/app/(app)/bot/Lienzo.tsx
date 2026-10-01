@@ -134,7 +134,8 @@ const TIPOS_NODO = { cuadro: NodoCuadro }
 // --------------------------------------------------------------------------- //
 // Panel para editar el cuadro elegido
 // --------------------------------------------------------------------------- //
-function Panel({ cuadro, cuadros, editable, contexto, alTerminar }: {
+function Panel({ bot, cuadro, cuadros, editable, contexto, alTerminar }: {
+  bot: number
   cuadro: Cuadro
   cuadros: Cuadro[]
   editable: boolean
@@ -167,7 +168,7 @@ function Panel({ cuadro, cuadros, editable, contexto, alTerminar }: {
   function guardar() {
     iniciar(async () => {
       const ops = opciones?.map((o) => ({ id: o.id, titulo: o.titulo, destino: o.destino ?? null })) ?? null
-      alTerminar(await guardarCuadro(cuadro.clave, mensaje ? nombre : null, textoEditable ? texto : null, ops))
+      alTerminar(await guardarCuadro(bot, cuadro.clave, mensaje ? nombre : null, textoEditable ? texto : null, ops))
     })
   }
 
@@ -246,7 +247,7 @@ function Panel({ cuadro, cuadros, editable, contexto, alTerminar }: {
           {mensaje && !cuadro.inicio && (
             <button className="btn peligro" disabled={ocupado}
               onClick={() => confirm(`¿Borrar el cuadro ${cuadro.nombre} del borrador? Las flechas que llegan quedan sueltas.`)
-                && iniciar(async () => alTerminar(await borrarCuadro(cuadro.clave), true))}>Borrar cuadro</button>
+                && iniciar(async () => alTerminar(await borrarCuadro(bot, cuadro.clave), true))}>Borrar cuadro</button>
           )}
         </div>
       )}
@@ -257,7 +258,8 @@ function Panel({ cuadro, cuadros, editable, contexto, alTerminar }: {
 // --------------------------------------------------------------------------- //
 // Publicar (F4·7): qué cambia, choques con la versión publicada y nota
 // --------------------------------------------------------------------------- //
-function PanelPublicar({ borrador, publicada, choques, problemas, alTerminar, alCancelar }: {
+function PanelPublicar({ bot, borrador, publicada, choques, problemas, alTerminar, alCancelar }: {
+  bot: number
   borrador: Version
   publicada: Version
   choques: { clave: string; nombre: string }[]
@@ -283,8 +285,12 @@ function PanelPublicar({ borrador, publicada, choques, problemas, alTerminar, al
   return (
     <div className="lienzo-panel">
       <b>Publicar la versión {borrador.version}</b>
-      <small className="muted">El bot la usa en menos de 30 segundos. La versión {publicada.version} queda en el historial y puedes volver a ella.
-        Un cliente que esté en un cuadro que ya no existe vuelve al saludo.</small>
+      <small className="muted">
+        {publicada.version
+          ? <>El bot la usa en menos de 30 segundos. La versión {publicada.version} queda en el historial y puedes volver a ella.
+            Un cliente que esté en un cuadro que ya no existe vuelve al saludo.</>
+          : <>Es la primera versión de este bot. Publicarla no cambia a quién atiende: eso lo decide cuál es el bot principal.</>}
+      </small>
       {problemas > 0 && <div className="aviso bad">Hay {problemas} cosa(s) por resolver: están marcadas con ⚠ en el lienzo.</div>}
       <div className="publicar-resumen">
         {sinCambios && <span className="muted">El borrador es igual a la versión publicada.</span>}
@@ -307,7 +313,7 @@ function PanelPublicar({ borrador, publicada, choques, problemas, alTerminar, al
       <div className="row">
         <button className="btn primary" disabled={ocupado || problemas > 0 || sinCambios || (hayChoque && !pisar)}
           onClick={() => iniciar(async () => {
-            const r = await publicar(nota, pisar)
+            const r = await publicar(bot, nota, pisar)
             if (r.choque) { setChoque(r.error ?? ''); setPisar(false); return }
             alTerminar(r)
           })}>{ocupado ? 'Publicando…' : `Publicar versión ${borrador.version}`}</button>
@@ -321,6 +327,7 @@ function PanelPublicar({ borrador, publicada, choques, problemas, alTerminar, al
 // El lienzo
 // --------------------------------------------------------------------------- //
 type Props = {
+  bot: { id: number; nombre: string; archivado: boolean }
   publicada: Version
   borrador: Version | null
   archivada?: Version
@@ -329,7 +336,7 @@ type Props = {
   hayBorrador?: boolean
 }
 
-function LienzoInterno({ publicada, borrador, archivada, contexto, choques = [], hayBorrador = false }: Props) {
+function LienzoInterno({ bot, publicada, borrador, archivada, contexto, choques = [], hayBorrador = false }: Props) {
   const router = useRouter()
   const flujo = useReactFlow()
   const editable = !!borrador
@@ -337,6 +344,7 @@ function LienzoInterno({ publicada, borrador, archivada, contexto, choques = [],
   const [elegido, setElegido] = useState<string | null>(null)
   const [publicando, setPublicando] = useState(false)
   const [probando, setProbando] = useState(false)
+  const [verProblemas, setVerProblemas] = useState(false)
   const [aqui, setAqui] = useState<string | null>(null)
   const enElBot = archivada?.version === publicada.version
   const [aviso, setAviso] = useState<Resultado>({})
@@ -348,7 +356,8 @@ function LienzoInterno({ publicada, borrador, archivada, contexto, choques = [],
 
   const armarNodos = (): Node<DatosNodo>[] => cuadros.map((c) => {
     const antes = anteriores.get(c.clave)
-    const marca = !editable ? null : !antes ? 'nuevo'
+    // Un bot que aún no se publicó no tiene con qué compararse: sin marcas.
+    const marca = !editable || !publicada.version ? null : !antes ? 'nuevo'
       : antes.texto !== c.texto || antes.nombre !== c.nombre || JSON.stringify(antes.opciones) !== JSON.stringify(c.opciones) ? 'cambiado' : null
     return { id: c.clave, type: 'cuadro', position: { x: c.x, y: c.y }, draggable: editable,
       data: { cuadro: c, marca, problemas: problemas.get(c.clave) ?? [], editable, aqui: probando && aqui?.replace(/-vacio$/, '') === c.clave } }
@@ -397,6 +406,8 @@ function LienzoInterno({ publicada, borrador, archivada, contexto, choques = [],
   }
 
   const elegidoCuadro = cuadroDe(elegido)
+  // El panel de al lado solo se abre cuando hay algo que mostrar: así el lienzo tiene todo el ancho.
+  const ladoAbierto = probando || (publicando && !!borrador) || !!elegidoCuadro || (verProblemas && editable && totalProblemas > 0)
 
   return (
     <section className="panel lienzo">
@@ -410,38 +421,41 @@ function LienzoInterno({ publicada, borrador, archivada, contexto, choques = [],
           </small>
         </div>
         <div className="row">
-          <button className="btn chico" onClick={() => { setElegido(null); setPublicando(false); setProbando(true) }}>▶ Probar</button>
+          <button className="btn chico" onClick={() => { setElegido(null); setPublicando(false); setVerProblemas(false); setProbando(true) }}>▶ Probar</button>
           {editable && (
-            <span className={`chip ${totalProblemas ? 'bad' : 'ok'}`} title="Lo que impediría publicar">
+            <button className={`chip ${totalProblemas ? 'bad' : 'ok'}`} title="Lo que impediría publicar" disabled={!totalProblemas}
+              onClick={() => { setElegido(null); setPublicando(false); setProbando(false); setVerProblemas(true) }}>
               {totalProblemas ? `${totalProblemas} por resolver` : 'Listo para publicar'}
-            </span>
+            </button>
           )}
           {editable ? (
             <>
               <button className="btn chico" disabled={ocupado} onClick={() => {
                 const r = document.querySelector('.lienzo-area')?.getBoundingClientRect()
                 const centro = flujo.screenToFlowPosition({ x: (r?.left ?? 0) + (r?.width ?? 600) / 2, y: (r?.top ?? 0) + (r?.height ?? 400) / 2 })
-                hacer(() => crearMensaje(centro.x - 110, centro.y - 60), (clave) => setElegido(String(clave)))
+                hacer(() => crearMensaje(bot.id, centro.x - 110, centro.y - 60), (clave) => setElegido(String(clave)))
               }}>+ Mensaje</button>
-              <button className="btn primary chico" disabled={ocupado} onClick={() => { setElegido(null); setProbando(false); setPublicando(true) }}>Publicar…</button>
+              <button className="btn primary chico" disabled={ocupado} onClick={() => { setElegido(null); setProbando(false); setVerProblemas(false); setPublicando(true) }}>Publicar…</button>
               <button className="btn chico peligro" disabled={ocupado}
                 onClick={() => confirm('¿Descartar el borrador? Se pierden todos sus cambios; el bot sigue igual.')
-                  && hacer(descartarBorrador, () => setElegido(null))}>Descartar borrador</button>
+                  && hacer(() => descartarBorrador(bot.id), () => setElegido(null))}>Descartar borrador</button>
             </>
           ) : archivada && enElBot ? (
-            <a className="btn primary chico" href="/bot?t=flujo">{hayBorrador ? 'Ir al borrador' : 'Editar el flujo'}</a>
+            <a className="btn primary chico" href={`/bot/flujo/${bot.id}`}>{hayBorrador ? 'Ir al borrador' : 'Editar el flujo'}</a>
           ) : archivada ? (
             <>
-              <a className="btn chico" href={`/bot?t=flujo&v=${publicada.version}`}>Ver la que usa el bot</a>
+              <a className="btn chico" href={`/bot/flujo/${bot.id}?v=${publicada.version}`}>Ver la que usa el bot</a>
               <button className="btn primary chico" disabled={ocupado} onClick={() => {
                 if (!confirm(hayBorrador
                   ? `Ya hay un borrador abierto. ¿Reemplazarlo por una copia de la versión ${archivada.version}?`
                   : `¿Abrir un borrador con la versión ${archivada.version}? El bot no cambia hasta que lo publiques.`)) return
-                hacer(() => volverAVersion(archivada.version!, hayBorrador), () => router.push('/bot?t=flujo'))
+                hacer(() => volverAVersion(bot.id, archivada.version!, hayBorrador), () => router.push(`/bot/flujo/${bot.id}`))
               }}>Volver a esta versión</button>
             </>
+          ) : bot.archivado ? (
+            <span className="chip neu">Bot archivado: solo se puede ver</span>
           ) : (
-            <button className="btn primary chico" disabled={ocupado} onClick={() => hacer(crearBorrador)}>
+            <button className="btn primary chico" disabled={ocupado} onClick={() => hacer(() => crearBorrador(bot.id))}>
               {hayBorrador ? 'Seguir con el borrador' : 'Editar el flujo'}
             </button>
           )}
@@ -452,18 +466,27 @@ function LienzoInterno({ publicada, borrador, archivada, contexto, choques = [],
           <div className={`aviso ${aviso.error ? 'bad' : 'ok'}`} role="alert">{aviso.error ?? aviso.ok}</div>
         </div>
       )}
-      <div className="lienzo-cuerpo">
+      <details className="lienzo-ayuda">
+        <summary>Toca un cuadro para verlo o editarlo · ▶ es el saludo · 🔒 son del sistema · reglas que siempre valen</summary>
+        <small className="muted">
+          Los cuadros 🔒 buscan en el inventario, muestran la ficha o pasan a un asesor: se les cambia el texto pero no lo que hacen.
+          Las reglas de siempre siguen en cualquier punto: <b>9</b> o “asesor” pasa a un asesor, un <b>código</b> de equipo abre su ficha,
+          “hola” o “menú” vuelve al inicio y el texto libre busca en el inventario.
+        </small>
+      </details>
+      <div className={`lienzo-cuerpo${ladoAbierto ? '' : ' sin-lado'}`}>
         <div className="lienzo-area">
           <ReactFlow
             nodes={nodos} edges={flechas} nodeTypes={TIPOS_NODO}
             onNodesChange={alCambiarNodos} onEdgesChange={alCambiarFlechas}
-            onNodeClick={(_, n) => { if (probando) return; setPublicando(false); setElegido(n.id) }} onPaneClick={() => setElegido(null)}
-            onNodeDragStop={(_, n) => editable && hacer(() => moverCuadro(n.id, n.position.x, n.position.y))}
+            onNodeClick={(_, n) => { if (probando) return; setPublicando(false); setVerProblemas(false); setElegido(n.id) }}
+            onPaneClick={() => { setElegido(null); setVerProblemas(false) }}
+            onNodeDragStop={(_, n) => editable && hacer(() => moverCuadro(bot.id, n.id, n.position.x, n.position.y))}
             isValidConnection={validarUnion}
-            onConnect={(u) => u.sourceHandle && hacer(() => conectar(u.source, u.sourceHandle!, u.target))}
+            onConnect={(u) => u.sourceHandle && hacer(() => conectar(bot.id, u.source, u.sourceHandle!, u.target))}
             onEdgesDelete={(borradas) => borradas.forEach((e) => {
               const [clave, opcion] = e.id.split(':')
-              hacer(() => conectar(clave, opcion, null))
+              hacer(() => conectar(bot.id, clave, opcion, null))
             })}
             connectionRadius={70} // la flecha se puede soltar sobre el cuadro, no solo en su punto de entrada
             nodesConnectable={editable} elementsSelectable deleteKeyCode={editable ? ['Backspace', 'Delete'] : null}
@@ -474,41 +497,36 @@ function LienzoInterno({ publicada, borrador, archivada, contexto, choques = [],
             <MiniMap pannable zoomable />
           </ReactFlow>
         </div>
+        {ladoAbierto && (
         <aside className="lienzo-lado">
           {probando ? (
-            <Simulador version={(archivada ?? borrador ?? publicada).version!} nombres={new Map(cuadros.map((c) => [c.clave, c.nombre]))}
+            <Simulador bot={bot.id} version={(archivada ?? borrador ?? publicada).version!} nombres={new Map(cuadros.map((c) => [c.clave, c.nombre]))}
               alMoverse={setAqui} alCerrar={() => { setProbando(false); setAqui(null) }} />
           ) : publicando && borrador ? (
-            <PanelPublicar borrador={borrador} publicada={publicada} choques={choques} problemas={totalProblemas}
+            <PanelPublicar bot={bot.id} borrador={borrador} publicada={publicada} choques={choques} problemas={totalProblemas}
               alCancelar={() => setPublicando(false)}
               alTerminar={(r) => { setAviso(r); if (!r.error) { setPublicando(false); router.refresh() } }} />
           ) : elegidoCuadro ? (
-            <Panel key={elegidoCuadro.clave + elegidoCuadro.actualizado_en} cuadro={elegidoCuadro} cuadros={cuadros} editable={editable}
+            <Panel key={elegidoCuadro.clave + elegidoCuadro.actualizado_en} bot={bot.id} cuadro={elegidoCuadro} cuadros={cuadros} editable={editable}
               contexto={contexto} alTerminar={(r, borrado) => {
                 setAviso(r)
                 if (!r.error) { if (borrado) setElegido(null); router.refresh() }
               }} />
           ) : (
             <div className="lienzo-panel">
-              <b>Toca un cuadro para verlo o editarlo.</b>
-              <small className="muted">
-                ▶ es el saludo de inicio. Los cuadros 🔒 son del sistema: buscan en el inventario, muestran la ficha o pasan a un asesor;
-                se les cambia el texto pero no lo que hacen. Las reglas de siempre siguen en cualquier punto: <b>9</b> o “asesor” pasa a
-                un asesor, un <b>código</b> de equipo abre su ficha, “hola” o “menú” vuelve al inicio y el texto libre busca en el inventario.
-              </small>
-              {editable && totalProblemas > 0 && (
-                <div className="lienzo-problemas">
-                  <strong>Por resolver antes de publicar</strong>
-                  <ul>
-                    {[...problemas].map(([clave, ps]) => ps.map((p, i) => (
-                      <li key={clave + i}><button className="enlace" onClick={() => setElegido(clave)}>{cuadroDe(clave)?.nombre}</button>: {p}</li>
-                    )))}
-                  </ul>
-                </div>
-              )}
+              <div className="row" style={{ justifyContent: 'space-between' }}>
+                <b>Por resolver antes de publicar</b>
+                <button className="btn chico" onClick={() => setVerProblemas(false)}>Cerrar</button>
+              </div>
+              <ul className="lienzo-problemas-lista">
+                {[...problemas].map(([clave, ps]) => ps.map((p, i) => (
+                  <li key={clave + i}><button className="enlace" onClick={() => setElegido(clave)}>{cuadroDe(clave)?.nombre}</button>: {p}</li>
+                )))}
+              </ul>
             </div>
           )}
         </aside>
+        )}
       </div>
     </section>
   )

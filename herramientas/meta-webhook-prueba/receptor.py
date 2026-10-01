@@ -362,7 +362,7 @@ def buscar(texto):
 def simular(pedido):
     """Simulador del lienzo (F4·8, RF-07): el motor del bot sobre una versión, sin escribir en la base ni enviar a
     WhatsApp. La app guarda el estado de la charla de prueba y lo manda en cada mensaje."""
-    otros = db.cuadros_de_version(pedido["version"])
+    otros = db.cuadros_de_version(pedido["version"], pedido.get("bot"))
     if not otros:
         raise LookupError("versión")
     st = pedido.get("estado") or flujo.estado_vacio()

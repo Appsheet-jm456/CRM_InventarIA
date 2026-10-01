@@ -47,7 +47,7 @@ const esIgual = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify
 export const editado = (n: Pick<Nodo, 'texto' | 'texto_original' | 'opciones' | 'opciones_original'>) =>
   n.texto !== n.texto_original || !esIgual(n.opciones, n.opciones_original)
 
-function Editor({ nodo, contexto }: { nodo: Nodo; contexto: Contexto }) {
+function Editor({ nodo, contexto, bot }: { nodo: Nodo; contexto: Contexto; bot: number }) {
   const [texto, setTexto] = useState(nodo.texto)
   const [opciones, setOpciones] = useState<Opcion[] | null>(nodo.opciones)
   const [aviso, setAviso] = useState<Resultado>({})
@@ -129,12 +129,12 @@ function Editor({ nodo, contexto }: { nodo: Nodo; contexto: Contexto }) {
           <small className="muted">Las opciones de este mensaje las pone el bot ({nodo.clave === 'B001A4' ? 'las marcas con stock' : 'los rangos de presupuesto'}); aquí se edita solo la pregunta.</small>
         )}
         <div className="inline">
-          <button className="btn primary" disabled={ocupado || sinCambios || bloqueado} onClick={() => correr(() => guardarNodo(nodo.clave, ficha ? null : texto, opciones))}>
+          <button className="btn primary" disabled={ocupado || sinCambios || bloqueado} onClick={() => correr(() => guardarNodo(nodo.clave, ficha ? null : texto, opciones, bot))}>
             {ocupado ? 'Guardando…' : 'Guardar'}
           </button>
           <button className="btn" disabled={ocupado || igualOriginal}
             onClick={() => confirm('¿Volver al texto original de este mensaje?') && correr(async () => {
-              const r = await restaurarNodo(nodo.clave)
+              const r = await restaurarNodo(nodo.clave, bot)
               if (!r.error) { setTexto(nodo.texto_original); setOpciones(nodo.opciones_original) }
               return r
             })}>
@@ -157,24 +157,34 @@ function Editor({ nodo, contexto }: { nodo: Nodo; contexto: Contexto }) {
   )
 }
 
-export function Mensajes({ nodos, version, actual, contexto }: { nodos: Nodo[]; version?: number; actual?: string; contexto: Contexto }) {
+export function Mensajes({ nodos, version, actual, contexto, bot, bots }: {
+  nodos: Nodo[]; version?: number; actual?: string; contexto: Contexto
+  bot: number; bots: { id: number; nombre: string; principal: boolean }[]
+}) {
   const nodo = nodos.find((n) => n.clave === actual) ?? nodos[0]
   return (
     <section className="panel">
       <div className="panel-h">
         <div>
           <h2>Mensajes del bot</h2>
-          <small>Versión publicada {version ?? '—'}. Aquí cambias lo que dice cada mensaje y el título de sus botones; a dónde lleva cada opción se cambia en el lienzo (F4·6).</small>
+          <small>Versión publicada {version ?? '—'} del bot. Aquí cambias lo que dice cada mensaje y el título de sus botones; a dónde lleva cada opción se cambia en el lienzo (F4·6).</small>
         </div>
       </div>
-      <div className="embudos-tabs" style={{ padding: '0 16px' }}>
+      {bots.length > 1 && (
+        <div className="embudos-tabs" style={{ padding: '10px 16px 0' }} aria-label="Bot">
+          {bots.map((b) => (
+            <Link key={b.id} href={`/bot?b=${b.id}`} className={`pastilla${b.id === bot ? ' activa' : ''}`}>{b.principal ? '⭐ ' : ''}{b.nombre}</Link>
+          ))}
+        </div>
+      )}
+      <div className="embudos-tabs" style={{ padding: '10px 16px 0' }}>
         {nodos.map((n) => (
-          <Link key={n.clave} href={`/bot?n=${n.clave}`} className={`pastilla${n.clave === nodo?.clave ? ' activa' : ''}`}>
+          <Link key={n.clave} href={`/bot?b=${bot}&n=${n.clave}`} className={`pastilla${n.clave === nodo?.clave ? ' activa' : ''}`}>
             {n.nombre}{editado(n) && <span className="punto-editado" title="Editado: distinto del original" aria-label="(editado)" />}
           </Link>
         ))}
       </div>
-      {nodo && <Editor key={nodo.clave + nodo.actualizado_en} nodo={nodo} contexto={contexto} />}
+      {nodo && <Editor key={nodo.clave + nodo.actualizado_en} nodo={nodo} contexto={contexto} bot={bot} />}
     </section>
   )
 }

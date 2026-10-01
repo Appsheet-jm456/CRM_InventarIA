@@ -14,7 +14,7 @@
 | ✅ **F4·6** Lienzo (30 sep, migraciones 0012 y 0013) | Cuadros y flechas en `/bot`: crear, editar, unir y borrar mensajes; cuadros del sistema fijos; marca de editado |
 | ✅ **F4·7** Borrador, publicar e historial (30 sep, migración 0014) | Validación al publicar, lista de versiones con quién y cuándo, volver a una anterior |
 | ✅ **F4·8** Simulador (30 sep) | Probar el borrador como cliente, sin WhatsApp |
-| **F4·9** Varios bots (migración 0015) | "Flujo" abre la lista de bots: crear, renombrar, duplicar, archivar y marcar el principal; cada bot con su lienzo, borrador, versiones y simulador. Pantalla rediseñada con más espacio para el lienzo |
+| ✅ **F4·9** Varios bots (1 oct, migración 0015) | "Flujo" abre la lista de bots: crear, renombrar, duplicar, archivar y marcar el principal; cada bot con su lienzo, borrador, versiones y simulador. Pantalla rediseñada con más espacio para el lienzo |
 | **F4·10** "+ Agregar", mensaje sin botones e "Ir a otro bot" (migración 0016) | Desplegable con Mensaje, Condiciones, Catálogos, Pausa e Ir a otro bot; mensaje sin botones con la flecha "Cuando el cliente responda" |
 | **F4·11** Condiciones | Cuadro que compara el último mensaje del cliente ("es igual a", varias palabras por condición) y sale por la primera que se cumpla o por "Ninguna se cumple" |
 | **F4·12** Catálogos | Encabezado más un catálogo elegido de Inventario o subido en una ventana; envía y sigue |
@@ -73,7 +73,7 @@ un asesor (bot en pausa), si el cliente ya está en otro cuadro o si pasaron 24 
 último queda registrado en el chat.
 
 **RF-16 · Hay varios bots y uno es el principal** (0028). Cada bot tiene su lienzo, su borrador, sus versiones y su
-historial. El principal atiende a todo cliente que no está en otro bot; siempre hay exactamente uno. El bot que hoy
+historial. El principal atiende a todo cliente que no está en otro bot; siempre hay exactamente uno, y está publicado. El bot que hoy
 existe pasa a ser el principal, sin cambios para los clientes.
 
 **RF-17 · "Ir a otro bot"** lleva al cliente al inicio de la versión publicada del bot elegido. No se publica si ese bot
@@ -192,8 +192,23 @@ publicada como borrador de un bot nuevo), marcar como principal y archivar.
 
 **Modelo.** Tabla `bots` (`id`, `nombre` único, `principal` con un solo verdadero, `archivado`, `palabras text[]`,
 `embudo_id`/`etapa_id`, quién y cuándo). `bot_flujos.bot_id`: los índices de "una sola publicada" y "un solo
-borrador" pasan a ser por bot, y las funciones del borrador reciben el bot. El cliente guarda en qué bot va
-(`leads.bot_id`) además del cuadro; un cliente cuyo bot se archivó vuelve al inicio del principal.
+borrador" pasan a ser por bot, y la numeración de versiones es por bot (cada uno empieza en 1). Todas las funciones del
+borrador (`crear_borrador`, `borrador_guardar_cuadro`, `publicar_borrador`…) reciben `p_bot` al final, con `null` =
+el principal, así que las llamadas de antes siguen funcionando. Funciones nuevas: `crear_bot(nombre, desde)`,
+`renombrar_bot`, `marcar_principal`, `archivar_bot` y `desarchivar_bot`. *En blanco* trae el saludo (`B00`) y los
+cuadros que el motor necesita siempre (asesor, avisos y ficha), copiados del principal; *duplicar* copia la versión
+publicada (o el borrador si nunca se publicó). Un bot nuevo nace como borrador: no atiende a nadie hasta publicarse y,
+para ser principal, debe estar publicado. El principal no se archiva; un bot archivado se ve pero no se cambia.
+`leads.bot_id` (en qué bot va el cliente) llega con F4·10, cuando exista «Ir a otro bot».
+
+**Motor.** Hasta F4·10 solo atiende el principal: `db.flujo()` lee la versión publicada del bot con `principal`. El
+simulador recibe el bot y la versión (`POST /interno/simular` con `bot`). **Mensajes del bot** edita la versión
+publicada de un bot a la vez, con selector si hay más de uno.
+
+**Pantallas.** `/bot?t=bots` («Flujos (lienzo)») es la lista; `/bot/flujo/<bot>` es el lienzo de un bot, a todo el
+ancho, con su pestaña de Historial. El panel de la derecha solo se abre al elegir un cuadro, probar, publicar o ver lo
+que falta (el contador «N por resolver» es un botón). Las direcciones viejas `?t=flujo` y `?t=historial` abren la lista.
+Pruebas: `supabase/pruebas/0015_varios_bots.sql` (14).
 
 ## Condiciones, Catálogos y Pausa (F4·10 a F4·13, decisión 0027, migración 0016)
 
