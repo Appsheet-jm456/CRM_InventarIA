@@ -16,6 +16,7 @@ import {
 import type { Contexto } from './Mensajes'
 import { PanelCatalogo, type CatalogoOpcion } from './PanelCatalogo'
 import { PanelCondiciones } from './PanelCondiciones'
+import { MAX_ESPERA, PanelPausa, textoEspera } from './PanelPausa'
 import { Simulador } from './Simulador'
 import { VistaWhatsApp } from './VistaWhatsApp'
 
@@ -96,6 +97,10 @@ function revisar(cuadros: Cuadro[], bots: OtroBot[], catalogos: CatalogoOpcion[]
         else if (!o.destino) anotar(c.clave, `La condición «${o.titulo}» no lleva a ningún cuadro.`)
       }
     }
+    if (c.tipo === 'pausa') {
+      const s = Number(c.ajustes?.segundos ?? 0)
+      if (!(s >= 1 && s <= MAX_ESPERA)) anotar(c.clave, 'La espera va de 1 segundo a 23 h 59 min 59 s (ventana de 24 h de Meta).')
+    }
     if (c.tipo === 'catalogo') {
       const cat = catalogos.find((k) => k.id === Number(c.ajustes?.catalogo_id))
       if (!c.ajustes?.catalogo_id) anotar(c.clave, 'Elige qué catálogo envía.')
@@ -133,7 +138,8 @@ function NodoCuadro({ data, selected }: NodeProps<Node<DatosNodo>>) {
   const filas: { id: string; titulo: string; destino?: string | null; unible: boolean }[] = [
     ...(c.opciones ?? []).map((o) => ({ id: o.id, destino: o.destino, unible,
       titulo: c.tipo === 'condicion' ? `${o.titulo} = ${o.palabras?.length ? o.palabras.join(' · ') : '…'}` : `${o.id}. ${o.titulo}` })),
-    ...Object.keys(c.salidas ?? {}).map((s) => ({ id: s, titulo: SALIDAS[s] ?? s, destino: c.salidas[s], unible })),
+    // Las salidas de un cuadro del dueño van en su orden (la base guarda el JSON con otro orden de claves).
+    ...(delDueno(c) ? salidasDe(c) : Object.keys(c.salidas ?? {})).map((s) => ({ id: s, titulo: SALIDAS[s] ?? s, destino: c.salidas?.[s] ?? null, unible })),
   ]
   return (
     <div className={`nodo-bot ${sistema ? 'sistema' : ''} ${selected ? 'elegido' : ''} ${problemas.length ? 'con-problema' : ''} ${aqui ? 'aqui' : ''}`}>
@@ -151,6 +157,7 @@ function NodoCuadro({ data, selected }: NodeProps<Node<DatosNodo>>) {
       <small className="nodo-bot-tipo">{sistema ? `🔒 ${TIPOS[c.tipo]}` : TIPOS[c.tipo]}</small>
       {c.formato !== 'sistema' && c.formato !== 'ficha' && <p className="nodo-bot-texto">{recorte(c.texto)}</p>}
       {c.tipo === 'condicion' && <p className="nodo-bot-texto">🔀 Según el último mensaje del cliente</p>}
+      {c.tipo === 'pausa' && <p className="nodo-bot-texto">⏳ Espera {textoEspera(Number(c.ajustes?.segundos ?? 0))}</p>}
       {c.tipo === 'catalogo' && <p className="nodo-bot-texto">📚 {catalogo ?? 'Elige el catálogo'}</p>}
       {c.tipo === 'ir_bot' && <p className="nodo-bot-texto">↪ {destinoBot ? <>Va al inicio de <b>{destinoBot}</b></> : 'Elige a qué bot lleva'}</p>}
       {c.tipo === 'presupuesto' && <small className="muted">Rangos de presupuesto o un monto escrito</small>}
@@ -405,12 +412,12 @@ function PanelPublicar({ bot, borrador, publicada, choques, problemas, alTermina
 // --------------------------------------------------------------------------- //
 // El lienzo
 // --------------------------------------------------------------------------- //
-// "+ Agregar" (RF-08). La Pausa llega en F4·13.
+// "+ Agregar" (RF-08).
 const AGREGAR: { texto: string; tipo: string; detalle: string; deshabilitada?: boolean }[] = [
   { texto: '💬 Mensaje', tipo: 'mensaje', detalle: 'Texto con botones o lista; sin opciones, espera la respuesta' },
   { texto: '🔀 Condiciones', tipo: 'condicion', detalle: 'Elige el camino según lo que escribió el cliente' },
   { texto: '📚 Catálogos', tipo: 'catalogo', detalle: 'Envía un catálogo de Inventario y sigue' },
-  { texto: '⏳ Pausa', tipo: 'pausa', detalle: 'Próximamente', deshabilitada: true },
+  { texto: '⏳ Pausa', tipo: 'pausa', detalle: 'Espera; si el cliente no escribe, sigue al recordatorio' },
   { texto: '↪ Ir a otro bot', tipo: 'ir_bot', detalle: 'Lleva al cliente al inicio de otro bot' },
 ]
 
@@ -612,11 +619,19 @@ function LienzoInterno({ bot, bots, catalogos, puedeSubirCatalogo, publicada, bo
         <aside className="lienzo-lado">
           {probando ? (
             <Simulador bot={bot.id} version={(archivada ?? borrador ?? publicada).version!} nombres={new Map(cuadros.map((c) => [c.clave, c.nombre]))}
+              pausas={new Map(cuadros.filter((c) => c.tipo === 'pausa').map((c) => [c.clave, Number(c.ajustes?.segundos ?? 0)]))}
               alMoverse={setAqui} alCerrar={() => { setProbando(false); setAqui(null) }} />
           ) : publicando && borrador ? (
             <PanelPublicar bot={bot.id} borrador={borrador} publicada={publicada} choques={choques} problemas={totalProblemas}
               alCancelar={() => setPublicando(false)}
               alTerminar={(r) => { setAviso(r); if (!r.error) { setPublicando(false); router.refresh() } }} />
+          ) : elegidoCuadro?.tipo === 'pausa' ? (
+            <PanelPausa key={elegidoCuadro.clave + elegidoCuadro.actualizado_en} bot={bot.id} cuadro={elegidoCuadro} editable={editable}
+              destinos={cuadros.filter((c) => DESTINOS.includes(c.tipo) && c.clave !== elegidoCuadro.clave)}
+              alTerminar={(r, borrado) => {
+                setAviso(r)
+                if (!r.error) { if (borrado) setElegido(null); router.refresh() }
+              }} />
           ) : elegidoCuadro?.tipo === 'catalogo' ? (
             <PanelCatalogo key={elegidoCuadro.clave + elegidoCuadro.actualizado_en} bot={bot.id} cuadro={elegidoCuadro} editable={editable}
               catalogos={catalogos} puedeSubir={puedeSubirCatalogo}

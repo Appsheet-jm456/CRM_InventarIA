@@ -181,6 +181,18 @@ def catalogo(catalogo_id):
     return filas[0] if filas else None
 
 
+def esperas_vencidas():
+    """Teléfonos de los clientes cuya Pausa ya venció (F4·13); el reloj del receptor los atiende."""
+    ahora = datetime.now(timezone.utc).isoformat()
+    return [f["telefono"] for f in pedir(f"leads?espera_vence_en=lte.{q(ahora)}&select=telefono&order=espera_vence_en&limit=50")]
+
+
+def ultimo_del_cliente(lead_id):
+    """Cuándo escribió el cliente por última vez (ventana de 24 h de Meta), o None."""
+    filas = pedir(f"mensajes?lead_id=eq.{int(lead_id)}&lado=eq.cliente&select=creado_en&order=creado_en.desc&limit=1")
+    return datetime.fromisoformat(filas[0]["creado_en"]) if filas else None
+
+
 def guardar_media_id(catalogo_id, media_id):
     pedir(f"catalogos?id=eq.{catalogo_id}", "PATCH", {"meta_media_id": media_id, "meta_media_en": "now"},
           "return=minimal")

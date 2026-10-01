@@ -18,7 +18,7 @@
 | ✅ **F4·10** "+ Agregar", mensaje sin botones e "Ir a otro bot" (1 oct, migración 0016) | Desplegable con Mensaje, Condiciones, Catálogos, Pausa e Ir a otro bot; mensaje sin botones con la flecha "Cuando el cliente responda" |
 | ✅ **F4·11** Condiciones (1 oct, migración 0017) | Cuadro que compara el último mensaje del cliente ("es igual a", varias palabras por condición) y sale por la primera que se cumpla o por "Ninguna se cumple" |
 | ✅ **F4·12** Catálogos (1 oct, migración 0018) | Encabezado más un catálogo elegido de Inventario o subido en una ventana; envía y sigue |
-| **F4·13** Pausa y recordatorio | Espera horas, minutos y segundos; salidas "El cliente respondió" y "Pasó el tiempo"; reloj en el receptor |
+| ✅ **F4·13** Pausa y recordatorio (1 oct, migración 0019) | Espera horas, minutos y segundos; salidas "El cliente respondió" y "Pasó el tiempo"; reloj en el receptor |
 | **F4·14** Arranque por palabra clave y por etapa del embudo | Un bot arranca si el cliente escribe su palabra clave o si su oportunidad entra a cierta etapa |
 | **F4·15** Simulador y pruebas | Probar los cuadros y bots nuevos en el simulador (la Pausa con "Simular que pasó el tiempo"), pruebas de la base y del motor |
 
@@ -70,7 +70,8 @@ por "Pasó el tiempo". Las dos salidas son obligatorias.
 
 **RF-15 · El recordatorio respeta la ventana y al asesor.** Al vencer la Pausa no se envía nada si el chat está con
 un asesor (bot en pausa), si el cliente ya está en otro cuadro o si pasaron 24 h desde su último mensaje; esto
-último queda registrado en el chat.
+último queda registrado con la etiqueta «Recordatorio-no-enviado» en el cliente (no como mensaje, para no cambiar las
+métricas de chats sin respuesta).
 
 **RF-16 · Hay varios bots y uno es el principal** (0028). Cada bot tiene su lienzo, su borrador, sus versiones y su
 historial. El principal atiende a todo cliente que no está en otro bot; siempre hay exactamente uno, y está publicado. El bot que hoy
@@ -276,7 +277,32 @@ catálogo, siguiente, bot)` exige encabezado y un catálogo que exista, y no dej
 `problemas_del_flujo` exige catálogo elegido, existente y activo. `crearCatalogo` devuelve el id creado. Pruebas:
 `supabase/pruebas/0018_catalogos.sql` (6). El bot principal responde igual que antes en 70.536 conversaciones.
 
-## Pausa (F4·13, decisión 0027)
+## Pausa y recordatorio (F4·13, decisión 0027, migración 0019)
+
+**Lienzo.** "+ Agregar" → ⏳ **Pausa** (15 min por defecto). El cuadro muestra «Espera 0 h 15 min 15 s» y las flechas «El cliente
+respondió» y «Pasó el tiempo». En el panel: horas, minutos y segundos (de 1 s a 23 h 59 min 59 s) y a dónde sigue en cada caso.
+Uso típico: Mensaje → Pausa → «Pasó el tiempo» a un mensaje de recordatorio y «El cliente respondió» a unas Condiciones.
+
+**Motor.** `flujo.esperar` deja al cliente en la Pausa con `espera_hasta`; si escribe antes, sigue por `respondio` con su texto
+(las reglas de siempre van primero); si sale de la Pausa por cualquier otro camino, la espera se borra (`limpiar_espera`).
+`flujo.tiempo_cumplido` sigue por `tiempo`. El receptor guarda `leads.espera_vence_en` y `leads.espera_cuadro` (se llaman
+«espera» para no confundirlas con `pausar_bot`, el chat en manos de un asesor).
+
+**Reloj.** Un hilo del receptor revisa cada 5 s `db.esperas_vencidas()` y atiende cada una con el mismo candado por número
+que al contestar (`vencer_espera`): si el chat está con un asesor o el cliente ya está en otro cuadro, solo quita la
+espera; si pasaron más de 24 h (menos un minuto) desde el último mensaje del cliente, no envía y deja la etiqueta
+«Recordatorio-no-enviado»; si no, envía lo que sigue y guarda el estado sin tocar el último mensaje del cliente. Si el
+receptor estuvo apagado, al volver atiende las vencidas (con las mismas reglas). Probado contra la base con tres
+clientes de prueba: dentro de la ventana, fuera de ella y con asesor.
+
+**Simulador.** En una Pausa muestra «⏳ Esperando …» con **Simular que pasó el tiempo** (`evento: "tiempo"` en
+`/interno/simular`); escribir antes prueba «El cliente respondió».
+
+**Base (0019).** `borrador_crear_cuadro('pausa', …)` crea `P<n>`; `borrador_guardar_pausa(clave, nombre, segundos, respondio,
+tiempo, bot)` valida el rango y que no lleve a la ficha ni a sí misma; `problemas_del_flujo` revisa el rango. Pruebas:
+`supabase/pruebas/0019_pausa.sql` (6). El bot principal responde igual que antes en 70.536 conversaciones.
+
+## Arranques y pruebas (F4·14 y F4·15, decisión 0028)
 
 **Lienzo.** "+ Mensaje" pasa a **"+ Agregar ▾"** con los cinco cuadros (Ir a otro bot es el quinto: un desplegable con los bots y una sola flecha de entrada); cada uno se crea en el centro de la vista y
 queda elegido. Un mensaje sin botones muestra la flecha "Cuando el cliente responda". Cómo se ve cada cuadro nuevo:

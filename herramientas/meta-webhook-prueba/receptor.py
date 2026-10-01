@@ -24,7 +24,8 @@ import sys
 import threading
 import urllib.error
 import urllib.request
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
@@ -174,10 +175,13 @@ def cargar_estado(lead):
     st.update({k: v for k, v in guardado.items() if k in ("campos", "rango", "marcas", "valor")})
     st.update(nodo=lead["paso_menu"] or None, etapa=lead["etapa"], errores=lead["errores_bot"],
               pausa=lead["pausar_bot"], bot=lead.get("bot_id"))
+    if lead.get("espera_vence_en") and lead.get("espera_cuadro") == st["nodo"]:  # en una Pausa (F4·13)
+        st["espera_hasta"] = lead["espera_vence_en"]
     return st
 
 
-def guardar_estado(lead, st, visible, nombre):
+def guardar_estado(lead, st, visible, nombre, del_cliente=True):
+    """del_cliente=False: lo movió el reloj de la Pausa, no un mensaje del cliente (no toca su último mensaje)."""
     campos = st["campos"]
     etiquetas = list(lead.get("etiquetas") or [])
     if campos.get("Etiqueta") and campos["Etiqueta"] not in etiquetas:
@@ -190,16 +194,81 @@ def guardar_estado(lead, st, visible, nombre):
         "presupuesto": campos.get("Presupuesto", lead["presupuesto"]),
         "marca_interes": campos.get("Marca interés", lead["marca_interes"]),
         "cotiz_producto": campos.get("Código producto", lead["cotiz_producto"]),
-        "ultimo_mensaje": visible[:500], "fecha_ultimo_contacto": datetime.now().astimezone().isoformat(),
         "estado_bot": {k: st[k] for k in ("campos", "rango", "marcas", "valor") if k in st},
+        "espera_vence_en": st.get("espera_hasta"), "espera_cuadro": st["nodo"] if st.get("espera_hasta") else None,
         # En el principal se guarda null: si el principal cambia, el cliente sigue al nuevo (RF-16).
         "bot_id": None if st.get("bot") in (None, db.principal()) else st["bot"],
     }
+    if del_cliente:
+        cambios.update(ultimo_mensaje=visible[:500], fecha_ultimo_contacto=datetime.now().astimezone().isoformat())
     if st.get("valor"):
         cambios["valor_estimado"] = st["valor"]
     if nombre and not lead["nombre"]:
         cambios["nombre"] = nombre
     db.actualizar_lead(lead["id"], cambios)
+
+
+def enviar_mensajes(numero, lead, mensajes):
+    for m in mensajes:
+        m = resolver(m)
+        if not m:
+            continue
+        # Si la foto de la cabecera no se puede descargar, la ficha sale igual sin imagen.
+        wamid = enviar(numero, m)
+        if not wamid and m.get("interactive", {}).pop("header", None):
+            wamid = enviar(numero, m)
+        if wamid:
+            db.guardar_mensaje(lead["id"], "bot", visor.texto_saliente(m), m["type"],
+                               wamid if wamid != "enviado" else None)
+
+
+# --------------------------------------------------------------------------- #
+# Reloj de la Pausa (F4·13, RF-14 y RF-15)
+# --------------------------------------------------------------------------- #
+
+VENTANA = timedelta(hours=24) - timedelta(minutes=1)  # Meta solo entrega texto libre dentro de las 24 h
+
+
+def vencer_espera(numero):
+    """La Pausa de este cliente venció: sigue por "Pasó el tiempo", con el mismo candado que al contestar."""
+    with _candados.setdefault(numero, threading.Lock()):
+        lead = db.lead(numero)
+        if not lead or not lead.get("espera_vence_en"):
+            return
+        if datetime.fromisoformat(lead["espera_vence_en"]) > datetime.now(timezone.utc):
+            return  # alguien la movió mientras tanto
+        quitar = {"espera_vence_en": None, "espera_cuadro": None}
+        # RF-15: con un asesor o si el cliente ya está en otro cuadro, no se envía nada.
+        if lead["pausar_bot"] or lead.get("espera_cuadro") != (lead["paso_menu"] or None):
+            db.actualizar_lead(lead["id"], quitar)
+            return
+        ultimo = db.ultimo_del_cliente(lead["id"])
+        if not ultimo or datetime.now(timezone.utc) - ultimo > VENTANA:
+            etiquetas = list(lead.get("etiquetas") or [])
+            if "Recordatorio-no-enviado" not in etiquetas:
+                etiquetas.append("Recordatorio-no-enviado")
+            db.actualizar_lead(lead["id"], {**quitar, "etiquetas": etiquetas})
+            anotar(f"⏳ {numero}: la Pausa venció fuera de las 24 h de Meta; el recordatorio no se envía")
+            return
+        st = cargar_estado(lead)
+        mensajes, st = flujo.tiempo_cumplido(st)
+        anotar(f"⏳ {numero}: venció la Pausa {lead.get('espera_cuadro')} → {st['nodo']}")
+        enviar_mensajes(numero, lead, mensajes)
+        guardar_estado(lead, st, "", None, del_cliente=False)
+
+
+def reloj():
+    """Cada 5 s atiende las Pausas vencidas. Si el receptor estuvo apagado, al volver atiende las que siguen en ventana."""
+    while True:
+        time.sleep(5)
+        try:
+            for numero in db.esperas_vencidas():
+                try:
+                    vencer_espera(numero)
+                except Exception as e:
+                    anotar(f"  ✗ no se pudo vencer la Pausa de {numero}: {e!r}")
+        except Exception as e:
+            anotar(f"  ✗ el reloj de la Pausa falló: {e!r}")
 
 
 def contestar(numero, entrada, visible, nombre, tipo, meta_id, media=None):
@@ -225,17 +294,7 @@ def contestar(numero, entrada, visible, nombre, tipo, meta_id, media=None):
         except Exception as e:  # una falla del árbol o de la base no debe tumbar el receptor
             anotar(f"  ✗ el árbol falló: {e!r}")
             return
-        for m in mensajes:
-            m = resolver(m)
-            if not m:
-                continue
-            # Si la foto de la cabecera no se puede descargar, la ficha sale igual sin imagen.
-            wamid = enviar(numero, m)
-            if not wamid and m.get("interactive", {}).pop("header", None):
-                wamid = enviar(numero, m)
-            if wamid:
-                db.guardar_mensaje(lead["id"], "bot", visor.texto_saliente(m), m["type"],
-                                   wamid if wamid != "enviado" else None)
+        enviar_mensajes(numero, lead, mensajes)
         try:
             guardar_estado(lead, st, visible, nombre)
         except Exception as e:
@@ -372,7 +431,10 @@ def simular(pedido):
     antes = st.get("bot")
     avisos = []
     with flujo.con_cuadros(otros, bot):
-        mensajes, st = flujo.responder(st, str(pedido["texto"])[:1000], avisos.append)
+        if pedido.get("evento") == "tiempo":  # "Simular que pasó el tiempo" en una Pausa (F4·13)
+            mensajes, st = flujo.tiempo_cumplido(st)
+        else:
+            mensajes, st = flujo.responder(st, str(pedido["texto"])[:1000], avisos.append)
     if st.get("bot") != antes:  # "Ir a otro bot", o "hola" desde otro bot: se avisa a quien prueba
         avisos.append(f"El cliente pasó al bot «{db.nombre_bot(st['bot'])}».")
     return {"avisos": avisos, "mensajes": mensajes, "estado": st}
@@ -381,4 +443,5 @@ def simular(pedido):
 if __name__ == "__main__":
     anotar(f"Receptor de prueba escuchando en 127.0.0.1:{PUERTO}/webhook")
     # El visor de la demo se apagó en F3·5: la Bandeja de CRM InventarIA ocupa el 8096 (decisión 0017).
+    threading.Thread(target=reloj, daemon=True).start()  # Pausas vencidas (F4·13)
     ThreadingHTTPServer(("127.0.0.1", PUERTO), Webhook).serve_forever()

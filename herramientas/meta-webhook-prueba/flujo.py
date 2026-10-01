@@ -16,7 +16,7 @@ import re
 import threading
 import unicodedata
 from contextlib import contextmanager
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -336,6 +336,22 @@ def enviar_catalogo(st, c):
     return salida + ir(st, (c.get("salidas") or {}).get("siguiente"))
 
 
+def esperar(st, c):
+    """Pausa (RF-14): no envía nada; el cliente queda en este cuadro hasta que escriba (salida "respondio") o venza el
+    tiempo (salida "tiempo", la sigue el reloj del receptor con tiempo_cumplido)."""
+    st["nodo"], st["errores"] = c["clave"], 0
+    segundos = int((c.get("ajustes") or {}).get("segundos") or 0)
+    st["espera_hasta"] = (datetime.now(timezone.utc) + timedelta(seconds=segundos)).isoformat()
+    return []
+
+
+def limpiar_espera(st):
+    """La espera solo vale mientras el cliente siga en su Pausa."""
+    c = (cuadros() or {}).get(st.get("nodo"))
+    if not c or c["tipo"] != "pausa":
+        st.pop("espera_hasta", None)
+
+
 def ir(st, clave):
     """Lleva al cliente a un cuadro y devuelve lo que ve. Un cuadro que ya no existe lleva al inicio."""
     _hilo.saltos = getattr(_hilo, "saltos", 0) + 1
@@ -350,6 +366,8 @@ def ir(st, clave):
         return condicion(st, c)
     if c["tipo"] == "catalogo":
         return enviar_catalogo(st, c)
+    if c["tipo"] == "pausa":
+        return esperar(st, c)
     st["nodo"], st["errores"] = c["clave"], 0
     st["campos"].pop("Errores bot", None)
     aplicar(st, c["al_entrar"])
@@ -529,7 +547,9 @@ def responder(st, texto, avisar=None):
         if cuadros() is None:  # su bot se archivó o ya no tiene versión publicada: vuelve al principal
             st["bot"] = _hilo.bot = db.principal()
             st["nodo"] = None
-        return _responder(st, texto, avisar)
+        mensajes, st = _responder(st, texto, avisar)
+        limpiar_espera(st)
+        return mensajes, st
     finally:
         _hilo.bot = _hilo.texto = None
         _hilo.saltos = 0
@@ -563,6 +583,9 @@ def _responder(st, texto, avisar):
     if n == "0" and (k == "BUSQUEDA" or tipo in ("equipos", "ficha")):
         return al_principal(st), st
 
+    if tipo == "pausa":  # escribió antes de que venciera: sigue con su mensaje (RF-14)
+        st.pop("espera_hasta", None)
+        return ir(st, (c.get("salidas") or {}).get("respondio")), st
     if tipo == "mensaje" and not c.get("opciones") and (c.get("salidas") or {}).get("respuesta"):
         return ir(st, c["salidas"]["respuesta"]), st  # sin botones (RF-09): lo que escriba sigue la flecha
     if tipo in ("mensaje", "ficha"):
@@ -603,3 +626,24 @@ def _responder(st, texto, avisar):
         if filtros:
             return busqueda(st, filtros), st
     return error(st), st
+
+
+def tiempo_cumplido(st):
+    """Venció la Pausa en la que está el cliente (el reloj del receptor, o el botón del simulador): sigue por "tiempo".
+    Si el cliente ya no está en una Pausa, no hace nada."""
+    st.setdefault("bot", None)
+    if st["bot"] is None:
+        st["bot"] = db.principal()
+    _hilo.bot, _hilo.texto, _hilo.saltos = st["bot"], "", 0
+    try:
+        c = (cuadros() or {}).get(st.get("nodo"))
+        if not c or c["tipo"] != "pausa" or st.get("pausa"):
+            st.pop("espera_hasta", None)
+            return [], st
+        st.pop("espera_hasta", None)
+        mensajes = ir(st, (c.get("salidas") or {}).get("tiempo"))
+        limpiar_espera(st)
+        return mensajes, st
+    finally:
+        _hilo.bot = _hilo.texto = None
+        _hilo.saltos = 0

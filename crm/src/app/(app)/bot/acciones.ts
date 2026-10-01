@@ -109,6 +109,11 @@ export async function guardarCatalogo(bot: number, clave: string, nombre: string
   return rpc('borrador_guardar_catalogo', { p_clave: clave, p_nombre: nombre, p_texto: texto, p_catalogo: catalogo, p_siguiente: siguiente, p_bot: bot },
     'Cuadro guardado en el borrador.')
 }
+// Pausa (RF-14): segundos y sus dos salidas.
+export async function guardarPausa(bot: number, clave: string, nombre: string, segundos: number, respondio: string | null, tiempo: string | null) {
+  return rpc('borrador_guardar_pausa', { p_clave: clave, p_nombre: nombre, p_segundos: segundos, p_respondio: respondio, p_tiempo: tiempo, p_bot: bot },
+    'Cuadro guardado en el borrador.')
+}
 // "Ir a otro bot" (RF-17): nombre y bot de destino.
 export async function guardarAjustes(bot: number, clave: string, nombre: string, ajustes: Record<string, unknown>) {
   return rpc('borrador_guardar_ajustes', { p_clave: clave, p_nombre: nombre, p_ajustes: ajustes, p_bot: bot }, 'Cuadro guardado en el borrador.')
@@ -146,7 +151,7 @@ export async function volverAVersion(bot: number, version: number, reemplazar: b
 export type EstadoSimulado = Record<string, unknown> | null
 export type Simulacion = { error?: string; mensajes?: Record<string, unknown>[]; avisos?: string[]; estado?: EstadoSimulado }
 
-export async function simular(bot: number, version: number, estado: EstadoSimulado, texto: string): Promise<Simulacion> {
+export async function simular(bot: number, version: number, estado: EstadoSimulado, texto: string, evento?: 'tiempo'): Promise<Simulacion> {
   const sesion = await obtenerSesion()
   // El receptor lee con la llave de servicio: el permiso se revisa aquí antes de llamarlo.
   if (!sesion || !puede(sesion, ['administrar_bot'])) return { error: 'No tienes permiso para probar el bot.' }
@@ -154,7 +159,7 @@ export async function simular(bot: number, version: number, estado: EstadoSimula
     const r = await fetch(`${process.env.CRM_INTERNO_URL}/interno/simular`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-Interno-Token': process.env.CRM_INTERNO_TOKEN ?? '' },
-      body: JSON.stringify({ bot, version, estado, texto: texto.slice(0, 1000) }),
+      body: JSON.stringify({ bot, version, estado, texto: texto.slice(0, 1000), evento }),
       cache: 'no-store',
       signal: AbortSignal.timeout(60000),
     })

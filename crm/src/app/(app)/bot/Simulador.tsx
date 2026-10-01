@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from 'react'
 import type { Opcion } from '@/lib/bot'
 import { simular, type EstadoSimulado } from './acciones'
+import { textoEspera } from './PanelPausa'
 import { VistaWhatsApp } from './VistaWhatsApp'
 
 type Mensaje = Record<string, any>
@@ -25,10 +26,11 @@ function Burbuja({ m, alElegir }: { m: Mensaje; alElegir: (o: Opcion) => void })
 }
 
 // RF-07: el mismo motor del bot sobre la versión que se ve en el lienzo, sin escribir en la base ni enviar a WhatsApp.
-export function Simulador({ bot, version, nombres, alMoverse, alCerrar }: {
+export function Simulador({ bot, version, nombres, pausas, alMoverse, alCerrar }: {
   bot: number
   version: number
   nombres: Map<string, string>
+  pausas: Map<string, number> // cuadros de Pausa de este lienzo y cuánto esperan (F4·13)
   alMoverse: (clave: string | null) => void
   alCerrar: () => void
 }) {
@@ -41,13 +43,16 @@ export function Simulador({ bot, version, nombres, alMoverse, alCerrar }: {
     fin.current?.scrollIntoView({ block: 'end' })
   }, [turnos])
 
-  function enviar(entrada: string, visible = entrada) {
-    if (!entrada.trim() || ocupado) return
+  // evento 'tiempo': "Simular que pasó el tiempo" en una Pausa; no es un mensaje del cliente.
+  function enviar(entrada: string, visible = entrada, evento?: 'tiempo') {
+    if ((!entrada.trim() && !evento) || ocupado) return
     const base = Date.now()
-    setTurnos((t) => [...t, { id: base, lado: 'cliente', texto: visible }])
+    setTurnos((t) => [...t, evento
+      ? { id: base, lado: 'aviso', texto: '⏳ Pasó el tiempo de la Pausa.' }
+      : { id: base, lado: 'cliente', texto: visible }])
     setTexto('')
     iniciar(async () => {
-      const r = await simular(bot, version, estado, entrada)
+      const r = await simular(bot, version, estado, entrada, evento)
       if (r.error) {
         setTurnos((t) => [...t, { id: base + 1, lado: 'aviso', texto: r.error }])
         return
@@ -75,6 +80,8 @@ export function Simulador({ bot, version, nombres, alMoverse, alCerrar }: {
 
   const campos = (estado?.campos ?? {}) as Record<string, unknown>
   const nodo = estado?.nodo as string | undefined
+  const enEsteBot = estado?.bot === undefined || estado?.bot === bot
+  const espera = estado?.espera_hasta && enEsteBot && nodo ? pausas.get(nodo) : undefined
 
   return (
     <div className="lienzo-panel simulador">
@@ -104,6 +111,12 @@ export function Simulador({ bot, version, nombres, alMoverse, alCerrar }: {
         {ocupado && <div className="muted">Escribiendo…</div>}
         <div ref={fin} />
       </div>
+      {espera !== undefined && (
+        <div className="aviso warn simulador-espera">
+          ⏳ Esperando {textoEspera(espera)}. Escribe como el cliente para probar «El cliente respondió», o
+          <button type="button" className="btn chico" disabled={ocupado} onClick={() => enviar('', '', 'tiempo')}>Simular que pasó el tiempo</button>
+        </div>
+      )}
       <form className="simulador-escribir" onSubmit={(e) => { e.preventDefault(); enviar(texto) }}>
         <input value={texto} onChange={(e) => setTexto(e.target.value)} placeholder="Escribe como el cliente…" aria-label="Mensaje del cliente" maxLength={1000} />
         <button className="btn primary chico" disabled={ocupado || !texto.trim()}>Enviar</button>
