@@ -4,12 +4,14 @@ import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 
 // Un enlace (href) o una acción de la página (onClick, para lo que no es navegar: renombrar, archivar…).
-export type Accion = { texto: string; href?: string; onClick?: () => void; nuevaPestana?: boolean; peligro?: boolean }
+export type Accion = { texto: string; href?: string; onClick?: () => void; nuevaPestana?: boolean; peligro?: boolean; deshabilitada?: boolean; detalle?: string }
 
 // Botón de una fila que despliega sus acciones (imprimir, editar…). Se cierra al elegir, al
 // hacer clic fuera, con Escape o al desplazar. La lista va fija en pantalla, medida desde el
 // botón: dentro de .tablewrap (que desplaza) la de la última fila quedaría recortada.
-export function MenuAcciones({ acciones, etiqueta }: { acciones: Accion[]; etiqueta: string }) {
+export function MenuAcciones({ acciones, etiqueta, boton = 'Acciones ▾', clase = 'btn chico', desactivado = false }: {
+  acciones: Accion[]; etiqueta: string; boton?: string; clase?: string; desactivado?: boolean
+}) {
   const [lugar, setLugar] = useState<{ top: number; right: number } | null>(null)
   const abierto = lugar !== null
   const setAbierto = (si: boolean) => {
@@ -37,9 +39,9 @@ export function MenuAcciones({ acciones, etiqueta }: { acciones: Accion[]; etiqu
 
   return (
     <div className="menu-acciones" ref={caja}>
-      <button type="button" className="btn chico" aria-haspopup="menu" aria-expanded={abierto} aria-label={etiqueta}
+      <button type="button" className={clase} aria-haspopup="menu" aria-expanded={abierto} aria-label={etiqueta} disabled={desactivado}
         onClick={() => setAbierto(!abierto)}>
-        Acciones ▾
+        {boton}
       </button>
       {abierto && (
         <div className="menu-acciones-lista" role="menu" style={{ top: lugar.top, right: lugar.right }}>
@@ -48,9 +50,9 @@ export function MenuAcciones({ acciones, etiqueta }: { acciones: Accion[]; etiqu
               {a.texto}
             </Link>
           ) : (
-            <button key={a.texto} type="button" role="menuitem" className={a.peligro ? 'peligro' : undefined}
+            <button key={a.texto} type="button" role="menuitem" className={a.peligro ? 'peligro' : undefined} disabled={a.deshabilitada}
               onClick={() => { setAbierto(false); a.onClick?.() }}>
-              {a.texto}
+              {a.texto}{a.detalle && <small>{a.detalle}</small>}
             </button>
           ))}
         </div>

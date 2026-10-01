@@ -1,6 +1,12 @@
 -- Pruebas de la migración 0012 (F4·6). Todo con ROLLBACK. Uso: supabase/migrar.sh --probar
 begin;
 
+-- Pruebas de un solo flujo (antes de la 0015): los demás bots se quitan dentro de la transacción (ROLLBACK).
+set local session_replication_role = replica;
+delete from bot_flujos where bot_id <> (select id from bots where principal);
+delete from bots where not principal;
+set local session_replication_role = origin;
+
 create function pg_temp.falla(sentencia text) returns boolean language plpgsql as $$
 begin
   execute sentencia;
@@ -47,8 +53,7 @@ select case when pg_temp.falla(format($q$select borrador_conectar(%L, '1', 'R11'
             then 'ok' else 'not ok' end || ' 5 - no se llega con flecha a la ficha, la lista ni a lo que no existe';
 select case when pg_temp.falla(format($q$select borrador_guardar_cuadro(%L, null, null, '[{"id":"9","titulo":"Nueve","destino":null}]')$q$, :'m'))
              and pg_temp.falla(format($q$select borrador_guardar_cuadro(%L, null, null, '[{"id":"1","titulo":"A"},{"id":"1","titulo":"B"}]')$q$, :'m'))
-             and pg_temp.falla(format($q$select borrador_guardar_cuadro(%L, null, null, '[]')$q$, :'m'))
-            then 'ok' else 'not ok' end || ' 6 - opciones: el 9 está reservado, sin repetidos y al menos una';
+            then 'ok' else 'not ok' end || ' 6 - opciones: el 9 está reservado y sin repetidos (sin opciones es válido desde 0016)';
 select case when pg_temp.falla($q$select borrador_guardar_cuadro('R11', null, null, '[{"id":"1","titulo":"Uno"}]')$q$)
              and pg_temp.falla($q$select borrador_conectar('R11', '1', 'B00')$q$)
              and pg_temp.falla($q$select borrador_borrar_cuadro('B-ASESOR')$q$)

@@ -89,8 +89,18 @@ export async function descartarBorrador(bot: number) {
 export async function crearMensaje(bot: number, x: number, y: number) {
   return rpc('borrador_crear_mensaje', { p_x: Math.round(x), p_y: Math.round(y), p_bot: bot })
 }
-export async function guardarCuadro(bot: number, clave: string, nombre: string | null, texto: string | null, opciones: { id: string; titulo: string; destino?: string | null }[] | null) {
-  return rpc('borrador_guardar_cuadro', { p_clave: clave, p_nombre: nombre, p_texto: texto, p_opciones: opciones, p_bot: bot }, 'Cuadro guardado en el borrador.')
+export async function crearCuadro(bot: number, tipo: string, x: number, y: number) {
+  return rpc('borrador_crear_cuadro', { p_tipo: tipo, p_x: Math.round(x), p_y: Math.round(y), p_bot: bot })
+}
+// salidas: la flecha "respuesta" de un mensaje sin botones (RF-09).
+export async function guardarCuadro(bot: number, clave: string, nombre: string | null, texto: string | null,
+  opciones: { id: string; titulo: string; destino?: string | null }[] | null, salidas: Record<string, string | null> | null = null) {
+  return rpc('borrador_guardar_cuadro', { p_clave: clave, p_nombre: nombre, p_texto: texto, p_opciones: opciones, p_bot: bot, p_salidas: salidas },
+    'Cuadro guardado en el borrador.')
+}
+// "Ir a otro bot" (RF-17): nombre y bot de destino.
+export async function guardarAjustes(bot: number, clave: string, nombre: string, ajustes: Record<string, unknown>) {
+  return rpc('borrador_guardar_ajustes', { p_clave: clave, p_nombre: nombre, p_ajustes: ajustes, p_bot: bot }, 'Cuadro guardado en el borrador.')
 }
 export async function conectar(bot: number, clave: string, opcion: string, destino: string | null) {
   return rpc('borrador_conectar', { p_clave: clave, p_opcion: opcion, p_destino: destino, p_bot: bot })

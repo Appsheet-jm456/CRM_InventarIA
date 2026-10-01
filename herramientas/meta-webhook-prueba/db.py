@@ -78,14 +78,29 @@ def _cacheado(clave, ruta, segundos=30):
     return valor
 
 
-def flujo():
-    """{clave: cuadro} de la versión publicada del bot principal (F4·5 y F4·9, decisiones 0026 y 0028). Los otros
-    bots no atienden a nadie hasta F4·10. Un cambio se ve en menos de 30 s."""
-    filas = _cacheado("flujo", "bot_flujos?estado=eq.publicada&select=version,bots!inner(principal),bot_cuadros(*)"
-                               "&bots.principal=eq.true")
-    if not filas:
-        raise RuntimeError("No hay una versión publicada del flujo del bot principal")
-    return {c["clave"]: c for c in filas[0]["bot_cuadros"]}
+def principal():
+    """Id del bot principal (decisión 0028): el que atiende a todo cliente que no va en otro bot."""
+    filas = _cacheado("principal", "bots?principal=eq.true&select=id")
+    return filas[0]["id"] if filas else None
+
+
+def nombre_bot(bot):
+    filas = _cacheado("bots", "bots?select=id,nombre") or []
+    return next((b["nombre"] for b in filas if b["id"] == bot), f"bot {bot}")
+
+
+def flujo(bot=None):
+    """{clave: cuadro} de la versión publicada de un bot (F4·5 y F4·10, decisiones 0026 y 0028); sin bot, el
+    principal. None si ese bot no tiene versión publicada o está archivado. Un cambio se ve en menos de 30 s."""
+    if bot is None or bot == principal():
+        filas = _cacheado("flujo", "bot_flujos?estado=eq.publicada&select=version,bots!inner(principal),bot_cuadros(*)"
+                                   "&bots.principal=eq.true")
+        if not filas:
+            raise RuntimeError("No hay una versión publicada del flujo del bot principal")
+        return {c["clave"]: c for c in filas[0]["bot_cuadros"]}
+    filas = _cacheado(f"flujo-{int(bot)}", f"bot_flujos?bot_id=eq.{int(bot)}&estado=eq.publicada"
+                                           "&select=version,bots!inner(archivado),bot_cuadros(*)&bots.archivado=eq.false")
+    return {c["clave"]: c for c in filas[0]["bot_cuadros"]} if filas else None
 
 
 def cuadros_de_version(version, bot=None):

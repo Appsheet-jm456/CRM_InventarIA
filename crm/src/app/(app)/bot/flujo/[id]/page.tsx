@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation'
 import { SinPermiso } from '@/components/SinPermiso'
 import { obtenerSesion, puede } from '@/lib/sesion'
 import { crearCliente } from '@/lib/supabase/server'
-import { contexto, cuadrosDe } from '../../datos'
+import { botsDe, contexto, cuadrosDe } from '../../datos'
 import { Historial, type VersionFila } from '../../Historial'
 import { Lienzo } from '../../Lienzo'
 
@@ -35,17 +35,22 @@ export default async function BotFlujo({ params, searchParams }: { params: { id:
     }))
     contenido = <Historial bot={id} versiones={filas} hayBorrador={!!abierto} archivado={bot.archivado} />
   } else {
-    const { ctx, opcionesMarca } = await contexto(supabase)
+    const [{ ctx, opcionesMarca }, todos, { data: publicados }] = await Promise.all([
+      contexto(supabase), botsDe(supabase), supabase.from('bot_flujos').select('bot_id').eq('estado', 'publicada'),
+    ])
+    // Para «Ir a otro bot» (RF-17): a qué bots se puede llevar al cliente.
+    const bots = todos.filter((b) => b.id !== id)
+      .map((b) => ({ id: b.id, nombre: b.nombre, archivado: b.archivado, publicado: !!publicados?.some((f) => f.bot_id === b.id) }))
     const publicada = await cuadrosDe(supabase, id, 'publicada', opcionesMarca)
     const otra = Number(searchParams.v)
     if (otra && otra !== abierto?.version) {
       // Una versión del historial (o la publicada con un borrador abierto), solo para ver.
       const vista = await cuadrosDe(supabase, id, otra, opcionesMarca)
-      contenido = <Lienzo bot={bot} publicada={publicada} borrador={null} archivada={vista.version ? vista : undefined} contexto={ctx} hayBorrador={!!abierto} />
+      contenido = <Lienzo bot={bot} bots={bots} publicada={publicada} borrador={null} archivada={vista.version ? vista : undefined} contexto={ctx} hayBorrador={!!abierto} />
     } else {
       const borrador = await cuadrosDe(supabase, id, 'borrador', opcionesMarca)
       const { data: choques } = borrador.version ? await supabase.rpc('cambios_publicados_despues', { p_bot: id }) : { data: [] }
-      contenido = <Lienzo bot={bot} publicada={publicada} borrador={borrador.version ? borrador : null} contexto={ctx}
+      contenido = <Lienzo bot={bot} bots={bots} publicada={publicada} borrador={borrador.version ? borrador : null} contexto={ctx}
         choques={(choques ?? []) as { clave: string; nombre: string }[]} hayBorrador={!!abierto} />
     }
   }

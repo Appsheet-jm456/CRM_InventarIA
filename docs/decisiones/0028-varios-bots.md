@@ -41,4 +41,4 @@ pantalla del lienzo queda apretada dentro de la pestaña.
   de despacho o entrega) elegida en el bot. Sin plantilla o sin aprobar, no se envía y queda registrado. La
   plantilla se redacta y aprueba como las de F3·6 (decisión 0021) y cuenta en el consumo (0011).
 - Cuando el cliente responde a la plantilla, se abre la ventana de 24 h y el bot sigue su flujo con texto normal.
-- Migraciones `0015` (bots), `0016` (cuadros nuevos, 0027) y `0017` (arranques); el detalle está en [FLUJO-DEL-BOT.md](../FLUJO-DEL-BOT.md).
+- Migraciones `0015` (bots) y `0016` (+ Agregar e Ir a otro bot); las de F4·11 a F4·14 llevan las siguientes; el detalle está en [FLUJO-DEL-BOT.md](../FLUJO-DEL-BOT.md).

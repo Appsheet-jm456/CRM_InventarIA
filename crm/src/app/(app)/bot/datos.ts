@@ -4,7 +4,7 @@ import { pesos } from '@/lib/inventario'
 import type { Cuadro } from './Lienzo'
 import type { Contexto } from './Mensajes'
 
-export const COLUMNAS = 'clave, tipo, nombre, orden, inicio, texto, opciones, texto_original, opciones_original, opciones_codigo, max_titulo, marcas, formato, salidas, x, y, actualizado_en'
+export const COLUMNAS = 'clave, tipo, nombre, orden, inicio, texto, opciones, texto_original, opciones_original, opciones_codigo, max_titulo, marcas, formato, salidas, ajustes, x, y, actualizado_en'
 
 export type Supabase = ReturnType<typeof crearCliente>
 

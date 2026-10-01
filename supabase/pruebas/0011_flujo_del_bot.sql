@@ -1,6 +1,12 @@
 -- Pruebas de la migración 0011 (F4·5, decisión 0026). Todo con ROLLBACK. Uso: supabase/migrar.sh --probar
 begin;
 
+-- Pruebas de un solo flujo (antes de la 0015): los demás bots se quitan dentro de la transacción (ROLLBACK).
+set local session_replication_role = replica;
+delete from bot_flujos where bot_id <> (select id from bots where principal);
+delete from bots where not principal;
+set local session_replication_role = origin;
+
 create function pg_temp.falla(sentencia text) returns boolean language plpgsql as $$
 begin
   execute sentencia;

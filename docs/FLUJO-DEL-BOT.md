@@ -15,11 +15,11 @@
 | ✅ **F4·7** Borrador, publicar e historial (30 sep, migración 0014) | Validación al publicar, lista de versiones con quién y cuándo, volver a una anterior |
 | ✅ **F4·8** Simulador (30 sep) | Probar el borrador como cliente, sin WhatsApp |
 | ✅ **F4·9** Varios bots (1 oct, migración 0015) | "Flujo" abre la lista de bots: crear, renombrar, duplicar, archivar y marcar el principal; cada bot con su lienzo, borrador, versiones y simulador. Pantalla rediseñada con más espacio para el lienzo |
-| **F4·10** "+ Agregar", mensaje sin botones e "Ir a otro bot" (migración 0016) | Desplegable con Mensaje, Condiciones, Catálogos, Pausa e Ir a otro bot; mensaje sin botones con la flecha "Cuando el cliente responda" |
+| ✅ **F4·10** "+ Agregar", mensaje sin botones e "Ir a otro bot" (1 oct, migración 0016) | Desplegable con Mensaje, Condiciones, Catálogos, Pausa e Ir a otro bot; mensaje sin botones con la flecha "Cuando el cliente responda" |
 | **F4·11** Condiciones | Cuadro que compara el último mensaje del cliente ("es igual a", varias palabras por condición) y sale por la primera que se cumpla o por "Ninguna se cumple" |
 | **F4·12** Catálogos | Encabezado más un catálogo elegido de Inventario o subido en una ventana; envía y sigue |
 | **F4·13** Pausa y recordatorio | Espera horas, minutos y segundos; salidas "El cliente respondió" y "Pasó el tiempo"; reloj en el receptor |
-| **F4·14** Arranque por palabra clave y por etapa del embudo (migración 0017) | Un bot arranca si el cliente escribe su palabra clave o si su oportunidad entra a cierta etapa |
+| **F4·14** Arranque por palabra clave y por etapa del embudo | Un bot arranca si el cliente escribe su palabra clave o si su oportunidad entra a cierta etapa |
 | **F4·15** Simulador y pruebas | Probar los cuadros y bots nuevos en el simulador (la Pausa con "Simular que pasó el tiempo"), pruebas de la base y del motor |
 
 ## Reglas
@@ -210,7 +210,37 @@ ancho, con su pestaña de Historial. El panel de la derecha solo se abre al eleg
 que falta (el contador «N por resolver» es un botón). Las direcciones viejas `?t=flujo` y `?t=historial` abren la lista.
 Pruebas: `supabase/pruebas/0015_varios_bots.sql` (14).
 
-## Condiciones, Catálogos y Pausa (F4·10 a F4·13, decisión 0027, migración 0016)
+## "+ Agregar", mensaje sin botones e "Ir a otro bot" (F4·10, decisiones 0027 y 0028, migración 0016)
+
+**Lienzo.** "+ Mensaje" pasó a **"+ Agregar ▾"**: Mensaje e Ir a otro bot; Condiciones, Catálogos y Pausa aparecen como
+"Próximamente" hasta F4·11 a F4·13. El cuadro nuevo cae en el primer hueco libre cerca del centro de la vista y queda
+elegido. Los cuadros del dueño (`mensaje`, `ir_bot` y los que vienen) se editan, se unen y se borran; sus salidas con
+nombre se unen arrastrando como las opciones.
+
+- **Mensaje sin botones:** en el panel se quitan todas las opciones y aparece «Cuando el cliente responda, sigue a».
+  Sale como texto (hasta 4.096) y lo que escriba el cliente sigue esa flecha (`salidas.respuesta`); las reglas globales
+  van antes. Volver a ponerle opciones lo deja como menú.
+- **Ir a otro bot (↪):** se elige el bot en el panel; el cuadro muestra «Va al inicio de …». El cliente pasa al inicio
+  de la versión publicada de ese bot y sigue ahí hasta escribir «hola», «menú», `0` (desde la lista, la ficha o una
+  búsqueda) o «reiniciar», que lo devuelven al principal. Si ese bot se archiva o deja de tener versión publicada,
+  el cliente vuelve al principal.
+
+**Base (0016).** Tipos `ir_bot`, `condicion`, `catalogo` y `pausa` en el CHECK; columna `bot_cuadros.ajustes` (copiada en
+`copiar_cuadros`); `leads.bot_id` (null = el principal, así un cambio de principal se lleva a sus clientes).
+`borrador_crear_cuadro(tipo, x, y, bot)`, `borrador_guardar_cuadro(…, p_salidas)` (0 a 10 opciones),
+`borrador_guardar_ajustes(clave, nombre, ajustes, bot)` para `ir_bot` (no a sí mismo ni a un bot que no existe),
+`borrador_conectar` también une salidas con nombre (`salidas_del_cuadro`), `borrador_borrar_cuadro` suelta opciones y
+salidas que llegaban, `problemas_del_flujo` revisa salidas sueltas, cuadros a los que no se llega y el bot de destino
+(elegido, publicado, no archivado, no él mismo), y `archivar_bot` no archiva un bot al que otro lleva.
+
+**Motor.** El estado del cliente lleva `bot`; `flujo.cuadros()` lee la versión publicada de ese bot (`db.flujo(bot)`) y el
+simulador sobrescribe solo la del bot que se prueba. El receptor guarda `leads.bot_id`. El simulador avisa «El cliente
+pasó al bot …» y no resalta cuadros de otro bot. Comprobado: el bot principal responde igual que antes en 70.536
+conversaciones (todas las de 4 pasos con 16 entradas y 5.000 al azar de 5 a 12). Pruebas:
+`supabase/pruebas/0016_agregar_cuadros.sql` (13); las de 0011, 0012 y 0014 ahora quitan los otros bots dentro de su
+transacción.
+
+## Condiciones, Catálogos y Pausa (F4·11 a F4·13, decisión 0027)
 
 **Lienzo.** "+ Mensaje" pasa a **"+ Agregar ▾"** con los cinco cuadros (Ir a otro bot es el quinto: un desplegable con los bots y una sola flecha de entrada); cada uno se crea en el centro de la vista y
 queda elegido. Un mensaje sin botones muestra la flecha "Cuando el cliente responda". Cómo se ve cada cuadro nuevo:
@@ -253,13 +283,13 @@ que sigan dentro de la ventana.
 **Simulador.** Condiciones y Catálogos funcionan solos (mismo motor). La Pausa muestra "⏳ Esperando 0 h 15 min 15 s"
 con el botón **"Simular que pasó el tiempo"**; escribir antes prueba la salida "El cliente respondió".
 
-**Arranques (F4·14, migración 0017).** La palabra clave se revisa en `flujo.responder` (RF-18). El cambio de etapa lo
+**Arranques (F4·14).** La palabra clave se revisa en `flujo.responder` (RF-18). El cambio de etapa lo
 anota un trigger de `oportunidades` en una cola `bot_disparos`, que atiende el mismo reloj de la Pausa con las
-reglas de RF-19. `bots.plantilla_id` guarda la plantilla de Meta para fuera de ventana. La migración 0017 también
+reglas de RF-19. `bots.plantilla_id` guarda la plantilla de Meta para fuera de ventana. Su migración también
 agrega a Cliente Final las etapas Despachado, En transportadora y Entregado, **las tres ganadas** como Vendido: la
 venta y el valor se cuentan una sola vez (al primer cierre) y las Métricas no cambian; ver [EMBUDOS.md](EMBUDOS.md).
 Hay que comprobar que `mover_oportunidad` deje avanzar una oportunidad ya ganada entre etapas ganadas.
 
-**Pruebas (F4·15).** `supabase/pruebas/0015_*.sql` a `0017_*.sql` (bots, tipos, ajustes, validaciones al guardar y al publicar, copia en
+**Pruebas (F4·15).** `supabase/pruebas/0015_*.sql` en adelante (bots, tipos, ajustes, validaciones al guardar y al publicar, copia en
 borradores) y una prueba del motor en Python que recorre la versión 1 con un juego fijo de conversaciones
 (mismos mensajes antes y después) más casos de cada cuadro nuevo, incluido el reloj con la hora simulada.

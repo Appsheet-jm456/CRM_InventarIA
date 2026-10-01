@@ -98,19 +98,28 @@ def proxima_apertura(ahora=None):
 _hilo = threading.local()
 
 
+def bot_actual():
+    """El bot en el que va el cliente que se está atendiendo en este hilo (decisión 0028)."""
+    return getattr(_hilo, "bot", None)
+
+
 def cuadros():
-    """La versión publicada, o la que el simulador puso para este hilo (F4·8)."""
-    return getattr(_hilo, "cuadros", None) or db.flujo()
+    """Los cuadros del bot en el que va el cliente: su versión publicada, o la que el simulador puso para ese bot
+    (F4·8). None si ese bot ya no tiene versión publicada o se archivó."""
+    if getattr(_hilo, "cuadros", None) is not None and getattr(_hilo, "bot_simulado", None) == bot_actual():
+        return _hilo.cuadros
+    return db.flujo(bot_actual())
 
 
 @contextmanager
-def con_cuadros(otros):
-    """Corre el motor sobre otra versión (el borrador, para el simulador) sin tocar la del bot en vivo."""
-    _hilo.cuadros = otros
+def con_cuadros(otros, bot=None):
+    """Corre el motor sobre otra versión de un bot (el borrador, para el simulador) sin tocar la del bot en vivo.
+    Si la charla pasa a otro bot, ese usa su versión publicada."""
+    _hilo.cuadros, _hilo.bot_simulado = otros, bot if bot is not None else db.principal()
     try:
         yield
     finally:
-        _hilo.cuadros = None
+        _hilo.cuadros = _hilo.bot_simulado = None
 
 
 def texto_cuadro(clave, **marcas):
@@ -130,7 +139,7 @@ def del_tipo(tipo):
 
 
 def estado_vacio():
-    return {"nodo": None, "etapa": "Nuevo", "campos": {}, "errores": 0, "pausa": False}
+    return {"nodo": None, "etapa": "Nuevo", "campos": {}, "errores": 0, "pausa": False, "bot": None}
 
 
 # --------------------------------------------------------------------------- #
@@ -284,11 +293,22 @@ def aplicar(st, efectos):
         etapa(st, efectos["etapa"])
 
 
+def cambiar_de_bot(st, bot):
+    """El cliente pasa al inicio de otro bot (RF-17). Si ese bot no tiene versión publicada o se archivó, al principal."""
+    st["bot"] = _hilo.bot = bot
+    if bot is None or cuadros() is None:
+        st["bot"] = _hilo.bot = db.principal()
+    st["nodo"] = None
+    return ir(st, inicio())
+
+
 def ir(st, clave):
     """Lleva al cliente a un cuadro y devuelve lo que ve. Un cuadro que ya no existe lleva al inicio."""
     c = cuadros().get(clave) or cuadros()[inicio()]
     if c["tipo"] == "asesor":
         return asesor(st)
+    if c["tipo"] == "ir_bot":
+        return cambiar_de_bot(st, (c.get("ajustes") or {}).get("bot_id"))
     st["nodo"], st["errores"] = c["clave"], 0
     st["campos"].pop("Errores bot", None)
     aplicar(st, c["al_entrar"])
@@ -339,7 +359,10 @@ def opciones_de(c):
 
 
 def mostrar_mensaje(st, c):
-    return [menu(texto_cuadro(c["clave"], uso=st["campos"].get("Uso equipo", "")), opciones_de(c))]
+    texto = texto_cuadro(c["clave"], uso=st["campos"].get("Uso equipo", ""))
+    if not c.get("opciones"):  # sin botones (RF-09): espera lo que el cliente escriba
+        return [m_texto(texto)]
+    return [menu(texto, opciones_de(c))]
 
 
 def mostrar_presupuesto(st, c):
@@ -445,11 +468,31 @@ MOSTRAR = {"mensaje": mostrar_mensaje, "presupuesto": mostrar_presupuesto, "marc
 SALUDOS = ("hola", "menu", "inicio", "buenas", "buenos dias", "buenas tardes", "buenas noches")
 
 
+def al_principal(st):
+    """'hola', 'menú', 0 y 'reiniciar' vuelven siempre al bot principal (RF-17)."""
+    st["bot"] = _hilo.bot = db.principal()
+    return ir(st, inicio())
+
+
 def responder(st, texto, avisar=None):
     """Devuelve (mensajes, estado) para lo que escribió o tocó el cliente. st viene de leads.
 
     avisar(texto) envía un aviso inmediato ("Estoy buscando…") cuando la respuesta va a tardar.
     """
+    st.setdefault("bot", None)
+    if st["bot"] is None:
+        st["bot"] = db.principal()
+    _hilo.bot = st["bot"]
+    try:
+        if cuadros() is None:  # su bot se archivó o ya no tiene versión publicada: vuelve al principal
+            st["bot"] = _hilo.bot = db.principal()
+            st["nodo"] = None
+        return _responder(st, texto, avisar)
+    finally:
+        _hilo.bot = None
+
+
+def _responder(st, texto, avisar):
     n = normalizar(texto)
 
     todos = cuadros()
@@ -457,13 +500,15 @@ def responder(st, texto, avisar=None):
         etapa_actual = st.get("etapa") or "Nuevo"  # reiniciar la charla no devuelve el embudo
         st.clear()
         st.update(estado_vacio(), etapa=etapa_actual)
-        return ir(st, inicio()), st
+        return al_principal(st), st
     if st["pausa"]:
         return [], st
     k = st["nodo"]
     c = todos.get(k)
     vacio = k and k.endswith("-vacio") and todos.get(k[:-6], {}).get("tipo") == "equipos"
-    if not k or n in SALUDOS or not (c or vacio or k == "BUSQUEDA"):  # un cuadro que ya no existe vuelve al inicio
+    if k and n in SALUDOS:
+        return al_principal(st), st
+    if not k or not (c or vacio or k == "BUSQUEDA"):  # nuevo, o un cuadro que ya no existe: inicio de su bot
         return ir(st, inicio()), st
 
     tipo = c["tipo"] if c else None
@@ -473,8 +518,10 @@ def responder(st, texto, avisar=None):
     if n == "9" or "asesor" in n:
         return asesor(st), st
     if n == "0" and (k == "BUSQUEDA" or tipo in ("equipos", "ficha")):
-        return ir(st, inicio()), st
+        return al_principal(st), st
 
+    if tipo == "mensaje" and not c.get("opciones") and (c.get("salidas") or {}).get("respuesta"):
+        return ir(st, c["salidas"]["respuesta"]), st  # sin botones (RF-09): lo que escriba sigue la flecha
     if tipo in ("mensaje", "ficha"):
         op = elegir(c, n)
         if op:

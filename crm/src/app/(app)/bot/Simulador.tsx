@@ -54,7 +54,8 @@ export function Simulador({ bot, version, nombres, alMoverse, alCerrar }: {
       }
       const nuevo = r.estado ?? null
       setEstado(nuevo)
-      alMoverse((nuevo?.nodo as string) ?? null)
+      // Si la charla pasó a otro bot (RF-17), sus cuadros no están en este lienzo: no se resalta nada.
+      alMoverse(nuevo?.bot === undefined || nuevo?.bot === bot ? ((nuevo?.nodo as string) ?? null) : null)
       setTurnos((t) => [
         ...t,
         ...(r.avisos ?? []).map((a, k) => ({ id: base + 1 + k, lado: 'bot' as const, mensaje: { type: 'text', text: { body: a } } })),
@@ -111,7 +112,8 @@ export function Simulador({ bot, version, nombres, alMoverse, alCerrar }: {
         <div className="simulador-estado">
           <strong>Lo que el bot anotaría</strong>
           <dl>
-            <div><dt>Cuadro</dt><dd>{nodo ? nombres.get(nodo.replace(/-vacio$/, '')) ?? nodo : '—'}</dd></div>
+            <div><dt>Cuadro</dt><dd>{estado.bot !== undefined && estado.bot !== bot ? 'En otro bot (ver el aviso de arriba)'
+              : nodo ? nombres.get(nodo.replace(/-vacio$/, '')) ?? nodo : '—'}</dd></div>
             <div><dt>{ETIQUETAS.etapa}</dt><dd>{String(estado.etapa ?? '—')}</dd></div>
             {Object.entries(campos).map(([k, v]) => <div key={k}><dt>{ETIQUETAS[k] ?? k}</dt><dd>{String(v)}</dd></div>)}
             {!!estado.pausa && <div><dt>Asesor</dt><dd>En la cola: el bot se detiene</dd></div>}

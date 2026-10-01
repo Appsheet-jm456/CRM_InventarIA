@@ -7,9 +7,10 @@ import {
 } from '@xyflow/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useState, useTransition } from 'react'
+import { MenuAcciones } from '@/components/MenuAcciones'
 import { medir, revisarMarcas, type Formato, type Opcion } from '@/lib/bot'
 import {
-  borrarCuadro, conectar, crearBorrador, crearMensaje, descartarBorrador, guardarCuadro, moverCuadro, publicar, volverAVersion,
+  borrarCuadro, conectar, crearBorrador, crearCuadro, descartarBorrador, guardarAjustes, guardarCuadro, moverCuadro, publicar, volverAVersion,
   type Resultado,
 } from './acciones'
 import type { Contexto } from './Mensajes'
@@ -22,7 +23,7 @@ import { VistaWhatsApp } from './VistaWhatsApp'
 export type OpcionFlujo = Opcion & { destino: string | null; palabras?: string[]; reconocer?: string; efectos?: Record<string, unknown> }
 export type Cuadro = {
   clave: string
-  tipo: 'mensaje' | 'presupuesto' | 'marca' | 'equipos' | 'ficha' | 'asesor' | 'aviso'
+  tipo: 'mensaje' | 'presupuesto' | 'marca' | 'equipos' | 'ficha' | 'asesor' | 'aviso' | 'ir_bot' | 'condicion' | 'catalogo' | 'pausa'
   nombre: string
   orden: number
   inicio: boolean
@@ -34,24 +35,38 @@ export type Cuadro = {
   max_titulo: number | null
   marcas: string[]
   formato: Formato
-  salidas: Record<string, string>
+  salidas: Record<string, string | null>
+  ajustes: Record<string, unknown>
   x: number
   y: number
   actualizado_en: string
 }
 type Version = { cuadros: Cuadro[]; version?: number }
+export type OtroBot = { id: number; nombre: string; archivado: boolean; publicado: boolean }
 
 const TIPOS: Record<Cuadro['tipo'], string> = {
   mensaje: 'Mensaje', presupuesto: 'Sistema · presupuesto', marca: 'Sistema · marcas con stock', equipos: 'Sistema · lista de equipos',
   ficha: 'Sistema · ficha del equipo', asesor: 'Sistema · pasa a asesor', aviso: 'Sistema · aviso',
+  ir_bot: 'Ir a otro bot', condicion: 'Condiciones', catalogo: 'Catálogos', pausa: 'Pausa',
 }
-const SALIDAS: Record<string, string> = { siguiente: 'Luego', cambiar_presupuesto: 'Sin equipos → cambiar presupuesto' }
+const SALIDAS: Record<string, string> = {
+  siguiente: 'Luego', cambiar_presupuesto: 'Sin equipos → cambiar presupuesto', respuesta: 'Cuando el cliente responda',
+  ninguna: 'Ninguna se cumple', respondio: 'El cliente respondió', tiempo: 'Pasó el tiempo',
+}
+// Los cuadros que crea el dueño desde "+ Agregar" (RF-08): se editan, se unen y se borran. Los demás son del sistema.
+const DEL_DUENO: Cuadro['tipo'][] = ['mensaje', 'ir_bot', 'condicion', 'catalogo', 'pausa']
+const delDueno = (c: Cuadro) => DEL_DUENO.includes(c.tipo)
 // A la ficha, la lista y los avisos no se llega con una flecha: los abre el bot (migración 0012).
-const DESTINOS: Cuadro['tipo'][] = ['mensaje', 'presupuesto', 'marca', 'asesor']
+const DESTINOS: Cuadro['tipo'][] = ['mensaje', 'presupuesto', 'marca', 'asesor', 'ir_bot', 'condicion', 'catalogo', 'pausa']
+// Espejo de salidas_del_cuadro (migración 0016).
+function salidasDe(c: Pick<Cuadro, 'tipo' | 'opciones'>): string[] {
+  if (c.tipo === 'mensaje') return c.opciones?.length ? [] : ['respuesta']
+  return { condicion: ['ninguna'], catalogo: ['siguiente'], pausa: ['respondio', 'tiempo'] }[c.tipo as string] ?? []
+}
 
 // RF-05 en el navegador (la base lo exige al publicar, F4·7): opciones sin destino, cuadros a los que no se llega
 // y textos que pasan el límite de WhatsApp.
-function revisar(cuadros: Cuadro[]) {
+function revisar(cuadros: Cuadro[], bots: OtroBot[]) {
   const porClave = new Map(cuadros.map((c) => [c.clave, c]))
   const problemas = new Map<string, string[]>()
   const anotar = (clave: string, p: string) => problemas.set(clave, [...(problemas.get(clave) ?? []), p])
@@ -63,12 +78,21 @@ function revisar(cuadros: Cuadro[]) {
     if (!c || alcanzados.has(c.clave)) continue
     alcanzados.add(c.clave)
     for (const o of c.opciones ?? []) if (o.destino && porClave.has(o.destino)) pila.push(o.destino)
-    for (const d of Object.values(c.salidas ?? {})) pila.push(d)
+    for (const d of Object.values(c.salidas ?? {})) if (d) pila.push(d)
   }
   for (const c of cuadros) {
     if (c.tipo === 'mensaje') {
       for (const o of c.opciones ?? []) if (!o.destino) anotar(c.clave, `La opción ${o.id} (${o.titulo}) no lleva a ningún cuadro.`)
-      if (!alcanzados.has(c.clave)) anotar(c.clave, 'Ningún cuadro lleva a este mensaje: el cliente nunca lo verá.')
+    }
+    if (delDueno(c)) {
+      for (const s of salidasDe(c)) if (!c.salidas?.[s]) anotar(c.clave, `«${SALIDAS[s]}» no lleva a ningún cuadro.`)
+      if (!alcanzados.has(c.clave)) anotar(c.clave, 'Ningún cuadro lleva aquí: el cliente nunca llegará.')
+    }
+    if (c.tipo === 'ir_bot') {
+      const destino = bots.find((b) => b.id === Number(c.ajustes?.bot_id))
+      if (!destino) anotar(c.clave, 'Elige a qué bot lleva.')
+      else if (destino.archivado) anotar(c.clave, `El bot «${destino.nombre}» está archivado.`)
+      else if (!destino.publicado) anotar(c.clave, `El bot «${destino.nombre}» aún no está publicado.`)
     }
     const m = medir(c.texto, c.formato, c.opciones ?? c.opciones_codigo ?? [], c.marcas)
     if (m.largo > m.limite) anotar(c.clave, `El texto pasa el límite de WhatsApp (${m.largo} de ${m.limite}).`)
@@ -79,7 +103,7 @@ function revisar(cuadros: Cuadro[]) {
 // --------------------------------------------------------------------------- //
 // Un cuadro en el lienzo
 // --------------------------------------------------------------------------- //
-type DatosNodo = { cuadro: Cuadro; marca: 'nuevo' | 'cambiado' | null; problemas: string[]; editable: boolean; aqui: boolean }
+type DatosNodo = { cuadro: Cuadro; marca: 'nuevo' | 'cambiado' | null; problemas: string[]; editable: boolean; aqui: boolean; destinoBot?: string }
 
 function recorte(texto: string, n = 110) {
   const t = texto.replace(/\s+/g, ' ').trim()
@@ -87,14 +111,14 @@ function recorte(texto: string, n = 110) {
 }
 
 function NodoCuadro({ data, selected }: NodeProps<Node<DatosNodo>>) {
-  const { cuadro: c, marca, problemas, editable, aqui } = data
-  const sistema = c.tipo !== 'mensaje'
+  const { cuadro: c, marca, problemas, editable, aqui, destinoBot } = data
+  const sistema = !delDueno(c)
   const unible = editable && !sistema
   // Mientras se arrastra una flecha, todo el cuadro sirve para soltarla (no solo su punto de entrada).
   const arrastrando = useConnection((u) => u.inProgress)
   const filas: { id: string; titulo: string; destino?: string | null; unible: boolean }[] = [
     ...(c.opciones ?? []).map((o) => ({ id: o.id, titulo: `${o.id}. ${o.titulo}`, destino: o.destino, unible })),
-    ...Object.keys(c.salidas ?? {}).map((s) => ({ id: s, titulo: SALIDAS[s] ?? s, destino: c.salidas[s], unible: false })),
+    ...Object.keys(c.salidas ?? {}).map((s) => ({ id: s, titulo: SALIDAS[s] ?? s, destino: c.salidas[s], unible })),
   ]
   return (
     <div className={`nodo-bot ${sistema ? 'sistema' : ''} ${selected ? 'elegido' : ''} ${problemas.length ? 'con-problema' : ''} ${aqui ? 'aqui' : ''}`}>
@@ -111,13 +135,14 @@ function NodoCuadro({ data, selected }: NodeProps<Node<DatosNodo>>) {
       </div>
       <small className="nodo-bot-tipo">{sistema ? `🔒 ${TIPOS[c.tipo]}` : TIPOS[c.tipo]}</small>
       {c.formato !== 'sistema' && c.formato !== 'ficha' && <p className="nodo-bot-texto">{recorte(c.texto)}</p>}
+      {c.tipo === 'ir_bot' && <p className="nodo-bot-texto">↪ {destinoBot ? <>Va al inicio de <b>{destinoBot}</b></> : 'Elige a qué bot lleva'}</p>}
       {c.tipo === 'presupuesto' && <small className="muted">Rangos de presupuesto o un monto escrito</small>}
       {c.tipo === 'marca' && <small className="muted">Marcas con stock en el inventario</small>}
       {c.tipo === 'ficha' && <small className="muted">Foto, equipo, precio y stock del inventario</small>}
       {filas.length > 0 && (
         <ul className="nodo-bot-opciones">
           {filas.map((f) => (
-            <li key={f.id} className={f.destino === null && !sistema ? 'suelta' : ''}>
+            <li key={f.id} className={!f.destino && !sistema ? 'suelta' : ''}>
               <span>{f.titulo}</span>
               {f.destino === '@pedir_codigo' && <small className="muted"> · pide el código</small>}
               <Handle type="source" position={Position.Right} id={f.id} isConnectable={f.unible} />
@@ -134,8 +159,9 @@ const TIPOS_NODO = { cuadro: NodoCuadro }
 // --------------------------------------------------------------------------- //
 // Panel para editar el cuadro elegido
 // --------------------------------------------------------------------------- //
-function Panel({ bot, cuadro, cuadros, editable, contexto, alTerminar }: {
+function Panel({ bot, bots, cuadro, cuadros, editable, contexto, alTerminar }: {
   bot: number
+  bots: OtroBot[]
   cuadro: Cuadro
   cuadros: Cuadro[]
   editable: boolean
@@ -145,18 +171,24 @@ function Panel({ bot, cuadro, cuadros, editable, contexto, alTerminar }: {
   const [nombre, setNombre] = useState(cuadro.nombre)
   const [texto, setTexto] = useState(cuadro.texto)
   const [opciones, setOpciones] = useState<OpcionFlujo[] | null>(cuadro.opciones)
+  const [respuesta, setRespuesta] = useState<string | null>(cuadro.salidas?.respuesta ?? null)
+  const [destinoBot, setDestinoBot] = useState(String(cuadro.ajustes?.bot_id ?? ''))
   const [ocupado, iniciar] = useTransition()
   const mensaje = cuadro.tipo === 'mensaje'
-  const textoEditable = editable && cuadro.formato !== 'sistema' && cuadro.formato !== 'ficha'
+  const irBot = cuadro.tipo === 'ir_bot'
+  const sinBotones = mensaje && opciones?.length === 0 // RF-09: sale como texto y sigue la flecha "respuesta"
+  const formato: Formato = sinBotones ? 'texto' : mensaje ? 'menu' : cuadro.formato
+  const textoEditable = editable && formato !== 'sistema' && formato !== 'ficha'
   const todas = opciones ?? cuadro.opciones_codigo ?? []
-  const medida = medir(texto, cuadro.formato, todas, cuadro.marcas)
+  const medida = medir(texto, formato, todas, cuadro.marcas)
   const { desconocidas } = revisarMarcas(texto, cuadro.marcas)
   const limite = cuadro.max_titulo ?? 24
   const titulosMal = (opciones ?? []).some((o) => !o.titulo.trim() || o.titulo.length > limite)
   const ids = (opciones ?? []).map((o) => o.id)
   const idsMal = ids.some((id, i) => !/^\d{1,2}$/.test(id) || id === '9' || ids.indexOf(id) !== i)
   const bloqueado = medida.largo > medida.limite || desconocidas.length > 0 || titulosMal || idsMal || !texto.trim()
-  const destinos = cuadros.filter((c) => DESTINOS.includes(c.tipo))
+  const destinos = cuadros.filter((c) => DESTINOS.includes(c.tipo) && c.clave !== cuadro.clave)
+  const elegido = bots.find((b) => String(b.id) === destinoBot)
   const ejemplos: Record<string, string> = { uso: 'Diseño', motivo: '', horario: contexto.horario, proxima: 'mañana a las 8:00 am' }
   const vista = cuadro.formato === 'ficha' ? contexto.ficha
     : cuadro.marcas.reduce((t, m) => t.replaceAll(`{${m}}`, ejemplos[m] ?? ''), texto)
@@ -167,8 +199,13 @@ function Panel({ bot, cuadro, cuadros, editable, contexto, alTerminar }: {
 
   function guardar() {
     iniciar(async () => {
+      if (irBot) {
+        alTerminar(await guardarAjustes(bot, cuadro.clave, nombre, { bot_id: destinoBot ? Number(destinoBot) : null }))
+        return
+      }
       const ops = opciones?.map((o) => ({ id: o.id, titulo: o.titulo, destino: o.destino ?? null })) ?? null
-      alTerminar(await guardarCuadro(bot, cuadro.clave, mensaje ? nombre : null, textoEditable ? texto : null, ops))
+      alTerminar(await guardarCuadro(bot, cuadro.clave, mensaje ? nombre : null, textoEditable ? texto : null, ops,
+        sinBotones ? { respuesta } : null))
     })
   }
 
@@ -179,13 +216,28 @@ function Panel({ bot, cuadro, cuadros, editable, contexto, alTerminar }: {
         <small className="muted">{TIPOS[cuadro.tipo]}</small>
       </div>
       {!editable && <div className="aviso">Estás viendo la versión publicada. Para cambiar el flujo, abre un borrador.</div>}
-      {editable && !mensaje && (
+      {editable && !delDueno(cuadro) && (
         <div className="aviso">🔒 Cuadro del sistema: se cambia su texto{cuadro.opciones ? ' y el título de sus botones' : ''}; lo que hace sigue en el bot (RF-03).</div>
       )}
-      {editable && mensaje && (
+      {editable && (mensaje || irBot) && (
         <label className="field">Nombre en el lienzo<input value={nombre} onChange={(e) => setNombre(e.target.value)} maxLength={60} /></label>
       )}
-      {cuadro.formato === 'sistema' ? null : cuadro.formato === 'ficha' ? null : (
+      {irBot && (
+        <label className="field">Lleva al cliente al inicio de
+          <select value={destinoBot} disabled={!editable || ocupado} onChange={(e) => setDestinoBot(e.target.value)}>
+            <option value="">— elige un bot —</option>
+            {bots.filter((b) => !b.archivado || String(b.id) === destinoBot).map((b) => (
+              <option key={b.id} value={b.id}>{b.nombre}{b.archivado ? ' (archivado)' : !b.publicado ? ' (sin publicar)' : ''}</option>
+            ))}
+          </select>
+          <small className="muted">
+            {elegido && !elegido.publicado ? `«${elegido.nombre}» aún no está publicado: publícalo antes que este bot. `
+              : elegido?.archivado ? `«${elegido.nombre}» está archivado. ` : ''}
+            El cliente sigue en ese bot hasta que escriba «hola» o «menú», que lo devuelven al principal.
+          </small>
+        </label>
+      )}
+      {formato === 'sistema' ? null : formato === 'ficha' ? null : (
         <label className="field">Mensaje
           <textarea rows={Math.min(10, Math.max(3, texto.split('\n').length + 1))} value={texto} disabled={!textoEditable || ocupado}
             onChange={(e) => setTexto(e.target.value)} />
@@ -218,7 +270,7 @@ function Panel({ bot, cuadro, cuadros, editable, contexto, alTerminar }: {
                 <small className="muted">{o.destino === '@pedir_codigo' ? 'pide el código' : cuadros.find((d) => d.clave === o.destino)?.nombre ?? ''}</small>
               )}
               {editable && mensaje && (
-                <button type="button" className="btn chico peligro" aria-label={`Quitar opción ${o.id}`} disabled={ocupado || opciones.length === 1}
+                <button type="button" className="btn chico peligro" aria-label={`Quitar opción ${o.id}`} disabled={ocupado}
                   onClick={() => setOpciones(opciones.filter((_, j) => j !== i))}>×</button>
               )}
             </div>
@@ -227,6 +279,15 @@ function Panel({ bot, cuadro, cuadros, editable, contexto, alTerminar }: {
             <button type="button" className="btn chico" disabled={ocupado}
               onClick={() => setOpciones([...opciones, { id: siguienteId(), titulo: `Opción ${opciones.length + 1}`, destino: null }])}>+ Opción</button>
           )}
+          {sinBotones && (
+            <label className="field">Cuando el cliente responda, sigue a
+              <select value={respuesta ?? ''} disabled={!editable || ocupado} onChange={(e) => setRespuesta(e.target.value || null)}>
+                <option value="">— sin destino —</option>
+                {destinos.map((d) => <option key={d.clave} value={d.clave}>{d.nombre}</option>)}
+              </select>
+              <small className="muted">Sin opciones, el mensaje sale como texto y lo que escriba el cliente sigue esta flecha.</small>
+            </label>
+          )}
           <small className="muted">
             Máximo {limite} caracteres por título. Hasta 3 opciones cortas salen como botones; si no, como lista (hasta 10).
             {mensaje && ' El 9 está reservado para pasar a un asesor.'}
@@ -234,17 +295,17 @@ function Panel({ bot, cuadro, cuadros, editable, contexto, alTerminar }: {
           </small>
         </div>
       )}
-      {cuadro.formato !== 'sistema' && (
+      {formato !== 'sistema' && (
         <div className="lienzo-vista">
           <strong>Así lo ve el cliente</strong>
           <VistaWhatsApp cuerpo={vista} forma={cuadro.formato === 'ficha' ? 'botones' : medida.forma}
-            opciones={cuadro.formato === 'ficha' ? (opciones ?? []) : cuadro.formato === 'menu' ? todas : []} numerar={cuadro.formato !== 'ficha'} />
+            opciones={formato === 'ficha' ? (opciones ?? []) : formato === 'menu' ? todas : []} numerar={cuadro.formato !== 'ficha'} />
         </div>
       )}
       {editable && (
         <div className="row">
           <button className="btn primary" disabled={ocupado || bloqueado} onClick={guardar}>{ocupado ? 'Guardando…' : 'Guardar en el borrador'}</button>
-          {mensaje && !cuadro.inicio && (
+          {delDueno(cuadro) && !cuadro.inicio && (
             <button className="btn peligro" disabled={ocupado}
               onClick={() => confirm(`¿Borrar el cuadro ${cuadro.nombre} del borrador? Las flechas que llegan quedan sueltas.`)
                 && iniciar(async () => alTerminar(await borrarCuadro(bot, cuadro.clave), true))}>Borrar cuadro</button>
@@ -277,7 +338,8 @@ function PanelPublicar({ bot, borrador, publicada, choques, problemas, alTermina
   const borrados = publicada.cuadros.filter((c) => !ahora.has(c.clave))
   const cambiados = borrador.cuadros.filter((c) => {
     const a = antes.get(c.clave)
-    return a && (a.texto !== c.texto || a.nombre !== c.nombre || JSON.stringify(a.opciones) !== JSON.stringify(c.opciones))
+    return a && (a.texto !== c.texto || a.nombre !== c.nombre || JSON.stringify(a.opciones) !== JSON.stringify(c.opciones)
+      || JSON.stringify(a.salidas) !== JSON.stringify(c.salidas) || JSON.stringify(a.ajustes) !== JSON.stringify(c.ajustes))
   })
   const hayChoque = choques.length > 0 || !!choque
   const sinCambios = !nuevos.length && !borrados.length && !cambiados.length
@@ -326,8 +388,30 @@ function PanelPublicar({ bot, borrador, publicada, choques, problemas, alTermina
 // --------------------------------------------------------------------------- //
 // El lienzo
 // --------------------------------------------------------------------------- //
+// "+ Agregar" (RF-08). Condiciones, Catálogos y Pausa llegan en F4·11 a F4·13.
+const AGREGAR: { texto: string; tipo: string; detalle: string; deshabilitada?: boolean }[] = [
+  { texto: '💬 Mensaje', tipo: 'mensaje', detalle: 'Texto con botones o lista; sin opciones, espera la respuesta' },
+  { texto: '🔀 Condiciones', tipo: 'condicion', detalle: 'Próximamente', deshabilitada: true },
+  { texto: '📚 Catálogos', tipo: 'catalogo', detalle: 'Próximamente', deshabilitada: true },
+  { texto: '⏳ Pausa', tipo: 'pausa', detalle: 'Próximamente', deshabilitada: true },
+  { texto: '↪ Ir a otro bot', tipo: 'ir_bot', detalle: 'Lleva al cliente al inicio de otro bot' },
+]
+
+// Un lugar donde el cuadro nuevo (240 de ancho, unos 160 de alto) no tape a otro: prueba alrededor del punto pedido.
+function hueco(cuadros: Cuadro[], x: number, y: number) {
+  const libre = (px: number, py: number) => cuadros.every((c) => Math.abs(c.x - px) > 260 || Math.abs(c.y - py) > 190)
+  for (let paso = 0; paso < 8; paso++) {
+    for (const [dx, dy] of [[0, 0], [0, 1], [1, 0], [0, -1], [-1, 0], [1, 1], [-1, 1], [1, -1], [-1, -1]]) {
+      const px = x + dx * 270 * paso, py = y + dy * 200 * paso
+      if (libre(px, py)) return { x: px, y: py }
+    }
+  }
+  return { x, y }
+}
+
 type Props = {
   bot: { id: number; nombre: string; archivado: boolean }
+  bots: OtroBot[] // los demás bots, para «Ir a otro bot»
   publicada: Version
   borrador: Version | null
   archivada?: Version
@@ -336,7 +420,7 @@ type Props = {
   hayBorrador?: boolean
 }
 
-function LienzoInterno({ bot, publicada, borrador, archivada, contexto, choques = [], hayBorrador = false }: Props) {
+function LienzoInterno({ bot, bots, publicada, borrador, archivada, contexto, choques = [], hayBorrador = false }: Props) {
   const router = useRouter()
   const flujo = useReactFlow()
   const editable = !!borrador
@@ -350,7 +434,7 @@ function LienzoInterno({ bot, publicada, borrador, archivada, contexto, choques 
   const [aviso, setAviso] = useState<Resultado>({})
   const [ocupado, iniciar] = useTransition()
 
-  const problemas = useMemo(() => revisar(cuadros), [cuadros])
+  const problemas = useMemo(() => revisar(cuadros, bots), [cuadros, bots])
   const totalProblemas = [...problemas.values()].reduce((s, p) => s + p.length, 0)
   const anteriores = useMemo(() => new Map(publicada.cuadros.map((c) => [c.clave, c])), [publicada])
 
@@ -358,9 +442,11 @@ function LienzoInterno({ bot, publicada, borrador, archivada, contexto, choques 
     const antes = anteriores.get(c.clave)
     // Un bot que aún no se publicó no tiene con qué compararse: sin marcas.
     const marca = !editable || !publicada.version ? null : !antes ? 'nuevo'
-      : antes.texto !== c.texto || antes.nombre !== c.nombre || JSON.stringify(antes.opciones) !== JSON.stringify(c.opciones) ? 'cambiado' : null
+      : antes.texto !== c.texto || antes.nombre !== c.nombre || JSON.stringify(antes.opciones) !== JSON.stringify(c.opciones)
+        || JSON.stringify(antes.salidas) !== JSON.stringify(c.salidas) || JSON.stringify(antes.ajustes) !== JSON.stringify(c.ajustes) ? 'cambiado' : null
     return { id: c.clave, type: 'cuadro', position: { x: c.x, y: c.y }, draggable: editable,
-      data: { cuadro: c, marca, problemas: problemas.get(c.clave) ?? [], editable, aqui: probando && aqui?.replace(/-vacio$/, '') === c.clave } }
+      data: { cuadro: c, marca, problemas: problemas.get(c.clave) ?? [], editable, aqui: probando && aqui?.replace(/-vacio$/, '') === c.clave,
+        destinoBot: c.tipo === 'ir_bot' ? bots.find((b) => b.id === Number(c.ajustes?.bot_id))?.nombre : undefined } }
   })
   const armarFlechas = (): Edge[] => cuadros.flatMap((c) => [
     ...(c.opciones ?? []).filter((o) => o.destino && o.destino !== '@pedir_codigo').map((o) => ({
@@ -368,9 +454,9 @@ function LienzoInterno({ bot, publicada, borrador, archivada, contexto, choques 
       deletable: editable && c.tipo === 'mensaje', markerEnd: { type: MarkerType.ArrowClosed },
       className: c.tipo === 'mensaje' ? 'flecha-mensaje' : 'flecha-sistema',
     })),
-    ...Object.entries(c.salidas ?? {}).map(([s, d]) => ({
-      id: `${c.clave}:${s}`, source: c.clave, sourceHandle: s, target: d, deletable: false,
-      markerEnd: { type: MarkerType.ArrowClosed }, className: 'flecha-sistema',
+    ...Object.entries(c.salidas ?? {}).filter(([, d]) => d).map(([s, d]) => ({
+      id: `${c.clave}:${s}`, source: c.clave, sourceHandle: s, target: d!, deletable: editable && delDueno(c),
+      markerEnd: { type: MarkerType.ArrowClosed }, className: delDueno(c) ? 'flecha-mensaje' : 'flecha-sistema',
     })),
   ])
 
@@ -402,7 +488,7 @@ function LienzoInterno({ bot, publicada, borrador, archivada, contexto, choques 
   const validarUnion = (u: Connection | Edge) => {
     const origen = cuadroDe(u.source)
     const destino = cuadroDe(u.target)
-    return !!editable && origen?.tipo === 'mensaje' && !!destino && DESTINOS.includes(destino.tipo)
+    return !!editable && !!origen && delDueno(origen) && !!destino && destino.clave !== origen.clave && DESTINOS.includes(destino.tipo)
   }
 
   const elegidoCuadro = cuadroDe(elegido)
@@ -430,11 +516,16 @@ function LienzoInterno({ bot, publicada, borrador, archivada, contexto, choques 
           )}
           {editable ? (
             <>
-              <button className="btn chico" disabled={ocupado} onClick={() => {
-                const r = document.querySelector('.lienzo-area')?.getBoundingClientRect()
-                const centro = flujo.screenToFlowPosition({ x: (r?.left ?? 0) + (r?.width ?? 600) / 2, y: (r?.top ?? 0) + (r?.height ?? 400) / 2 })
-                hacer(() => crearMensaje(bot.id, centro.x - 110, centro.y - 60), (clave) => setElegido(String(clave)))
-              }}>+ Mensaje</button>
+              <MenuAcciones etiqueta="Agregar un cuadro" boton="+ Agregar ▾" desactivado={ocupado} acciones={AGREGAR.map((a) => ({
+                ...a,
+                onClick: () => {
+                  // El cuadro nuevo aparece en el primer hueco libre cerca del centro de lo que se ve y queda elegido.
+                  const r = document.querySelector('.lienzo-area')?.getBoundingClientRect()
+                  const centro = flujo.screenToFlowPosition({ x: (r?.left ?? 0) + (r?.width ?? 600) / 2, y: (r?.top ?? 0) + (r?.height ?? 400) / 2 })
+                  const { x, y } = hueco(cuadros, centro.x - 120, centro.y - 70)
+                  hacer(() => crearCuadro(bot.id, a.tipo, x, y), (clave) => setElegido(String(clave)))
+                },
+              }))} />
               <button className="btn primary chico" disabled={ocupado} onClick={() => { setElegido(null); setProbando(false); setVerProblemas(false); setPublicando(true) }}>Publicar…</button>
               <button className="btn chico peligro" disabled={ocupado}
                 onClick={() => confirm('¿Descartar el borrador? Se pierden todos sus cambios; el bot sigue igual.')
@@ -507,7 +598,7 @@ function LienzoInterno({ bot, publicada, borrador, archivada, contexto, choques 
               alCancelar={() => setPublicando(false)}
               alTerminar={(r) => { setAviso(r); if (!r.error) { setPublicando(false); router.refresh() } }} />
           ) : elegidoCuadro ? (
-            <Panel key={elegidoCuadro.clave + elegidoCuadro.actualizado_en} bot={bot.id} cuadro={elegidoCuadro} cuadros={cuadros} editable={editable}
+            <Panel key={elegidoCuadro.clave + elegidoCuadro.actualizado_en} bot={bot.id} bots={bots} cuadro={elegidoCuadro} cuadros={cuadros} editable={editable}
               contexto={contexto} alTerminar={(r, borrado) => {
                 setAviso(r)
                 if (!r.error) { if (borrado) setElegido(null); router.refresh() }

@@ -173,7 +173,7 @@ def cargar_estado(lead):
     st = flujo.estado_vacio()
     st.update({k: v for k, v in guardado.items() if k in ("campos", "rango", "marcas", "valor")})
     st.update(nodo=lead["paso_menu"] or None, etapa=lead["etapa"], errores=lead["errores_bot"],
-              pausa=lead["pausar_bot"])
+              pausa=lead["pausar_bot"], bot=lead.get("bot_id"))
     return st
 
 
@@ -192,6 +192,8 @@ def guardar_estado(lead, st, visible, nombre):
         "cotiz_producto": campos.get("Código producto", lead["cotiz_producto"]),
         "ultimo_mensaje": visible[:500], "fecha_ultimo_contacto": datetime.now().astimezone().isoformat(),
         "estado_bot": {k: st[k] for k in ("campos", "rango", "marcas", "valor") if k in st},
+        # En el principal se guarda null: si el principal cambia, el cliente sigue al nuevo (RF-16).
+        "bot_id": None if st.get("bot") in (None, db.principal()) else st["bot"],
     }
     if st.get("valor"):
         cambios["valor_estimado"] = st["valor"]
@@ -365,10 +367,14 @@ def simular(pedido):
     otros = db.cuadros_de_version(pedido["version"], pedido.get("bot"))
     if not otros:
         raise LookupError("versión")
-    st = pedido.get("estado") or flujo.estado_vacio()
+    bot = pedido.get("bot") or db.principal()
+    st = pedido.get("estado") or dict(flujo.estado_vacio(), bot=bot)
+    antes = st.get("bot")
     avisos = []
-    with flujo.con_cuadros(otros):
+    with flujo.con_cuadros(otros, bot):
         mensajes, st = flujo.responder(st, str(pedido["texto"])[:1000], avisos.append)
+    if st.get("bot") != antes:  # "Ir a otro bot", o "hola" desde otro bot: se avisa a quien prueba
+        avisos.append(f"El cliente pasó al bot «{db.nombre_bot(st['bot'])}».")
     return {"avisos": avisos, "mensajes": mensajes, "estado": st}
 
 
