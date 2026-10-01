@@ -190,6 +190,12 @@ def normalizar(s):
     return "".join(c for c in s if unicodedata.category(c) != "Mn").strip()
 
 
+def normalizar_condicion(s):
+    """Como compara el cuadro Condiciones (RF-10) y como guarda sus palabras la base (normalizar_condicion, 0017):
+    minúsculas, sin tildes, sin signos ni emojis y con un solo espacio. "¡Uno!" = "uno"."""
+    return " ".join(re.sub(r"[^\w\s]", "", normalizar(s)).split())
+
+
 def cop(n):
     return "$" + f"{n:,.0f}".replace(",", ".")
 
@@ -302,13 +308,31 @@ def cambiar_de_bot(st, bot):
     return ir(st, inicio())
 
 
+MAX_SALTOS = 10  # cuadros seguidos sin esperar al cliente (Condiciones, Ir a otro bot…): más es una vuelta sin fin
+
+
+def condicion(st, c):
+    """Condiciones (RF-10): no envía nada; compara el último mensaje del cliente con cada condición, en orden, y sigue
+    por la primera que se cumpla; si ninguna, por la salida "ninguna"."""
+    n = normalizar_condicion(getattr(_hilo, "texto", "") or "")
+    for op in c.get("opciones") or []:
+        if n and n in (op.get("palabras") or []):
+            return ir(st, op.get("destino"))
+    return ir(st, (c.get("salidas") or {}).get("ninguna"))
+
+
 def ir(st, clave):
     """Lleva al cliente a un cuadro y devuelve lo que ve. Un cuadro que ya no existe lleva al inicio."""
+    _hilo.saltos = getattr(_hilo, "saltos", 0) + 1
+    if _hilo.saltos > MAX_SALTOS + 1:
+        return error(st)
     c = cuadros().get(clave) or cuadros()[inicio()]
     if c["tipo"] == "asesor":
         return asesor(st)
     if c["tipo"] == "ir_bot":
         return cambiar_de_bot(st, (c.get("ajustes") or {}).get("bot_id"))
+    if c["tipo"] == "condicion":
+        return condicion(st, c)
     st["nodo"], st["errores"] = c["clave"], 0
     st["campos"].pop("Errores bot", None)
     aplicar(st, c["al_entrar"])
@@ -323,6 +347,7 @@ def seguir(st, op):
     if destino and destino["tipo"] == "asesor":
         return asesor(st, efectos.get("etiqueta") or "Escalado-Asesor", efectos.get("motivo"))
     aplicar(st, {"etiqueta": efectos.get("etiqueta")})
+    _hilo.texto = op.get("titulo") or getattr(_hilo, "texto", "")  # unas Condiciones después comparan la opción elegida
     if op["destino"] == "@pedir_codigo":
         st["nodo"] = del_tipo("equipos")
         return [m_texto("Envíame el código del equipo 👇")]
@@ -482,14 +507,15 @@ def responder(st, texto, avisar=None):
     st.setdefault("bot", None)
     if st["bot"] is None:
         st["bot"] = db.principal()
-    _hilo.bot = st["bot"]
+    _hilo.bot, _hilo.texto, _hilo.saltos = st["bot"], texto, 0
     try:
         if cuadros() is None:  # su bot se archivó o ya no tiene versión publicada: vuelve al principal
             st["bot"] = _hilo.bot = db.principal()
             st["nodo"] = None
         return _responder(st, texto, avisar)
     finally:
-        _hilo.bot = None
+        _hilo.bot = _hilo.texto = None
+        _hilo.saltos = 0
 
 
 def _responder(st, texto, avisar):

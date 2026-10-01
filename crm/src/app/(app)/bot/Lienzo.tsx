@@ -14,6 +14,7 @@ import {
   type Resultado,
 } from './acciones'
 import type { Contexto } from './Mensajes'
+import { PanelCondiciones } from './PanelCondiciones'
 import { Simulador } from './Simulador'
 import { VistaWhatsApp } from './VistaWhatsApp'
 
@@ -88,6 +89,12 @@ function revisar(cuadros: Cuadro[], bots: OtroBot[]) {
       for (const s of salidasDe(c)) if (!c.salidas?.[s]) anotar(c.clave, `«${SALIDAS[s]}» no lleva a ningún cuadro.`)
       if (!alcanzados.has(c.clave)) anotar(c.clave, 'Ningún cuadro lleva aquí: el cliente nunca llegará.')
     }
+    if (c.tipo === 'condicion') {
+      for (const o of c.opciones ?? []) {
+        if (!o.palabras?.length) anotar(c.clave, `La condición «${o.titulo}» no tiene palabras.`)
+        else if (!o.destino) anotar(c.clave, `La condición «${o.titulo}» no lleva a ningún cuadro.`)
+      }
+    }
     if (c.tipo === 'ir_bot') {
       const destino = bots.find((b) => b.id === Number(c.ajustes?.bot_id))
       if (!destino) anotar(c.clave, 'Elige a qué bot lleva.')
@@ -117,7 +124,8 @@ function NodoCuadro({ data, selected }: NodeProps<Node<DatosNodo>>) {
   // Mientras se arrastra una flecha, todo el cuadro sirve para soltarla (no solo su punto de entrada).
   const arrastrando = useConnection((u) => u.inProgress)
   const filas: { id: string; titulo: string; destino?: string | null; unible: boolean }[] = [
-    ...(c.opciones ?? []).map((o) => ({ id: o.id, titulo: `${o.id}. ${o.titulo}`, destino: o.destino, unible })),
+    ...(c.opciones ?? []).map((o) => ({ id: o.id, destino: o.destino, unible,
+      titulo: c.tipo === 'condicion' ? `${o.titulo} = ${o.palabras?.length ? o.palabras.join(' · ') : '…'}` : `${o.id}. ${o.titulo}` })),
     ...Object.keys(c.salidas ?? {}).map((s) => ({ id: s, titulo: SALIDAS[s] ?? s, destino: c.salidas[s], unible })),
   ]
   return (
@@ -135,6 +143,7 @@ function NodoCuadro({ data, selected }: NodeProps<Node<DatosNodo>>) {
       </div>
       <small className="nodo-bot-tipo">{sistema ? `🔒 ${TIPOS[c.tipo]}` : TIPOS[c.tipo]}</small>
       {c.formato !== 'sistema' && c.formato !== 'ficha' && <p className="nodo-bot-texto">{recorte(c.texto)}</p>}
+      {c.tipo === 'condicion' && <p className="nodo-bot-texto">🔀 Según el último mensaje del cliente</p>}
       {c.tipo === 'ir_bot' && <p className="nodo-bot-texto">↪ {destinoBot ? <>Va al inicio de <b>{destinoBot}</b></> : 'Elige a qué bot lleva'}</p>}
       {c.tipo === 'presupuesto' && <small className="muted">Rangos de presupuesto o un monto escrito</small>}
       {c.tipo === 'marca' && <small className="muted">Marcas con stock en el inventario</small>}
@@ -388,10 +397,10 @@ function PanelPublicar({ bot, borrador, publicada, choques, problemas, alTermina
 // --------------------------------------------------------------------------- //
 // El lienzo
 // --------------------------------------------------------------------------- //
-// "+ Agregar" (RF-08). Condiciones, Catálogos y Pausa llegan en F4·11 a F4·13.
+// "+ Agregar" (RF-08). Catálogos y Pausa llegan en F4·12 y F4·13.
 const AGREGAR: { texto: string; tipo: string; detalle: string; deshabilitada?: boolean }[] = [
   { texto: '💬 Mensaje', tipo: 'mensaje', detalle: 'Texto con botones o lista; sin opciones, espera la respuesta' },
-  { texto: '🔀 Condiciones', tipo: 'condicion', detalle: 'Próximamente', deshabilitada: true },
+  { texto: '🔀 Condiciones', tipo: 'condicion', detalle: 'Elige el camino según lo que escribió el cliente' },
   { texto: '📚 Catálogos', tipo: 'catalogo', detalle: 'Próximamente', deshabilitada: true },
   { texto: '⏳ Pausa', tipo: 'pausa', detalle: 'Próximamente', deshabilitada: true },
   { texto: '↪ Ir a otro bot', tipo: 'ir_bot', detalle: 'Lleva al cliente al inicio de otro bot' },
@@ -451,8 +460,8 @@ function LienzoInterno({ bot, bots, publicada, borrador, archivada, contexto, ch
   const armarFlechas = (): Edge[] => cuadros.flatMap((c) => [
     ...(c.opciones ?? []).filter((o) => o.destino && o.destino !== '@pedir_codigo').map((o) => ({
       id: `${c.clave}:${o.id}`, source: c.clave, sourceHandle: o.id, target: o.destino!,
-      deletable: editable && c.tipo === 'mensaje', markerEnd: { type: MarkerType.ArrowClosed },
-      className: c.tipo === 'mensaje' ? 'flecha-mensaje' : 'flecha-sistema',
+      deletable: editable && delDueno(c), markerEnd: { type: MarkerType.ArrowClosed },
+      className: delDueno(c) ? 'flecha-mensaje' : 'flecha-sistema',
     })),
     ...Object.entries(c.salidas ?? {}).filter(([, d]) => d).map(([s, d]) => ({
       id: `${c.clave}:${s}`, source: c.clave, sourceHandle: s, target: d!, deletable: editable && delDueno(c),
@@ -597,6 +606,13 @@ function LienzoInterno({ bot, bots, publicada, borrador, archivada, contexto, ch
             <PanelPublicar bot={bot.id} borrador={borrador} publicada={publicada} choques={choques} problemas={totalProblemas}
               alCancelar={() => setPublicando(false)}
               alTerminar={(r) => { setAviso(r); if (!r.error) { setPublicando(false); router.refresh() } }} />
+          ) : elegidoCuadro?.tipo === 'condicion' ? (
+            <PanelCondiciones key={elegidoCuadro.clave + elegidoCuadro.actualizado_en} bot={bot.id} cuadro={elegidoCuadro} editable={editable}
+              destinos={cuadros.filter((c) => DESTINOS.includes(c.tipo) && c.clave !== elegidoCuadro.clave)}
+              alTerminar={(r, borrado) => {
+                setAviso(r)
+                if (!r.error) { if (borrado) setElegido(null); router.refresh() }
+              }} />
           ) : elegidoCuadro ? (
             <Panel key={elegidoCuadro.clave + elegidoCuadro.actualizado_en} bot={bot.id} bots={bots} cuadro={elegidoCuadro} cuadros={cuadros} editable={editable}
               contexto={contexto} alTerminar={(r, borrado) => {

@@ -99,9 +99,9 @@ select case when (select salidas from bot_cuadros k join bot_flujos f on f.id = 
                   where f.bot_id = :b_a and f.estado = 'borrador' and k.clave = :'m2') = '{"respuesta": null}'
             then 'ok' else 'not ok' end || ' 12 - también se suelta una salida con nombre';
 
-select case when pg_temp.falla(format('select borrador_crear_cuadro(%L, 0, 0, %s)', 'condicion', :b_a))
-             and pg_temp.falla(format('select borrador_crear_cuadro(%L, 0, 0, %s)', 'aviso', :b_a))
-            then 'ok' else 'not ok' end || ' 13 - Condiciones aún no se crea y los del sistema no se crean desde el lienzo';
+select case when pg_temp.falla(format('select borrador_crear_cuadro(%L, 0, 0, %s)', 'aviso', :b_a))
+             and pg_temp.falla(format('select borrador_crear_cuadro(%L, 0, 0, %s)', 'nada', :b_a))
+            then 'ok' else 'not ok' end || ' 13 - los cuadros del sistema no se crean desde el lienzo';
 
 reset role;
 rollback;

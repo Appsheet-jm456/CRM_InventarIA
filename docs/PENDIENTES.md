@@ -11,7 +11,7 @@ de las Fases 1 y 2 abajo. **Código nuevo:** el bot de prueba sobre Supabase (`h
 2. **Mejoras (F4·4 en adelante), módulo por módulo.** Primero **Bot y horario** (decisión 0026,
    [FLUJO-DEL-BOT.md](FLUJO-DEL-BOT.md)): ✅ F4·4 vista previa real y límites (migración 0010) → ✅ F4·5 flujo en la base (migración 0011) → ✅ F4·6 lienzo (migraciones 0012 y 0013) →
    ✅ F4·7 borrador, publicar e historial (migración 0014) → ✅ F4·8 simulador → **Lienzo con más acciones (1 oct, decisiones 0027 y 0028):**
-   ✅ F4·9 varios bots (migración 0015) → ✅ F4·10 «+ Agregar», mensaje sin botones e «Ir a otro bot» (migración 0016) → **F4·11 Condiciones (siguiente)** → F4·12 Catálogos →
+   ✅ F4·9 varios bots (migración 0015) → ✅ F4·10 «+ Agregar», mensaje sin botones e «Ir a otro bot» (migración 0016) → ✅ F4·11 Condiciones (migración 0017) → **F4·12 Catálogos (siguiente)** →
    F4·13 Pausa → F4·14 arranque por palabra clave y por etapa (el asesor tiene la última palabra; fuera de 24 h, plantilla de Meta) → F4·15 simulador y pruebas.
    Los pasos que no son mensajes (inventario, ficha, catálogo, asesor) son cuadros del sistema fijos (0026).
 3. **Pendiente del dueño en F3·9:** subir las fotos de los equipos (hoy los 17 están sin foto), los catálogos PDF y el

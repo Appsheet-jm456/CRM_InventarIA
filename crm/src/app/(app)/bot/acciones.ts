@@ -98,6 +98,12 @@ export async function guardarCuadro(bot: number, clave: string, nombre: string |
   return rpc('borrador_guardar_cuadro', { p_clave: clave, p_nombre: nombre, p_texto: texto, p_opciones: opciones, p_bot: bot, p_salidas: salidas },
     'Cuadro guardado en el borrador.')
 }
+// Condiciones (RF-10): en orden; las palabras las normaliza la base.
+export async function guardarCondiciones(bot: number, clave: string, nombre: string,
+  condiciones: { titulo: string; palabras: string[]; destino: string | null }[], ninguna: string | null) {
+  return rpc('borrador_guardar_condiciones', { p_clave: clave, p_nombre: nombre, p_condiciones: condiciones, p_ninguna: ninguna, p_bot: bot },
+    'Condiciones guardadas en el borrador.')
+}
 // "Ir a otro bot" (RF-17): nombre y bot de destino.
 export async function guardarAjustes(bot: number, clave: string, nombre: string, ajustes: Record<string, unknown>) {
   return rpc('borrador_guardar_ajustes', { p_clave: clave, p_nombre: nombre, p_ajustes: ajustes, p_bot: bot }, 'Cuadro guardado en el borrador.')

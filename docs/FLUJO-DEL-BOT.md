@@ -16,7 +16,7 @@
 | ✅ **F4·8** Simulador (30 sep) | Probar el borrador como cliente, sin WhatsApp |
 | ✅ **F4·9** Varios bots (1 oct, migración 0015) | "Flujo" abre la lista de bots: crear, renombrar, duplicar, archivar y marcar el principal; cada bot con su lienzo, borrador, versiones y simulador. Pantalla rediseñada con más espacio para el lienzo |
 | ✅ **F4·10** "+ Agregar", mensaje sin botones e "Ir a otro bot" (1 oct, migración 0016) | Desplegable con Mensaje, Condiciones, Catálogos, Pausa e Ir a otro bot; mensaje sin botones con la flecha "Cuando el cliente responda" |
-| **F4·11** Condiciones | Cuadro que compara el último mensaje del cliente ("es igual a", varias palabras por condición) y sale por la primera que se cumpla o por "Ninguna se cumple" |
+| ✅ **F4·11** Condiciones (1 oct, migración 0017) | Cuadro que compara el último mensaje del cliente ("es igual a", varias palabras por condición) y sale por la primera que se cumpla o por "Ninguna se cumple" |
 | **F4·12** Catálogos | Encabezado más un catálogo elegido de Inventario o subido en una ventana; envía y sigue |
 | **F4·13** Pausa y recordatorio | Espera horas, minutos y segundos; salidas "El cliente respondió" y "Pasó el tiempo"; reloj en el receptor |
 | **F4·14** Arranque por palabra clave y por etapa del embudo | Un bot arranca si el cliente escribe su palabra clave o si su oportunidad entra a cierta etapa |
@@ -240,7 +240,26 @@ conversaciones (todas las de 4 pasos con 16 entradas y 5.000 al azar de 5 a 12).
 `supabase/pruebas/0016_agregar_cuadros.sql` (13); las de 0011, 0012 y 0014 ahora quitan los otros bots dentro de su
 transacción.
 
-## Condiciones, Catálogos y Pausa (F4·11 a F4·13, decisión 0027)
+## Condiciones (F4·11, decisión 0027, migración 0017)
+
+**Lienzo.** "+ Agregar" → 🔀 **Condiciones**. El cuadro muestra cada condición como «Envíos = envio · envios · despacho» con su
+flecha, y al final «Ninguna se cumple». En el panel: nombre, condiciones en orden (subir, bajar, quitar; hasta 10), sus
+palabras como etiquetas (se escriben y Enter o coma), a dónde lleva cada una y «Ninguna se cumple, sigue a». Avisa si
+una palabra está en dos condiciones (no se guarda) o si choca con las reglas de siempre (`9`, «asesor», `0`, «hola»,
+«menú», «reiniciar»: se guarda, pero esa palabra nunca se cumpliría).
+
+**Cómo decide.** Con el último mensaje del cliente: lo que escribió (desde un mensaje sin botones, una Pausa o el saludo
+de un cliente nuevo) o el título de la opción que tocó. Compara exacto tras normalizar (minúsculas, sin tildes, sin
+signos ni emojis, un solo espacio): `flujo.normalizar_condicion` y `normalizar_condicion()` en la base, que guarda las
+palabras ya normalizadas. Un turno encadena como máximo 10 cuadros sin esperar al cliente; si pasa, va al error.
+
+**Base (0017).** `borrador_crear_cuadro('condicion', …)` crea `C<n>` con una condición vacía y `salidas.ninguna`;
+`borrador_guardar_condiciones(clave, nombre, condiciones, ninguna, bot)` valida de 1 a 10 condiciones con nombre, hasta 20
+palabras cada una, sin repetir entre condiciones y sin llevar a la ficha ni a sí mismo; `problemas_del_flujo` exige
+palabras y destino en cada condición. Pruebas: `supabase/pruebas/0017_condiciones.sql` (8). El bot principal responde
+igual que antes en 70.536 conversaciones.
+
+## Catálogos y Pausa (F4·12 y F4·13, decisión 0027)
 
 **Lienzo.** "+ Mensaje" pasa a **"+ Agregar ▾"** con los cinco cuadros (Ir a otro bot es el quinto: un desplegable con los bots y una sola flecha de entrada); cada uno se crea en el centro de la vista y
 queda elegido. Un mensaje sin botones muestra la flecha "Cuando el cliente responda". Cómo se ve cada cuadro nuevo:
