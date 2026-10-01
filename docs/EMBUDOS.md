@@ -11,7 +11,7 @@
 
 | Embudo | Para qué | Etapas (se editan en Configuración → Etapas) |
 |---|---|---|
-| **Cliente Final** (predeterminado) | Compra online | Nuevo → En Conversación → Cotización → Negociación → Confirmar transfer → **Vendido** (ganada) · **Perdido** (perdida) |
+| **Cliente Final** (predeterminado) | Compra online | Nuevo → En Conversación → Cotización → Negociación → Confirmar transfer → **Vendido** (ganada) → Despachado → En transportadora → Entregado (las tres también ganada) · **Perdido** (perdida). *Despachado, En transportadora y Entregado: decisión 0028 (F4·14); el bot de posventa las usa. La venta se cuenta una sola vez, al llegar a Vendido* |
 | **Pos Venta** | Soporte técnico y garantías | Recibido → Diagnóstico → En garantía o reparación → Listo para entregar → **Resuelto** (ganada) · **No procede** (perdida) |
 | **Distribuidor** | Venta al por mayor | Nuevo → Datos de la empresa → Lista de precios enviada → Negociación → **Primer pedido** (ganada) · **Perdido** (perdida) |
 

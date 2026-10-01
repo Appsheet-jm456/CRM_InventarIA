@@ -85,10 +85,13 @@ la misma comparación de RF-10). Se revisan cuando el cliente es nuevo o está e
 asesor, y antes que el resto de reglas del principal. Una palabra no se repite entre bots ni puede ser `0`, `9`,
 "hola", "menú" o "reiniciar".
 
-**RF-19 · Un bot puede arrancar por etapa del embudo.** Se elige un embudo y una etapa; cuando una oportunidad entra a
-esa etapa (la mueva el asesor o el bot), el bot arranca y envía su inicio. No arranca si el chat está con un asesor,
-si pasaron 24 h desde el último mensaje del cliente (ventana de Meta) o si el bot no tiene versión publicada; en
-esos casos queda registrado en el chat. Una etapa solo dispara un bot.
+**RF-19 · Un bot puede arrancar por etapa del embudo, y el asesor tiene la última palabra.** Se elige un embudo y una
+etapa; cuando una oportunidad entra a esa etapa (la mueva el asesor o el bot), el bot arranca **aunque el chat esté
+con un asesor**: el chat sigue asignado a él, el bot lleva al cliente por su flujo y atiende sus respuestas, y el
+asesor ve todo y puede escribir (el bot no se apaga). Si el cliente pide asesor (`9`), el bot se calla. Si pasaron más
+de 24 h desde el último mensaje del cliente, el inicio se envía como **plantilla aprobada** del bot; sin plantilla
+aprobada no se envía y queda registrado en el chat. No arranca si el bot no tiene versión publicada. Una etapa solo
+dispara un bot.
 
 ## Límites de WhatsApp (F4·4, migración 0010)
 
@@ -237,7 +240,10 @@ con el botón **"Simular que pasó el tiempo"**; escribir antes prueba la salida
 
 **Arranques (F4·14, migración 0017).** La palabra clave se revisa en `flujo.responder` (RF-18). El cambio de etapa lo
 anota un trigger de `oportunidades` en una cola `bot_disparos`, que atiende el mismo reloj de la Pausa con las
-reglas de RF-19.
+reglas de RF-19. `bots.plantilla_id` guarda la plantilla de Meta para fuera de ventana. La migración 0017 también
+agrega a Cliente Final las etapas Despachado, En transportadora y Entregado, **las tres ganadas** como Vendido: la
+venta y el valor se cuentan una sola vez (al primer cierre) y las Métricas no cambian; ver [EMBUDOS.md](EMBUDOS.md).
+Hay que comprobar que `mover_oportunidad` deje avanzar una oportunidad ya ganada entre etapas ganadas.
 
 **Pruebas (F4·15).** `supabase/pruebas/0015_*.sql` a `0017_*.sql` (bots, tipos, ajustes, validaciones al guardar y al publicar, copia en
 borradores) y una prueba del motor en Python que recorre la versión 1 con un juego fijo de conversaciones
