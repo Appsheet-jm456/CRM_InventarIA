@@ -1,6 +1,6 @@
-# Flujo del bot: lienzo, borrador, versiones y simulador (F4·4 a F4·13)
+# Flujo del bot: lienzo, borrador, versiones y simulador (F4·4 a F4·15)
 
-> Decisiones 0026 (reemplaza RBOT-01 de la 0023) y 0027 (Condiciones, Catálogos y Pausa). Sigue la 0016 (bot
+> Decisiones 0026 (reemplaza RBOT-01 de la 0023), 0027 (Condiciones, Catálogos y Pausa) y 0028 (varios bots). Sigue la 0016 (bot
 > híbrido: la respuesta sale siempre de la base) y la 0011 (un mensaje por respuesta, botones y listas).
 
 ---
@@ -14,11 +14,13 @@
 | ✅ **F4·6** Lienzo (30 sep, migraciones 0012 y 0013) | Cuadros y flechas en `/bot`: crear, editar, unir y borrar mensajes; cuadros del sistema fijos; marca de editado |
 | ✅ **F4·7** Borrador, publicar e historial (30 sep, migración 0014) | Validación al publicar, lista de versiones con quién y cuándo, volver a una anterior |
 | ✅ **F4·8** Simulador (30 sep) | Probar el borrador como cliente, sin WhatsApp |
-| **F4·9** "+ Agregar" y mensaje sin botones (migración 0015) | Desplegable con Mensaje, Condiciones, Catálogos y Pausa; base preparada para los tipos nuevos; mensaje sin botones con la flecha "Cuando el cliente responda" |
-| **F4·10** Condiciones | Cuadro que compara el último mensaje del cliente ("es igual a", varias palabras por condición) y sale por la primera que se cumpla o por "Ninguna se cumple" |
-| **F4·11** Catálogos | Encabezado más un catálogo elegido de Inventario o subido en una ventana; envía y sigue |
-| **F4·12** Pausa y recordatorio | Espera horas, minutos y segundos; salidas "El cliente respondió" y "Pasó el tiempo"; reloj en el receptor |
-| **F4·13** Simulador y pruebas de los cuadros nuevos | Probar los tres en el simulador (la Pausa con "Simular que pasó el tiempo"), pruebas de la base y del motor |
+| **F4·9** Varios bots (migración 0015) | "Flujo" abre la lista de bots: crear, renombrar, duplicar, archivar y marcar el principal; cada bot con su lienzo, borrador, versiones y simulador. Pantalla rediseñada con más espacio para el lienzo |
+| **F4·10** "+ Agregar", mensaje sin botones e "Ir a otro bot" (migración 0016) | Desplegable con Mensaje, Condiciones, Catálogos, Pausa e Ir a otro bot; mensaje sin botones con la flecha "Cuando el cliente responda" |
+| **F4·11** Condiciones | Cuadro que compara el último mensaje del cliente ("es igual a", varias palabras por condición) y sale por la primera que se cumpla o por "Ninguna se cumple" |
+| **F4·12** Catálogos | Encabezado más un catálogo elegido de Inventario o subido en una ventana; envía y sigue |
+| **F4·13** Pausa y recordatorio | Espera horas, minutos y segundos; salidas "El cliente respondió" y "Pasó el tiempo"; reloj en el receptor |
+| **F4·14** Arranque por palabra clave y por etapa del embudo (migración 0017) | Un bot arranca si el cliente escribe su palabra clave o si su oportunidad entra a cierta etapa |
+| **F4·15** Simulador y pruebas | Probar los cuadros y bots nuevos en el simulador (la Pausa con "Simular que pasó el tiempo"), pruebas de la base y del motor |
 
 ## Reglas
 
@@ -41,7 +43,7 @@ bot. Volver a una anterior la copia como borrador para publicarla de nuevo.
 **RF-07 · El simulador corre el borrador con el mismo motor del bot**, sin escribir en `leads` ni en `mensajes` y
 sin enviar a WhatsApp.
 
-**RF-08 · El dueño crea cuatro cuadros** desde "+ Agregar": Mensaje, Condiciones, Catálogos y Pausa (0027). Todos se
+**RF-08 · El dueño crea cinco cuadros** desde "+ Agregar": Mensaje, Condiciones, Catálogos, Pausa (0027) e Ir a otro bot (0028). Todos se
 editan, se unen y se borran como el mensaje; los del sistema siguen fijos (RF-03).
 
 **RF-09 · Un mensaje puede no llevar botones.** Entonces tiene una sola salida, "Cuando el cliente responda", que
@@ -69,6 +71,24 @@ por "Pasó el tiempo". Las dos salidas son obligatorias.
 **RF-15 · El recordatorio respeta la ventana y al asesor.** Al vencer la Pausa no se envía nada si el chat está con
 un asesor (bot en pausa), si el cliente ya está en otro cuadro o si pasaron 24 h desde su último mensaje; esto
 último queda registrado en el chat.
+
+**RF-16 · Hay varios bots y uno es el principal** (0028). Cada bot tiene su lienzo, su borrador, sus versiones y su
+historial. El principal atiende a todo cliente que no está en otro bot; siempre hay exactamente uno. El bot que hoy
+existe pasa a ser el principal, sin cambios para los clientes.
+
+**RF-17 · "Ir a otro bot"** lleva al cliente al inicio de la versión publicada del bot elegido. No se publica si ese bot
+no tiene versión publicada o está archivado; un bot que otro usa no se archiva. "hola", "menú" y `0` vuelven siempre
+al inicio del **principal**.
+
+**RF-18 · Un bot puede arrancar por palabra clave.** Cada bot no principal tiene de 0 a 10 palabras ("es igual a", con
+la misma comparación de RF-10). Se revisan cuando el cliente es nuevo o está en el inicio del principal, nunca con un
+asesor, y antes que el resto de reglas del principal. Una palabra no se repite entre bots ni puede ser `0`, `9`,
+"hola", "menú" o "reiniciar".
+
+**RF-19 · Un bot puede arrancar por etapa del embudo.** Se elige un embudo y una etapa; cuando una oportunidad entra a
+esa etapa (la mueva el asesor o el bot), el bot arranca y envía su inicio. No arranca si el chat está con un asesor,
+si pasaron 24 h desde el último mensaje del cliente (ventana de Meta) o si el bot no tiene versión publicada; en
+esos casos queda registrado en el chat. Una etapa solo dispara un bot.
 
 ## Límites de WhatsApp (F4·4, migración 0010)
 
@@ -158,9 +178,23 @@ equipo, valor, paso a asesor). *Empezar de nuevo* borra la charla.
 - Lo pide `administrar_bot` (lo revisa la app antes de llamar al receptor, que lee con la llave de servicio).
 
 
-## Condiciones, Catálogos y Pausa (F4·9 a F4·13, decisión 0027, migración 0015)
+## Varios bots (F4·9, decisión 0028, migración 0015)
 
-**Lienzo.** "+ Mensaje" pasa a **"+ Agregar ▾"** con los cuatro cuadros; cada uno se crea en el centro de la vista y
+**Pantalla.** Configuración → Bot y horario → **Flujo** muestra la lista de bots: nombre, ⭐ principal, estado
+(publicado, solo borrador, archivado), versión publicada y si hay borrador abierto, cómo arranca (principal,
+palabras clave, etapa) y quién lo cambió por última vez. **+ Nuevo bot** pide el nombre y abre su lienzo con solo el
+cuadro de inicio. **Abrir** lleva al lienzo (`/bot/flujo/<bot>`), con "← Bots" para volver; el lienzo ocupa todo el
+ancho y el panel del cuadro se abre al lado solo al elegir uno. Menú ⋯: renombrar, duplicar (copia la versión
+publicada como borrador de un bot nuevo), marcar como principal y archivar.
+
+**Modelo.** Tabla `bots` (`id`, `nombre` único, `principal` con un solo verdadero, `archivado`, `palabras text[]`,
+`embudo_id`/`etapa_id`, quién y cuándo). `bot_flujos.bot_id`: los índices de "una sola publicada" y "un solo
+borrador" pasan a ser por bot, y las funciones del borrador reciben el bot. El cliente guarda en qué bot va
+(`leads.bot_id`) además del cuadro; un cliente cuyo bot se archivó vuelve al inicio del principal.
+
+## Condiciones, Catálogos y Pausa (F4·10 a F4·13, decisión 0027, migración 0016)
+
+**Lienzo.** "+ Mensaje" pasa a **"+ Agregar ▾"** con los cinco cuadros (Ir a otro bot es el quinto: un desplegable con los bots y una sola flecha de entrada); cada uno se crea en el centro de la vista y
 queda elegido. Un mensaje sin botones muestra la flecha "Cuando el cliente responda". Cómo se ve cada cuadro nuevo:
 
 | Cuadro | En el lienzo | Panel |
@@ -181,7 +215,7 @@ queda elegido. Un mensaje sin botones muestra la flecha "Cuando el cliente respo
 
 Funciones nuevas o ampliadas: `borrador_crear_cuadro(tipo, x, y)` (reemplaza a `borrador_crear_mensaje`),
 `borrador_guardar_condiciones`, `borrador_guardar_catalogo`, `borrador_guardar_pausa`, y `borrador_conectar` para
-las salidas con nombre. `problemas_del_flujo()` revisa las reglas RF-09 a RF-14 y `borrador_borrar_cuadro` acepta los
+las salidas con nombre. `problemas_del_flujo()` revisa las reglas RF-09 a RF-14 y RF-17 y `borrador_borrar_cuadro` acepta los
 tipos nuevos.
 
 **Motor (`flujo.py`).**
@@ -201,6 +235,10 @@ que sigan dentro de la ventana.
 **Simulador.** Condiciones y Catálogos funcionan solos (mismo motor). La Pausa muestra "⏳ Esperando 0 h 15 min 15 s"
 con el botón **"Simular que pasó el tiempo"**; escribir antes prueba la salida "El cliente respondió".
 
-**Pruebas (F4·13).** `supabase/pruebas/0015_*.sql` (tipos, ajustes, validaciones al guardar y al publicar, copia en
+**Arranques (F4·14, migración 0017).** La palabra clave se revisa en `flujo.responder` (RF-18). El cambio de etapa lo
+anota un trigger de `oportunidades` en una cola `bot_disparos`, que atiende el mismo reloj de la Pausa con las
+reglas de RF-19.
+
+**Pruebas (F4·15).** `supabase/pruebas/0015_*.sql` a `0017_*.sql` (bots, tipos, ajustes, validaciones al guardar y al publicar, copia en
 borradores) y una prueba del motor en Python que recorre la versión 1 con un juego fijo de conversaciones
 (mismos mensajes antes y después) más casos de cada cuadro nuevo, incluido el reloj con la hora simulada.

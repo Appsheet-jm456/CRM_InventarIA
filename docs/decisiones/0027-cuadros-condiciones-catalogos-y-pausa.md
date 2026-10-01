@@ -1,6 +1,6 @@
 # 0027 · Lienzo con más acciones: Condiciones, Catálogos y Pausa
 
-**Estado:** Aceptada · 1 oct 2026 · Amplía la 0026 (el dueño ya no crea un solo tipo de cuadro) · Diseño de F4·9 a F4·13
+**Estado:** Aceptada · 1 oct 2026 · Amplía la 0026 (el dueño ya no crea un solo tipo de cuadro) · Diseño de F4·10 a F4·13 (renumeradas por la 0028)
 
 ## Contexto
 
@@ -36,4 +36,4 @@ cliente, enviar un catálogo concreto y esperar un tiempo para mandar un recorda
   flujo ya publicado el bot envía el encabezado con "catálogo no disponible" y sigue.
 - Las reglas globales (`reiniciar`, saludos, código de equipo, `9`, `0`) se revisan antes que las Condiciones,
   como hoy antes que los botones.
-- Migración `0015`; el detalle está en [FLUJO-DEL-BOT.md](../FLUJO-DEL-BOT.md).
+- Migración `0016` (la `0015` es de varios bots, 0028); el detalle está en [FLUJO-DEL-BOT.md](../FLUJO-DEL-BOT.md).
