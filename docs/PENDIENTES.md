@@ -18,6 +18,9 @@ de las Fases 1 y 2 abajo. **Código nuevo:** el bot de prueba sobre Supabase (`h
    enlace de Drive con todos, desde Inventario → Catálogos.
 3. **Pendiente del dueño en F3·6:** aprobar los textos de las 3 plantillas del CRM y enviarlas a
    Meta desde Configuración → Canal WhatsApp (hoy solo hay plantillas de ejemplo en inglés).
+3. **Webhook con dirección fija ([TUNEL-WEBHOOK.md](TUNEL-WEBHOOK.md)).** El 1 oct el túnel rápido lo borró Cloudflare y el bot
+   dejó de responder horas (se arregló con `systemctl --user restart crm-meta-tunel`). Opción A ya (F2·17, Tailscale Funnel:
+   el dueño activa HTTPS y Funnel en la consola de Tailscale) y opción B al tener dominio (F2·10, Cloudflare con dominio propio).
 3. En paralelo, lo que depende del dueño: F1·6, F1·7, F1·8, clave de Gemini, PDF y enlace de Drive, hoja Excel.
 
 ## Estado de las tareas de la Fase 1
@@ -166,6 +169,7 @@ presupuesto en 4 rangos según el inventario (<$1 M, $1–1,5 M, $1,5–2 M, >$2
 | [SIMULACION-CHAT.md](SIMULACION-CHAT.md) · [simulacion/](simulacion/simulacion-chat.html) | Prototipo del chat guiado y del tipo agente; aprobado, se va a perfeccionar (F2·12) |
 | [USUARIOS-Y-PERMISOS.md](USUARIOS-Y-PERMISOS.md) | Roles, permisos y RLS de la app nueva (F2·5, decisión 0018) |
 | [ARQUITECTURA-FRONTEND.md](ARQUITECTURA-FRONTEND.md) | Carpeta `crm/`, puertos, `Shell` y lista de módulos (F2·9, decisión 0017) |
+| [TUNEL-WEBHOOK.md](TUNEL-WEBHOOK.md) | Webhook con dirección fija: opción A (Tailscale Funnel) y B (Cloudflare con dominio), paso a paso |
 | [PLAN-META-API.md](PLAN-META-API.md) | Trámites en Meta paso a paso (sección de costos ya corregida) |
 | [BRIEF.md](BRIEF.md) | La v0 (referencia de lo que se reutiliza) |
 | [sdlc/](sdlc/) | Las 5 fases con su criterio de cierre |

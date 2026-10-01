@@ -715,6 +715,7 @@ def actualizar_modelo_datos():
         ("REGLAS_DEL_NEGOCIO.md", "Reglas del negocio", "📏"),
         ("ARBOL-DE-RESPUESTA.md", "Árbol de respuesta del bot", "🌳"),
         ("SIMULACION-CHAT.md", "Simulación del chat", "💬"),
+        ("TUNEL-WEBHOOK.md", "Webhook con dirección fija (opciones A y B)", "🔌"),
     ]:
         fuente = DOCS / archivo
         if not fuente.exists():
