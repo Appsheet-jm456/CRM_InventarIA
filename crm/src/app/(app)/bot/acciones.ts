@@ -104,6 +104,11 @@ export async function guardarCondiciones(bot: number, clave: string, nombre: str
   return rpc('borrador_guardar_condiciones', { p_clave: clave, p_nombre: nombre, p_condiciones: condiciones, p_ninguna: ninguna, p_bot: bot },
     'Condiciones guardadas en el borrador.')
 }
+// Catálogos (RF-12): encabezado, catálogo y a dónde sigue.
+export async function guardarCatalogo(bot: number, clave: string, nombre: string, texto: string, catalogo: number | null, siguiente: string | null) {
+  return rpc('borrador_guardar_catalogo', { p_clave: clave, p_nombre: nombre, p_texto: texto, p_catalogo: catalogo, p_siguiente: siguiente, p_bot: bot },
+    'Cuadro guardado en el borrador.')
+}
 // "Ir a otro bot" (RF-17): nombre y bot de destino.
 export async function guardarAjustes(bot: number, clave: string, nombre: string, ajustes: Record<string, unknown>) {
   return rpc('borrador_guardar_ajustes', { p_clave: clave, p_nombre: nombre, p_ajustes: ajustes, p_bot: bot }, 'Cuadro guardado en el borrador.')

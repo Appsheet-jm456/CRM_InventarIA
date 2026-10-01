@@ -6,6 +6,7 @@ import { crearCliente } from '@/lib/supabase/server'
 import { botsDe, contexto, cuadrosDe } from '../../datos'
 import { Historial, type VersionFila } from '../../Historial'
 import { Lienzo } from '../../Lienzo'
+import type { CatalogoOpcion } from '../../PanelCatalogo'
 
 // El lienzo de un bot y su historial de versiones (F4·9, decisión 0028). Ocupa todo el ancho de la pantalla.
 export default async function BotFlujo({ params, searchParams }: { params: { id: string }; searchParams: { t?: string; v?: string } }) {
@@ -35,9 +36,12 @@ export default async function BotFlujo({ params, searchParams }: { params: { id:
     }))
     contenido = <Historial bot={id} versiones={filas} hayBorrador={!!abierto} archivado={bot.archivado} />
   } else {
-    const [{ ctx, opcionesMarca }, todos, { data: publicados }] = await Promise.all([
+    const [{ ctx, opcionesMarca }, todos, { data: publicados }, { data: catalogos }] = await Promise.all([
       contexto(supabase), botsDe(supabase), supabase.from('bot_flujos').select('bot_id').eq('estado', 'publicada'),
+      supabase.from('catalogos').select('id, nombre, tipo, activo, categoria, marca').order('nombre'),
     ])
+    // Para el cuadro Catálogos (RF-12, RF-13): los de Inventario, y si este usuario puede subir uno nuevo.
+    const extra = { catalogos: (catalogos ?? []) as CatalogoOpcion[], puedeSubirCatalogo: puede(sesion, ['administrar_inventario']) }
     // Para «Ir a otro bot» (RF-17): a qué bots se puede llevar al cliente.
     const bots = todos.filter((b) => b.id !== id)
       .map((b) => ({ id: b.id, nombre: b.nombre, archivado: b.archivado, publicado: !!publicados?.some((f) => f.bot_id === b.id) }))
@@ -46,11 +50,11 @@ export default async function BotFlujo({ params, searchParams }: { params: { id:
     if (otra && otra !== abierto?.version) {
       // Una versión del historial (o la publicada con un borrador abierto), solo para ver.
       const vista = await cuadrosDe(supabase, id, otra, opcionesMarca)
-      contenido = <Lienzo bot={bot} bots={bots} publicada={publicada} borrador={null} archivada={vista.version ? vista : undefined} contexto={ctx} hayBorrador={!!abierto} />
+      contenido = <Lienzo bot={bot} bots={bots} {...extra} publicada={publicada} borrador={null} archivada={vista.version ? vista : undefined} contexto={ctx} hayBorrador={!!abierto} />
     } else {
       const borrador = await cuadrosDe(supabase, id, 'borrador', opcionesMarca)
       const { data: choques } = borrador.version ? await supabase.rpc('cambios_publicados_despues', { p_bot: id }) : { data: [] }
-      contenido = <Lienzo bot={bot} bots={bots} publicada={publicada} borrador={borrador.version ? borrador : null} contexto={ctx}
+      contenido = <Lienzo bot={bot} bots={bots} {...extra} publicada={publicada} borrador={borrador.version ? borrador : null} contexto={ctx}
         choques={(choques ?? []) as { clave: string; nombre: string }[]} hayBorrador={!!abierto} />
     }
   }

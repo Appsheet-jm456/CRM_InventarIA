@@ -10,7 +10,7 @@ import { redirect } from 'next/navigation'
 import { crearCliente } from '@/lib/supabase/server'
 import { CAMPOS_TEXTO } from '@/lib/inventario'
 
-export type Resultado = { error?: string; ok?: string }
+export type Resultado = { error?: string; ok?: string; id?: number } // id: el catálogo creado (lo elige el lienzo, F4·12)
 
 const FOTOS: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' }
 const MAX_FOTO = 5 * 1024 * 1024
@@ -178,13 +178,14 @@ export async function crearCatalogo(_: Resultado, datos: FormData): Promise<Resu
     return { error: 'Elige si es un PDF o un enlace de Drive.' }
   }
 
-  const { error } = await supabase.from('catalogos').insert(fila)
+  const { data: creado, error } = await supabase.from('catalogos').insert(fila).select('id').single()
   if (error) {
     if (fila.archivo) await supabase.storage.from('catalogos').remove([fila.archivo])
     return { error: error.code === '23505' ? 'Ya hay un catálogo "Todos" activo: desactívalo primero.' : mensaje(error) }
   }
   revalidatePath('/inventario/catalogos')
-  return { ok: `Catálogo ${nombre} agregado.` }
+  revalidatePath('/bot', 'layout') // el cuadro Catálogos del lienzo lo ofrece enseguida
+  return { ok: `Catálogo ${nombre} agregado.`, id: creado.id }
 }
 
 export async function activarCatalogo(id: number, activo: boolean): Promise<Resultado> {

@@ -10,12 +10,17 @@ function Agregar() {
   return <button className="btn primary" disabled={pending}>{pending ? 'Subiendo…' : 'Agregar catálogo'}</button>
 }
 
-export function FormCatalogo() {
+// alCrear: el lienzo lo abre en una ventana y elige el catálogo recién creado (F4·12, RF-13).
+export function FormCatalogo({ alCrear }: { alCrear?: (id: number) => void } = {}) {
   const [estado, accion] = useFormState<Resultado, FormData>(crearCatalogo, {})
   const [tipo, setTipo] = useState<'pdf' | 'drive'>('pdf')
   const [todos, setTodos] = useState(false)
   const form = useRef<HTMLFormElement>(null)
-  useEffect(() => { if (estado.ok) { form.current?.reset(); setTipo('pdf'); setTodos(false) } }, [estado])
+  useEffect(() => {
+    if (!estado.ok) return
+    form.current?.reset(); setTipo('pdf'); setTodos(false)
+    if (estado.id) alCrear?.(estado.id)
+  }, [estado]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <form ref={form} action={accion} className="panel">

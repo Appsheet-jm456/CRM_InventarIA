@@ -321,6 +321,21 @@ def condicion(st, c):
     return ir(st, (c.get("salidas") or {}).get("ninguna"))
 
 
+def enviar_catalogo(st, c):
+    """Catálogos (RF-12): el encabezado y el catálogo elegido (el PDF como documento o el enlace de Drive), y sigue en el
+    acto por "siguiente". Si el catálogo se apagó o se borró, avisa y sigue igual."""
+    st["nodo"] = c["clave"]
+    encabezado = texto_cuadro(c["clave"])
+    elegido = db.catalogo((c.get("ajustes") or {}).get("catalogo_id"))
+    if not elegido:
+        salida = [m_texto(f"{encabezado}\n\n_El catálogo no está disponible en este momento._")]
+    elif elegido["tipo"] == "pdf":
+        salida = [m_texto(encabezado), {"_pdf": elegido}]  # el receptor lo sube a Meta y lo reutiliza 25 días
+    else:
+        salida = [m_texto(f"{encabezado}\n\n📚 *{elegido['nombre']}*\n{elegido['url']}")]
+    return salida + ir(st, (c.get("salidas") or {}).get("siguiente"))
+
+
 def ir(st, clave):
     """Lleva al cliente a un cuadro y devuelve lo que ve. Un cuadro que ya no existe lleva al inicio."""
     _hilo.saltos = getattr(_hilo, "saltos", 0) + 1
@@ -333,6 +348,8 @@ def ir(st, clave):
         return cambiar_de_bot(st, (c.get("ajustes") or {}).get("bot_id"))
     if c["tipo"] == "condicion":
         return condicion(st, c)
+    if c["tipo"] == "catalogo":
+        return enviar_catalogo(st, c)
     st["nodo"], st["errores"] = c["clave"], 0
     st["campos"].pop("Errores bot", None)
     aplicar(st, c["al_entrar"])

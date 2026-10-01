@@ -17,7 +17,7 @@
 | ✅ **F4·9** Varios bots (1 oct, migración 0015) | "Flujo" abre la lista de bots: crear, renombrar, duplicar, archivar y marcar el principal; cada bot con su lienzo, borrador, versiones y simulador. Pantalla rediseñada con más espacio para el lienzo |
 | ✅ **F4·10** "+ Agregar", mensaje sin botones e "Ir a otro bot" (1 oct, migración 0016) | Desplegable con Mensaje, Condiciones, Catálogos, Pausa e Ir a otro bot; mensaje sin botones con la flecha "Cuando el cliente responda" |
 | ✅ **F4·11** Condiciones (1 oct, migración 0017) | Cuadro que compara el último mensaje del cliente ("es igual a", varias palabras por condición) y sale por la primera que se cumpla o por "Ninguna se cumple" |
-| **F4·12** Catálogos | Encabezado más un catálogo elegido de Inventario o subido en una ventana; envía y sigue |
+| ✅ **F4·12** Catálogos (1 oct, migración 0018) | Encabezado más un catálogo elegido de Inventario o subido en una ventana; envía y sigue |
 | **F4·13** Pausa y recordatorio | Espera horas, minutos y segundos; salidas "El cliente respondió" y "Pasó el tiempo"; reloj en el receptor |
 | **F4·14** Arranque por palabra clave y por etapa del embudo | Un bot arranca si el cliente escribe su palabra clave o si su oportunidad entra a cierta etapa |
 | **F4·15** Simulador y pruebas | Probar los cuadros y bots nuevos en el simulador (la Pausa con "Simular que pasó el tiempo"), pruebas de la base y del motor |
@@ -57,7 +57,7 @@ De 1 a 10 condiciones, cada una con al menos una palabra; una palabra no se repi
 **RF-11 · Las reglas globales van primero.** `reiniciar`, saludos, código de equipo, `9` y `0` se atienden antes que
 las Condiciones, igual que antes que los botones. Si el dueño pone `9` en una condición, el lienzo lo avisa.
 
-**RF-12 · Catálogos envía y sigue.** Manda el encabezado (hasta 1.024 caracteres) y el catálogo (PDF como documento o
+**RF-12 · Catálogos envía y sigue.** Manda el encabezado (un mensaje de texto, hasta 4.096 caracteres) y el catálogo (PDF como documento o
 el enlace de Drive) y pasa enseguida al cuadro de "Siguiente", que es obligatoria. El catálogo debe existir y estar
 activo para publicar; si se apaga después, el bot envía el encabezado con "catálogo no disponible" y sigue.
 
@@ -259,7 +259,24 @@ palabras cada una, sin repetir entre condiciones y sin llevar a la ficha ni a s�
 palabras y destino en cada condición. Pruebas: `supabase/pruebas/0017_condiciones.sql` (8). El bot principal responde
 igual que antes en 70.536 conversaciones.
 
-## Catálogos y Pausa (F4·12 y F4·13, decisión 0027)
+## Catálogos (F4·12, decisión 0027, migración 0018)
+
+**Lienzo.** "+ Agregar" → 📚 **Catálogos**. El cuadro muestra su encabezado, el catálogo elegido y la flecha «Luego». En el
+panel: nombre, encabezado (con contador), el catálogo (los de Inventario → Catálogos, PDF 📄 o enlace 🔗, con su categoría y
+marca) y «Siguiente». **+ Subir catálogo** abre en una ventana el mismo formulario de Inventario → Catálogos y deja elegido el
+catálogo nuevo; solo aparece con `administrar_inventario` (RF-13). La vista previa muestra el encabezado y el documento.
+
+**Motor.** `flujo.enviar_catalogo`: el encabezado como texto y el PDF como documento (`{"_pdf": …}`, el receptor lo sube a Meta y
+lo reutiliza 25 días) o, si es de Drive, el encabezado con el enlace; luego sigue en el acto por `siguiente`. Si el catálogo se
+apagó o se borró después de publicar, envía el encabezado con «El catálogo no está disponible en este momento» y sigue
+(`db.catalogo`). El encabezado también se corrige desde **Mensajes del bot** en la versión publicada.
+
+**Base (0018).** `borrador_crear_cuadro('catalogo', …)` crea `CAT<n>`; `borrador_guardar_catalogo(clave, nombre, texto,
+catálogo, siguiente, bot)` exige encabezado y un catálogo que exista, y no deja ir a la ficha ni a sí mismo;
+`problemas_del_flujo` exige catálogo elegido, existente y activo. `crearCatalogo` devuelve el id creado. Pruebas:
+`supabase/pruebas/0018_catalogos.sql` (6). El bot principal responde igual que antes en 70.536 conversaciones.
+
+## Pausa (F4·13, decisión 0027)
 
 **Lienzo.** "+ Mensaje" pasa a **"+ Agregar ▾"** con los cinco cuadros (Ir a otro bot es el quinto: un desplegable con los bots y una sola flecha de entrada); cada uno se crea en el centro de la vista y
 queda elegido. Un mensaje sin botones muestra la flecha "Cuando el cliente responda". Cómo se ve cada cuadro nuevo:

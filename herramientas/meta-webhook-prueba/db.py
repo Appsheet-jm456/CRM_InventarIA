@@ -173,6 +173,14 @@ def catalogo_para(categoria, marca):
     return (elegibles[0] if elegibles else None), todos
 
 
+def catalogo(catalogo_id):
+    """Un catálogo activo por id (cuadro Catálogos, F4·12), o None si se apagó o se borró."""
+    if not catalogo_id:
+        return None
+    filas = pedir(f"catalogos?id=eq.{int(catalogo_id)}&activo=is.true&select=*")
+    return filas[0] if filas else None
+
+
 def guardar_media_id(catalogo_id, media_id):
     pedir(f"catalogos?id=eq.{catalogo_id}", "PATCH", {"meta_media_id": media_id, "meta_media_en": "now"},
           "return=minimal")

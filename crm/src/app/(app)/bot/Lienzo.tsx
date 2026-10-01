@@ -14,6 +14,7 @@ import {
   type Resultado,
 } from './acciones'
 import type { Contexto } from './Mensajes'
+import { PanelCatalogo, type CatalogoOpcion } from './PanelCatalogo'
 import { PanelCondiciones } from './PanelCondiciones'
 import { Simulador } from './Simulador'
 import { VistaWhatsApp } from './VistaWhatsApp'
@@ -67,7 +68,7 @@ function salidasDe(c: Pick<Cuadro, 'tipo' | 'opciones'>): string[] {
 
 // RF-05 en el navegador (la base lo exige al publicar, F4·7): opciones sin destino, cuadros a los que no se llega
 // y textos que pasan el límite de WhatsApp.
-function revisar(cuadros: Cuadro[], bots: OtroBot[]) {
+function revisar(cuadros: Cuadro[], bots: OtroBot[], catalogos: CatalogoOpcion[]) {
   const porClave = new Map(cuadros.map((c) => [c.clave, c]))
   const problemas = new Map<string, string[]>()
   const anotar = (clave: string, p: string) => problemas.set(clave, [...(problemas.get(clave) ?? []), p])
@@ -95,6 +96,12 @@ function revisar(cuadros: Cuadro[], bots: OtroBot[]) {
         else if (!o.destino) anotar(c.clave, `La condición «${o.titulo}» no lleva a ningún cuadro.`)
       }
     }
+    if (c.tipo === 'catalogo') {
+      const cat = catalogos.find((k) => k.id === Number(c.ajustes?.catalogo_id))
+      if (!c.ajustes?.catalogo_id) anotar(c.clave, 'Elige qué catálogo envía.')
+      else if (!cat) anotar(c.clave, 'Ese catálogo ya no existe: elige otro.')
+      else if (!cat.activo) anotar(c.clave, `El catálogo «${cat.nombre}» está desactivado.`)
+    }
     if (c.tipo === 'ir_bot') {
       const destino = bots.find((b) => b.id === Number(c.ajustes?.bot_id))
       if (!destino) anotar(c.clave, 'Elige a qué bot lleva.')
@@ -110,7 +117,7 @@ function revisar(cuadros: Cuadro[], bots: OtroBot[]) {
 // --------------------------------------------------------------------------- //
 // Un cuadro en el lienzo
 // --------------------------------------------------------------------------- //
-type DatosNodo = { cuadro: Cuadro; marca: 'nuevo' | 'cambiado' | null; problemas: string[]; editable: boolean; aqui: boolean; destinoBot?: string }
+type DatosNodo = { cuadro: Cuadro; marca: 'nuevo' | 'cambiado' | null; problemas: string[]; editable: boolean; aqui: boolean; destinoBot?: string; catalogo?: string }
 
 function recorte(texto: string, n = 110) {
   const t = texto.replace(/\s+/g, ' ').trim()
@@ -118,7 +125,7 @@ function recorte(texto: string, n = 110) {
 }
 
 function NodoCuadro({ data, selected }: NodeProps<Node<DatosNodo>>) {
-  const { cuadro: c, marca, problemas, editable, aqui, destinoBot } = data
+  const { cuadro: c, marca, problemas, editable, aqui, destinoBot, catalogo } = data
   const sistema = !delDueno(c)
   const unible = editable && !sistema
   // Mientras se arrastra una flecha, todo el cuadro sirve para soltarla (no solo su punto de entrada).
@@ -144,6 +151,7 @@ function NodoCuadro({ data, selected }: NodeProps<Node<DatosNodo>>) {
       <small className="nodo-bot-tipo">{sistema ? `🔒 ${TIPOS[c.tipo]}` : TIPOS[c.tipo]}</small>
       {c.formato !== 'sistema' && c.formato !== 'ficha' && <p className="nodo-bot-texto">{recorte(c.texto)}</p>}
       {c.tipo === 'condicion' && <p className="nodo-bot-texto">🔀 Según el último mensaje del cliente</p>}
+      {c.tipo === 'catalogo' && <p className="nodo-bot-texto">📚 {catalogo ?? 'Elige el catálogo'}</p>}
       {c.tipo === 'ir_bot' && <p className="nodo-bot-texto">↪ {destinoBot ? <>Va al inicio de <b>{destinoBot}</b></> : 'Elige a qué bot lleva'}</p>}
       {c.tipo === 'presupuesto' && <small className="muted">Rangos de presupuesto o un monto escrito</small>}
       {c.tipo === 'marca' && <small className="muted">Marcas con stock en el inventario</small>}
@@ -397,11 +405,11 @@ function PanelPublicar({ bot, borrador, publicada, choques, problemas, alTermina
 // --------------------------------------------------------------------------- //
 // El lienzo
 // --------------------------------------------------------------------------- //
-// "+ Agregar" (RF-08). Catálogos y Pausa llegan en F4·12 y F4·13.
+// "+ Agregar" (RF-08). La Pausa llega en F4·13.
 const AGREGAR: { texto: string; tipo: string; detalle: string; deshabilitada?: boolean }[] = [
   { texto: '💬 Mensaje', tipo: 'mensaje', detalle: 'Texto con botones o lista; sin opciones, espera la respuesta' },
   { texto: '🔀 Condiciones', tipo: 'condicion', detalle: 'Elige el camino según lo que escribió el cliente' },
-  { texto: '📚 Catálogos', tipo: 'catalogo', detalle: 'Próximamente', deshabilitada: true },
+  { texto: '📚 Catálogos', tipo: 'catalogo', detalle: 'Envía un catálogo de Inventario y sigue' },
   { texto: '⏳ Pausa', tipo: 'pausa', detalle: 'Próximamente', deshabilitada: true },
   { texto: '↪ Ir a otro bot', tipo: 'ir_bot', detalle: 'Lleva al cliente al inicio de otro bot' },
 ]
@@ -421,6 +429,8 @@ function hueco(cuadros: Cuadro[], x: number, y: number) {
 type Props = {
   bot: { id: number; nombre: string; archivado: boolean }
   bots: OtroBot[] // los demás bots, para «Ir a otro bot»
+  catalogos: CatalogoOpcion[] // los de Inventario, para el cuadro Catálogos
+  puedeSubirCatalogo: boolean
   publicada: Version
   borrador: Version | null
   archivada?: Version
@@ -429,7 +439,7 @@ type Props = {
   hayBorrador?: boolean
 }
 
-function LienzoInterno({ bot, bots, publicada, borrador, archivada, contexto, choques = [], hayBorrador = false }: Props) {
+function LienzoInterno({ bot, bots, catalogos, puedeSubirCatalogo, publicada, borrador, archivada, contexto, choques = [], hayBorrador = false }: Props) {
   const router = useRouter()
   const flujo = useReactFlow()
   const editable = !!borrador
@@ -443,7 +453,7 @@ function LienzoInterno({ bot, bots, publicada, borrador, archivada, contexto, ch
   const [aviso, setAviso] = useState<Resultado>({})
   const [ocupado, iniciar] = useTransition()
 
-  const problemas = useMemo(() => revisar(cuadros, bots), [cuadros, bots])
+  const problemas = useMemo(() => revisar(cuadros, bots, catalogos), [cuadros, bots, catalogos])
   const totalProblemas = [...problemas.values()].reduce((s, p) => s + p.length, 0)
   const anteriores = useMemo(() => new Map(publicada.cuadros.map((c) => [c.clave, c])), [publicada])
 
@@ -455,7 +465,8 @@ function LienzoInterno({ bot, bots, publicada, borrador, archivada, contexto, ch
         || JSON.stringify(antes.salidas) !== JSON.stringify(c.salidas) || JSON.stringify(antes.ajustes) !== JSON.stringify(c.ajustes) ? 'cambiado' : null
     return { id: c.clave, type: 'cuadro', position: { x: c.x, y: c.y }, draggable: editable,
       data: { cuadro: c, marca, problemas: problemas.get(c.clave) ?? [], editable, aqui: probando && aqui?.replace(/-vacio$/, '') === c.clave,
-        destinoBot: c.tipo === 'ir_bot' ? bots.find((b) => b.id === Number(c.ajustes?.bot_id))?.nombre : undefined } }
+        destinoBot: c.tipo === 'ir_bot' ? bots.find((b) => b.id === Number(c.ajustes?.bot_id))?.nombre : undefined,
+        catalogo: c.tipo === 'catalogo' ? catalogos.find((k) => k.id === Number(c.ajustes?.catalogo_id))?.nombre : undefined } }
   })
   const armarFlechas = (): Edge[] => cuadros.flatMap((c) => [
     ...(c.opciones ?? []).filter((o) => o.destino && o.destino !== '@pedir_codigo').map((o) => ({
@@ -606,6 +617,14 @@ function LienzoInterno({ bot, bots, publicada, borrador, archivada, contexto, ch
             <PanelPublicar bot={bot.id} borrador={borrador} publicada={publicada} choques={choques} problemas={totalProblemas}
               alCancelar={() => setPublicando(false)}
               alTerminar={(r) => { setAviso(r); if (!r.error) { setPublicando(false); router.refresh() } }} />
+          ) : elegidoCuadro?.tipo === 'catalogo' ? (
+            <PanelCatalogo key={elegidoCuadro.clave + elegidoCuadro.actualizado_en} bot={bot.id} cuadro={elegidoCuadro} editable={editable}
+              catalogos={catalogos} puedeSubir={puedeSubirCatalogo}
+              destinos={cuadros.filter((c) => DESTINOS.includes(c.tipo) && c.clave !== elegidoCuadro.clave)}
+              alTerminar={(r, borrado) => {
+                setAviso(r)
+                if (!r.error) { if (borrado) setElegido(null); router.refresh() }
+              }} />
           ) : elegidoCuadro?.tipo === 'condicion' ? (
             <PanelCondiciones key={elegidoCuadro.clave + elegidoCuadro.actualizado_en} bot={bot.id} cuadro={elegidoCuadro} editable={editable}
               destinos={cuadros.filter((c) => DESTINOS.includes(c.tipo) && c.clave !== elegidoCuadro.clave)}
