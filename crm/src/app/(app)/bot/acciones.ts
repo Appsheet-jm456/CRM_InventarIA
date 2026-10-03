@@ -94,7 +94,7 @@ export async function crearCuadro(bot: number, tipo: string, x: number, y: numbe
 }
 // salidas: la flecha "respuesta" de un mensaje sin botones (RF-09).
 export async function guardarCuadro(bot: number, clave: string, nombre: string | null, texto: string | null,
-  opciones: { id: string; titulo: string; destino?: string | null }[] | null, salidas: Record<string, string | null> | null = null) {
+  opciones: { id: string; titulo: string; destino?: string | null }[] | null, salidas: Record<string, string | number | null> | null = null) {
   return rpc('borrador_guardar_cuadro', { p_clave: clave, p_nombre: nombre, p_texto: texto, p_opciones: opciones, p_bot: bot, p_salidas: salidas },
     'Cuadro guardado en el borrador.')
 }
@@ -151,7 +151,7 @@ export async function volverAVersion(bot: number, version: number, reemplazar: b
 export type EstadoSimulado = Record<string, unknown> | null
 export type Simulacion = { error?: string; mensajes?: Record<string, unknown>[]; avisos?: string[]; estado?: EstadoSimulado }
 
-export async function simular(bot: number, version: number, estado: EstadoSimulado, texto: string, evento?: 'tiempo'): Promise<Simulacion> {
+export async function simular(bot: number, version: number, estado: EstadoSimulado, texto: string, evento?: 'tiempo' | 'fallo'): Promise<Simulacion> {
   const sesion = await obtenerSesion()
   // El receptor lee con la llave de servicio: el permiso se revisa aquí antes de llamarlo.
   if (!sesion || !puede(sesion, ['administrar_bot'])) return { error: 'No tienes permiso para probar el bot.' }

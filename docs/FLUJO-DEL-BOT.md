@@ -20,8 +20,8 @@
 | ✅ **F4·12** Catálogos (1 oct, migración 0018) | Encabezado más un catálogo elegido de Inventario o subido en una ventana; envía y sigue |
 | ✅ **F4·13** Pausa y recordatorio (1 oct, migración 0019) | Espera horas, minutos y segundos; salidas "El cliente respondió" y "Pasó el tiempo"; reloj en el receptor |
 | **F4·14** Arranque por palabra clave y por etapa del embudo | Un bot arranca si el cliente escribe su palabra clave o si su oportunidad entra a cierta etapa |
-| **F4·17** Lienzo a pantalla completa (3 oct, decisión 0030) | El lienzo de un bot ocupa toda la pantalla, con barra superior: ← Cancelar, Probar, Publicar… y Guardar. Se mantiene el borrador |
-| **F4·18** Salidas del Mensaje (3 oct, decisión 0030, migración 0021) | «Otra respuesta», «Sin respuesta» (con tiempo) y «Error al enviar el mensaje», como en Kommo |
+| ✅ **F4·17** Lienzo a pantalla completa (3 oct, decisión 0030) | El lienzo de un bot ocupa toda la pantalla, con barra superior: ← Cancelar, Probar, Publicar… y Guardar. Se mantiene el borrador |
+| ✅ **F4·18** Salidas del Mensaje (3 oct, decisión 0030, migración 0021) | «Otra respuesta», «Sin respuesta» (con tiempo) y «Error al enviar el mensaje», como en Kommo |
 | **F4·15** Simulador y pruebas | Probar los cuadros y bots nuevos en el simulador (la Pausa con "Simular que pasó el tiempo"), pruebas de la base y del motor |
 
 ## Reglas
@@ -110,6 +110,26 @@ la flecha conectada hace falta el tiempo; sin flecha no pasa nada.
 el envío al instante o si luego avisa por el webhook que el mensaje **falló** (estado `failed`: fuera de las 24 h, número inválido, cliente que bloqueó).
 Solo se sigue una vez por mensaje, solo si el cliente sigue en ese cuadro y el bot no está en pausa, y lo que se envía desde esa salida no vuelve
 a dispararla. A dónde lleva lo decide el dueño (por ejemplo a un asesor o a un aviso).
+
+## Salidas del Mensaje (F4·18, migración 0021)
+
+**Base.** `salidas_opcionales(tipo, opciones)` dice cuáles admite un Mensaje (`otra`, `sin_respuesta`, `error`; sin botones, sin `otra`).
+Solo se guardan las conectadas, así que un mensaje sin ellas queda igual que antes. `ajustes.espera_segundos` (900 por defecto) es el
+tiempo de «Sin respuesta». `borrador_guardar_cuadro` las recibe en `p_salidas` junto con `espera_segundos`; `borrador_conectar` las une
+con flechas; `problemas_del_flujo` revisa destino, tiempo y que «Sin respuesta» no vuelva al mismo cuadro. `mensajes.cuadro`,
+`desde_error` y `error_atendido` ligan un `failed` al cuadro que lo envió. Pruebas: `supabase/pruebas/0021_salidas_del_mensaje.sql` (11).
+
+**Motor (`flujo.py`).** «Otra respuesta» va después de las reglas globales y antes del intérprete. Mostrar un Mensaje con «Sin
+respuesta» fija `espera_hasta`; cualquier mensaje del cliente la cancela; `tiempo_cumplido` sigue `tiempo` (Pausa) o `sin_respuesta`
+(Mensaje). Un Mensaje con «Error al enviar» lleva la marca interna `_cuadro`; `envio_fallido(st, clave)` sigue la salida si el cliente
+sigue en ese cuadro y el bot no está en pausa.
+
+**Receptor.** `enviar_mensajes` guarda el cuadro de cada envío y, si Meta lo rechaza al instante, sigue «Error al enviar».
+Un estado `failed` del webhook llama a `error_tardio`, que toma el mensaje una sola vez (`tomar_error_de_envio`) y lo atiende con el
+candado del número. Lo enviado desde esa salida lleva `desde_error` y no la vuelve a disparar.
+
+**Lienzo y simulador.** Las salidas van abajo del Mensaje, en gris y la de error en rojo; el panel tiene «Otras salidas» con el tiempo.
+El simulador muestra «Simular que pasó el tiempo» también en un Mensaje con «Sin respuesta» y «Simular fallo de envío» si tiene error.
 
 ## Límites de WhatsApp (F4·4, migración 0010)
 

@@ -16,6 +16,7 @@ import {
 import type { Contexto } from './Mensajes'
 import { PanelCatalogo, type CatalogoOpcion } from './PanelCatalogo'
 import { PanelCondiciones } from './PanelCondiciones'
+import { OtrasSalidas } from './OtrasSalidas'
 import { MAX_ESPERA, PanelPausa, textoEspera } from './PanelPausa'
 import { Simulador } from './Simulador'
 import { VistaWhatsApp } from './VistaWhatsApp'
@@ -55,6 +56,7 @@ const TIPOS: Record<Cuadro['tipo'], string> = {
 const SALIDAS: Record<string, string> = {
   siguiente: 'Luego', cambiar_presupuesto: 'Sin equipos → cambiar presupuesto', respuesta: 'Cuando el cliente responda',
   ninguna: 'Ninguna se cumple', respondio: 'El cliente respondió', tiempo: 'Pasó el tiempo',
+  otra: 'Otra respuesta', sin_respuesta: 'Sin respuesta', error: 'Error al enviar el mensaje',
 }
 // Los cuadros que crea el dueño desde "+ Agregar" (RF-08): se editan, se unen y se borran. Los demás son del sistema.
 const DEL_DUENO: Cuadro['tipo'][] = ['mensaje', 'ir_bot', 'condicion', 'catalogo', 'pausa']
@@ -65,6 +67,12 @@ const DESTINOS: Cuadro['tipo'][] = ['mensaje', 'presupuesto', 'marca', 'asesor',
 function salidasDe(c: Pick<Cuadro, 'tipo' | 'opciones'>): string[] {
   if (c.tipo === 'mensaje') return c.opciones?.length ? [] : ['respuesta']
   return { condicion: ['ninguna'], catalogo: ['siguiente'], pausa: ['respondio', 'tiempo'] }[c.tipo as string] ?? []
+}
+
+// Salidas opcionales del Mensaje (RF-20 a RF-22, espejo de salidas_opcionales, migración 0021): sin conectar no pasa nada.
+function opcionalesDe(c: Pick<Cuadro, 'tipo' | 'opciones'>): string[] {
+  if (c.tipo !== 'mensaje') return []
+  return c.opciones?.length ? ['otra', 'sin_respuesta', 'error'] : ['sin_respuesta', 'error']
 }
 
 // RF-05 en el navegador (la base lo exige al publicar, F4·7): opciones sin destino, cuadros a los que no se llega
@@ -90,6 +98,15 @@ function revisar(cuadros: Cuadro[], bots: OtroBot[], catalogos: CatalogoOpcion[]
     if (delDueno(c)) {
       for (const s of salidasDe(c)) if (!c.salidas?.[s]) anotar(c.clave, `«${SALIDAS[s]}» no lleva a ningún cuadro.`)
       if (!alcanzados.has(c.clave)) anotar(c.clave, 'Ningún cuadro lleva aquí: el cliente nunca llegará.')
+    }
+    for (const s of opcionalesDe(c)) {
+      const d = c.salidas?.[s]
+      if (d && !porClave.has(d)) anotar(c.clave, `«${SALIDAS[s]}» lleva a un cuadro que no existe.`)
+    }
+    if (c.tipo === 'mensaje' && c.salidas?.sin_respuesta) {
+      if (c.salidas.sin_respuesta === c.clave) anotar(c.clave, '«Sin respuesta» no puede volver al mismo mensaje: se repetiría sin fin.')
+      const e = Number(c.ajustes?.espera_segundos ?? 0)
+      if (!(e >= 1 && e <= MAX_ESPERA)) anotar(c.clave, 'La espera de «Sin respuesta» va de 1 segundo a 23 h 59 min 59 s.')
     }
     if (c.tipo === 'condicion') {
       for (const o of c.opciones ?? []) {
@@ -135,11 +152,14 @@ function NodoCuadro({ data, selected }: NodeProps<Node<DatosNodo>>) {
   const unible = editable && !sistema
   // Mientras se arrastra una flecha, todo el cuadro sirve para soltarla (no solo su punto de entrada).
   const arrastrando = useConnection((u) => u.inProgress)
-  const filas: { id: string; titulo: string; destino?: string | null; unible: boolean }[] = [
+  const filas: { id: string; titulo: string; destino?: string | null; unible: boolean; opcional?: boolean }[] = [
     ...(c.opciones ?? []).map((o) => ({ id: o.id, destino: o.destino, unible,
       titulo: c.tipo === 'condicion' ? `${o.titulo} = ${o.palabras?.length ? o.palabras.join(' · ') : '…'}` : `${o.id}. ${o.titulo}` })),
     // Las salidas de un cuadro del dueño van en su orden (la base guarda el JSON con otro orden de claves).
     ...(delDueno(c) ? salidasDe(c) : Object.keys(c.salidas ?? {})).map((s) => ({ id: s, titulo: SALIDAS[s] ?? s, destino: c.salidas?.[s] ?? null, unible })),
+    // Como en Kommo: abajo y en gris; «Error al enviar» en rojo. Sueltas no son un problema (RF-20 a RF-22).
+    ...opcionalesDe(c).map((s) => ({ id: s, destino: c.salidas?.[s] ?? null, unible, opcional: true,
+      titulo: s === 'sin_respuesta' && c.salidas?.[s] ? `${SALIDAS[s]} · ${textoEspera(Number(c.ajustes?.espera_segundos ?? 900))}` : SALIDAS[s] })),
   ]
   return (
     <div className={`nodo-bot ${sistema ? 'sistema' : ''} ${selected ? 'elegido' : ''} ${problemas.length ? 'con-problema' : ''} ${aqui ? 'aqui' : ''}`}>
@@ -166,7 +186,7 @@ function NodoCuadro({ data, selected }: NodeProps<Node<DatosNodo>>) {
       {filas.length > 0 && (
         <ul className="nodo-bot-opciones">
           {filas.map((f) => (
-            <li key={f.id} className={!f.destino && !sistema ? 'suelta' : ''}>
+            <li key={f.id} className={f.opcional ? `opcional${f.id === 'error' ? ' error' : ''}` : !f.destino && !sistema ? 'suelta' : ''}>
               <span>{f.titulo}</span>
               {f.destino === '@pedir_codigo' && <small className="muted"> · pide el código</small>}
               <Handle type="source" position={Position.Right} id={f.id} isConnectable={f.unible} />
@@ -196,6 +216,10 @@ function Panel({ bot, bots, cuadro, cuadros, editable, contexto, alTerminar }: {
   const [texto, setTexto] = useState(cuadro.texto)
   const [opciones, setOpciones] = useState<OpcionFlujo[] | null>(cuadro.opciones)
   const [respuesta, setRespuesta] = useState<string | null>(cuadro.salidas?.respuesta ?? null)
+  const [otra, setOtra] = useState<string | null>(cuadro.salidas?.otra ?? null)
+  const [sinRespuesta, setSinRespuesta] = useState<string | null>(cuadro.salidas?.sin_respuesta ?? null)
+  const [error, setError] = useState<string | null>(cuadro.salidas?.error ?? null)
+  const [espera, setEspera] = useState(Number(cuadro.ajustes?.espera_segundos ?? 900))
   const [destinoBot, setDestinoBot] = useState(String(cuadro.ajustes?.bot_id ?? ''))
   const [ocupado, iniciar] = useTransition()
   const mensaje = cuadro.tipo === 'mensaje'
@@ -217,6 +241,7 @@ function Panel({ bot, bots, cuadro, cuadros, editable, contexto, alTerminar }: {
     desconocidas.length > 0 && `El bot no reemplaza ${desconocidas.map((m) => `{${m}}`).join(', ')}.`,
     titulosMal && `Hay títulos vacíos o de más de ${limite} caracteres (el límite de WhatsApp): acórtalos; están en rojo.`,
     idsMal && 'Revisa los números de las opciones: sin repetir, del 0 al 99 y sin el 9.',
+    mensaje && sinRespuesta && (espera < 1 || espera > MAX_ESPERA) && 'La espera de «Sin respuesta» va de 1 segundo a 23 h 59 min 59 s.',
   ].filter(Boolean) as string[]
   const bloqueado = motivos.length > 0
   const destinos = cuadros.filter((c) => DESTINOS.includes(c.tipo) && c.clave !== cuadro.clave)
@@ -236,8 +261,11 @@ function Panel({ bot, bots, cuadro, cuadros, editable, contexto, alTerminar }: {
         return
       }
       const ops = opciones?.map((o) => ({ id: o.id, titulo: o.titulo, destino: o.destino ?? null })) ?? null
-      alTerminar(await guardarCuadro(bot, cuadro.clave, mensaje ? nombre : null, textoEditable ? texto : null, ops,
-        sinBotones ? { respuesta } : null))
+      // Un Mensaje manda también sus salidas opcionales (RF-20 a RF-22); sin botones no lleva «Otra respuesta».
+      const salidas = mensaje
+        ? { ...(sinBotones ? { respuesta } : { otra }), sin_respuesta: sinRespuesta, error, espera_segundos: espera }
+        : null
+      alTerminar(await guardarCuadro(bot, cuadro.clave, mensaje ? nombre : null, textoEditable ? texto : null, ops, salidas))
     })
   }
 
@@ -328,6 +356,11 @@ function Panel({ bot, bots, cuadro, cuadros, editable, contexto, alTerminar }: {
             {idsMal && <span className="bad"> Revisa los números: sin repetir, del 0 al 99 y sin el 9.</span>}
           </small>
         </div>
+      )}
+      {mensaje && (
+        <OtrasSalidas sinBotones={sinBotones} destinos={destinos.filter((d) => d.clave !== cuadro.clave)} todos={destinos}
+          deshabilitado={!editable || ocupado} otra={otra} setOtra={setOtra} sinRespuesta={sinRespuesta} setSinRespuesta={setSinRespuesta}
+          error={error} setError={setError} espera={espera} setEspera={setEspera} />
       )}
       {formato !== 'sistema' && (
         <div className="lienzo-vista">
@@ -510,7 +543,8 @@ function LienzoInterno({ bot, bots, catalogos, puedeSubirCatalogo, publicada, bo
     })),
     ...Object.entries(c.salidas ?? {}).filter(([, d]) => d).map(([s, d]) => ({
       id: `${c.clave}:${s}`, source: c.clave, sourceHandle: s, target: d!, deletable: editable && delDueno(c),
-      markerEnd: { type: MarkerType.ArrowClosed }, className: delDueno(c) ? 'flecha-mensaje' : 'flecha-sistema',
+      markerEnd: { type: MarkerType.ArrowClosed },
+      className: !delDueno(c) ? 'flecha-sistema' : s === 'error' ? 'flecha-error' : opcionalesDe(c).includes(s) ? 'flecha-opcional' : 'flecha-mensaje',
     })),
   ])
 
@@ -660,7 +694,13 @@ function LienzoInterno({ bot, bots, catalogos, puedeSubirCatalogo, publicada, bo
           }}>
           {probando ? (
             <Simulador bot={bot.id} version={(archivada ?? borrador ?? publicada).version!} nombres={new Map(cuadros.map((c) => [c.clave, c.nombre]))}
-              pausas={new Map(cuadros.filter((c) => c.tipo === 'pausa').map((c) => [c.clave, Number(c.ajustes?.segundos ?? 0)]))}
+              pausas={new Map([
+                ...cuadros.filter((c) => c.tipo === 'pausa').map((c) => [c.clave, Number(c.ajustes?.segundos ?? 0)] as [string, number]),
+                ...cuadros.filter((c) => c.tipo === 'mensaje' && c.salidas?.sin_respuesta)
+                  .map((c) => [c.clave, Number(c.ajustes?.espera_segundos ?? 900)] as [string, number]),
+              ])}
+              mensajesConEspera={new Set(cuadros.filter((c) => c.tipo === 'mensaje' && c.salidas?.sin_respuesta).map((c) => c.clave))}
+              conError={new Set(cuadros.filter((c) => c.tipo === 'mensaje' && c.salidas?.error).map((c) => c.clave))}
               alMoverse={setAqui} alCerrar={() => { setProbando(false); setAqui(null) }} />
           ) : publicando && borrador ? (
             <PanelPublicar bot={bot.id} borrador={borrador} publicada={publicada} choques={choques} problemas={totalProblemas}

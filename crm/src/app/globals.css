@@ -607,3 +607,12 @@ button.wa-boton:hover, button.wa-fila:hover { background: rgba(2, 126, 181, .06)
   .lienzo-pantalla .lienzo-cuerpo { grid-template-rows: minmax(0, 1fr) minmax(0, 45%) }
   .lienzo-pantalla .lienzo-lado { height: auto; border-top: 1px solid var(--line) }
 }
+
+/* Salidas opcionales del Mensaje (F4·18): abajo, en gris; la de error en rojo, como en Kommo. */
+.nodo-bot-opciones li.opcional { color: var(--muted); font-size: 11.5px; background: var(--surface-2) }
+.nodo-bot-opciones li.opcional.error { color: var(--bad) }
+.nodo-bot-opciones li.opcional .react-flow__handle { background: var(--muted) }
+.nodo-bot-opciones li.opcional.error .react-flow__handle { background: var(--bad) }
+.react-flow__edge.flecha-opcional .react-flow__edge-path { stroke: var(--muted); stroke-width: 1.5 }
+.react-flow__edge.flecha-error .react-flow__edge-path { stroke: var(--bad); stroke-width: 1.5 }
+.otras-salidas { border-top: 1px solid var(--line); padding-top: 10px }
