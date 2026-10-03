@@ -43,19 +43,52 @@ API = "https://graph.facebook.com/v25.0"
 
 def cargar_env():
     env = {}
-    for linea in (RAIZ / ".env.meta").read_text(encoding="utf-8").splitlines():
+    ruta = RAIZ / ".env.meta"
+    for linea in (ruta.read_text(encoding="utf-8").splitlines() if ruta.exists() else []):
         if "=" in linea and not linea.strip().startswith("#"):
             k, _, v = linea.partition("=")
             env[k.strip()] = v.strip().strip('"').strip("'")
-    for clave in ("META_TOKEN", "META_PHONE_NUMBER_ID", "META_VERIFY_TOKEN"):
-        if not env.get(clave):
-            sys.exit(f"✗ Falta {clave} en .env.meta")
-    if not env.get("META_APP_SECRET"):
-        print("⚠ Falta META_APP_SECRET: la verificación de Meta funciona, pero los mensajes se rechazan.")
     return env
 
 
-ENV = cargar_env()
+_BASE = {"META_TOKEN": "token", "META_APP_ID": "app_id", "META_WABA_ID": "waba_id",
+         "META_PHONE_NUMBER_ID": "phone_number_id", "META_APP_SECRET": "app_secret", "META_VERIFY_TOKEN": "verify_token"}
+
+
+class Entorno:
+    """Las variables META_*. Manda la conexión guardada en la base (F4·16, RC-04: se relee cada 30 s, sin reiniciar);
+    si la base no tiene ninguna, valen las de .env.meta (RC-07). CRM_INTERNO_TOKEN solo viene del archivo."""
+
+    def __init__(self):
+        self.archivo = cargar_env()
+        self.origen = None
+
+    def _valores(self):
+        config, _ = db.config_meta()
+        origen = "base" if config else "archivo"
+        if origen != self.origen:
+            if self.origen is not None or config:
+                anotar(f"🔑 conexión con Meta: ahora se lee de {'la base (Configuración → Meta)' if config else '.env.meta'}")
+            self.origen = origen
+        if not config:
+            return self.archivo
+        return {**self.archivo, **{k: config.get(c) or "" for k, c in _BASE.items()}}
+
+    def refrescar(self):
+        """Relee la base ya, sin esperar los 30 s: para cuando Meta verifica o firma con algo recién guardado."""
+        db.config_meta(forzar=True)
+
+    def get(self, clave, defecto=None):
+        return self._valores().get(clave, defecto)
+
+    def __getitem__(self, clave):
+        valor = self.get(clave)
+        if valor is None:
+            raise KeyError(clave)
+        return valor
+
+
+ENV = Entorno()
 
 
 def anotar(texto):
@@ -355,7 +388,11 @@ class Webhook(BaseHTTPRequestHandler):
         if url.path != "/webhook":
             return self.responder(404)
         q = {k: v[0] for k, v in parse_qs(url.query).items()}
-        if q.get("hub.mode") == "subscribe" and hmac.compare_digest(q.get("hub.verify_token", ""), ENV["META_VERIFY_TOKEN"]):
+        def coincide():
+            return hmac.compare_digest(q.get("hub.verify_token", ""), ENV.get("META_VERIFY_TOKEN", ""))
+        if q.get("hub.mode") == "subscribe" and not coincide():
+            ENV.refrescar()  # puede ser un token de verificación recién generado en Configuración → Meta
+        if q.get("hub.mode") == "subscribe" and coincide():
             anotar("✅ Meta verificó el webhook")
             return self.responder(200, q.get("hub.challenge", ""))
         anotar("✗ verificación rechazada: el token no coincide")
@@ -389,11 +426,15 @@ class Webhook(BaseHTTPRequestHandler):
         if urlparse(self.path).path != "/webhook":
             return self.responder(404)
         crudo = self.rfile.read(int(self.headers.get("Content-Length", 0)))
-        secreto = ENV.get("META_APP_SECRET", "").encode()
-        esperada = "sha256=" + hmac.new(secreto, crudo, hashlib.sha256).hexdigest()
-        if not secreto or not hmac.compare_digest(esperada, self.headers.get("X-Hub-Signature-256", "")):
-            anotar("✗ POST rechazado: firma inválida o falta META_APP_SECRET")
-            return self.responder(401)
+        def firma_valida():
+            secreto = ENV.get("META_APP_SECRET", "").encode()
+            esperada = "sha256=" + hmac.new(secreto, crudo, hashlib.sha256).hexdigest()
+            return bool(secreto) and hmac.compare_digest(esperada, self.headers.get("X-Hub-Signature-256", ""))
+        if not firma_valida():
+            ENV.refrescar()  # quizá el App Secret se cambió hace menos de 30 s
+            if not firma_valida():
+                anotar("✗ POST rechazado: firma inválida o falta META_APP_SECRET")
+                return self.responder(401)
         # Meta reintenta si no recibe 200 rápido: se responde primero y se procesa aparte.
         self.responder(200, "ok")
         try:
@@ -441,6 +482,10 @@ def simular(pedido):
 
 
 if __name__ == "__main__":
+    if not ENV.get("META_TOKEN") or not ENV.get("META_PHONE_NUMBER_ID") or not ENV.get("META_VERIFY_TOKEN"):
+        sys.exit("✗ No hay conexión con Meta: ni en la base (Configuración → Meta) ni en .env.meta")
+    if not ENV.get("META_APP_SECRET"):
+        print("⚠ Falta META_APP_SECRET: la verificación de Meta funciona, pero los mensajes se rechazan.")
     anotar(f"Receptor de prueba escuchando en 127.0.0.1:{PUERTO}/webhook")
     # El visor de la demo se apagó en F3·5: la Bandeja de CRM InventarIA ocupa el 8096 (decisión 0017).
     threading.Thread(target=reloj, daemon=True).start()  # Pausas vencidas (F4·13)

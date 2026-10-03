@@ -1,12 +1,13 @@
 import 'server-only'
+import { conexionMeta } from '@/lib/metaConexion'
 
 const API = 'https://graph.facebook.com/v25.0'
 
 // Envía un texto por la Cloud API de Meta. Devuelve el wamid, o un error legible si Meta lo rechaza.
 export async function enviarTexto(numero: string, texto: string): Promise<{ wamid?: string; error?: string }> {
-  const token = process.env.META_TOKEN
-  const telefono = process.env.META_PHONE_NUMBER_ID
-  if (!token || !telefono) return { error: 'Falta la conexión con Meta (META_TOKEN) en el servidor.' }
+  const conexion = await conexionMeta()
+  if (!conexion) return { error: 'Falta la conexión con Meta: configúrala en Configuración → Meta.' }
+  const { token, phoneNumberId: telefono } = conexion
   try {
     const r = await fetch(`${API}/${telefono}/messages`, {
       method: 'POST',
@@ -38,9 +39,9 @@ export type Plantilla = {
 type ComponenteMeta = { type: string; format?: string; text?: string }
 
 export async function listarPlantillas(): Promise<{ plantillas: Plantilla[]; error?: string }> {
-  const token = process.env.META_TOKEN
-  const waba = process.env.META_WABA_ID
-  if (!token || !waba) return { plantillas: [], error: 'Falta META_WABA_ID o META_TOKEN en el servidor.' }
+  const conexion = await conexionMeta()
+  if (!conexion?.wabaId) return { plantillas: [], error: 'Falta la conexión con Meta: configúrala en Configuración → Meta.' }
+  const { token, wabaId: waba } = conexion
   try {
     const r = await fetch(`${API}/${waba}/message_templates?fields=name,status,category,language,components&limit=100`, {
       headers: { Authorization: `Bearer ${token}` },
@@ -69,9 +70,9 @@ export function llenarPlantilla(cuerpo: string, valores: string[]) {
 }
 
 export async function enviarPlantilla(numero: string, nombre: string, idioma: string, valores: string[]) {
-  const token = process.env.META_TOKEN
-  const telefono = process.env.META_PHONE_NUMBER_ID
-  if (!token || !telefono) return { error: 'Falta la conexión con Meta (META_TOKEN) en el servidor.' }
+  const conexion = await conexionMeta()
+  if (!conexion) return { error: 'Falta la conexión con Meta: configúrala en Configuración → Meta.' }
+  const { token, phoneNumberId: telefono } = conexion
   const plantilla: Record<string, unknown> = { name: nombre, language: { code: idioma } }
   if (valores.length)
     plantilla.components = [{ type: 'body', parameters: valores.map((text) => ({ type: 'text', text })) }]
@@ -92,9 +93,9 @@ export async function enviarPlantilla(numero: string, nombre: string, idioma: st
 
 // Envía una plantilla a aprobación de Meta. Los ejemplos son obligatorios si el cuerpo tiene variables.
 export async function crearPlantilla(nombre: string, categoria: string, cuerpo: string, ejemplos: string[]) {
-  const token = process.env.META_TOKEN
-  const waba = process.env.META_WABA_ID
-  if (!token || !waba) return { error: 'Falta META_WABA_ID o META_TOKEN en el servidor.' }
+  const conexion = await conexionMeta()
+  if (!conexion?.wabaId) return { error: 'Falta la conexión con Meta: configúrala en Configuración → Meta.' }
+  const { token, wabaId: waba } = conexion
   const cuerpoMeta: Record<string, unknown> = { type: 'BODY', text: cuerpo }
   if (ejemplos.length) cuerpoMeta.example = { body_text: [ejemplos] }
   try {

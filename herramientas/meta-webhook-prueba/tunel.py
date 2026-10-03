@@ -20,6 +20,8 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
+import db
+
 AQUI = Path(__file__).resolve().parent
 RAIZ = AQUI.parents[1]
 CLOUDFLARED = Path.home() / ".local/bin/cloudflared"
@@ -27,11 +29,20 @@ URL_ACTUAL = AQUI / "tunel-url.txt"
 
 
 def cargar_env():
+    """.env.meta, y encima la conexión guardada en la base (Configuración → Meta, F4·16), que manda si existe."""
     env = {}
-    for linea in (RAIZ / ".env.meta").read_text(encoding="utf-8").splitlines():
+    ruta = RAIZ / ".env.meta"
+    for linea in (ruta.read_text(encoding="utf-8").splitlines() if ruta.exists() else []):
         if "=" in linea and not linea.strip().startswith("#"):
             k, _, v = linea.partition("=")
             env[k.strip()] = v.strip().strip('"').strip("'")
+    try:
+        config, _ = db.config_meta(forzar=True)
+    except Exception:
+        config = None
+    if config:
+        for clave, campo in (("META_APP_ID", "app_id"), ("META_APP_SECRET", "app_secret"), ("META_VERIFY_TOKEN", "verify_token")):
+            env[clave] = config.get(campo) or ""
     return env
 
 
@@ -67,7 +78,6 @@ def registrar_en_meta(url, env):
 
 
 def main():
-    env = cargar_env()
     proceso = subprocess.Popen(
         [str(CLOUDFLARED), "tunnel", "--no-autoupdate", "--url", "http://127.0.0.1:8095"],
         stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
@@ -83,7 +93,7 @@ def main():
                     break
                 time.sleep(4)
             for intento in range(5):
-                ok, error = registrar_en_meta(url, env)
+                ok, error = registrar_en_meta(url, cargar_env())  # relee: pudo cambiar la conexión
                 if ok:
                     log("✅ webhook actualizado en Meta")
                     break

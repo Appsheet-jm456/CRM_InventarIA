@@ -46,6 +46,27 @@ def q(valor):
 
 
 # --------------------------------------------------------------------------- #
+# Conexión con Meta (F4·16, RC-04 y RC-07)
+# --------------------------------------------------------------------------- #
+
+_meta = {"t": 0, "config": None, "ok": False}
+
+
+def config_meta(forzar=False):
+    """Conexión con Meta guardada en la base (Configuración → Meta), con los secretos de Vault.
+
+    Se relee cada 30 s. Devuelve (config, origen): config es None si la base no tiene conexión; si la base no
+    responde, se conserva la última buena. Nunca lanza: el receptor sigue con lo que tenga."""
+    if forzar or time.time() - _meta["t"] > 30:
+        try:
+            _meta.update(config=pedir("rpc/meta_config", "POST", {}), ok=True)
+        except Exception:
+            pass  # se queda con la última lectura buena
+        _meta["t"] = time.time()
+    return _meta["config"], _meta["ok"]
+
+
+# --------------------------------------------------------------------------- #
 # Inventario (solo lectura para el bot)
 # --------------------------------------------------------------------------- #
 
