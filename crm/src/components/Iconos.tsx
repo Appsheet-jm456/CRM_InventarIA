@@ -10,6 +10,7 @@ const TRAZOS = {
   etapas: '<path d="M4 6h10M4 12h13M4 18h7"/><path d="m18 5 3 3-3 3"/>',
   respuestas: '<path d="M4 5h16v11H9l-5 4z"/><path d="m11 8-2 3h4l-2 3"/>',
   canal: '<path d="M5 19.5 6.2 16A8 8 0 1 1 9 18.8z"/><path d="M9.5 9c0 3 2.5 5.5 5.5 5.5l1-1.5-2-1-1 1c-1-.5-2-1.5-2.5-2.5l1-1-1-2z"/>',
+  llave: '<circle cx="8" cy="15" r="4"/><path d="m11 12 9-9M16 7l3 3M14 9l2 2"/>',
   usuarios: '<circle cx="12" cy="8" r="3.5"/><path d="M5 20c.9-3.6 3.7-5.6 7-5.6s6.1 2 7 5.6"/>',
   roles: '<rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14.5v2.5"/>',
   panel: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/>',

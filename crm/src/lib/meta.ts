@@ -1,7 +1,7 @@
 import 'server-only'
 import { conexionMeta } from '@/lib/metaConexion'
 
-const API = 'https://graph.facebook.com/v25.0'
+export const API = 'https://graph.facebook.com/v25.0'
 
 // Envía un texto por la Cloud API de Meta. Devuelve el wamid, o un error legible si Meta lo rechaza.
 export async function enviarTexto(numero: string, texto: string): Promise<{ wamid?: string; error?: string }> {

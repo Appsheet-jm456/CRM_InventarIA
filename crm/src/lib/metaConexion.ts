@@ -1,4 +1,6 @@
 import 'server-only'
+import { readFileSync } from 'node:fs'
+import path from 'node:path'
 import { crearClienteAdmin } from '@/lib/supabase/admin'
 
 // Conexión con Meta (F4·16, RC-04 y RC-07). Manda la base (Configuración → Meta, secretos en Vault); mientras no haya
@@ -9,14 +11,28 @@ export type ConexionMeta = {
   wabaId: string
   phoneNumberId: string
   appSecret: string
+  verifyToken: string
   origen: 'base' | 'entorno'
 }
 
 const VIGENCIA_MS = 30_000
 let guardada: { en: number; valor: ConexionMeta | null } | null = null
 
+// Variables META_* del entorno de la app y, si faltan (la app solo trae algunas), las de .env.meta del servidor.
+function delArchivo(): Record<string, string> {
+  try {
+    const texto = readFileSync(path.join(process.cwd(), '..', '.env.meta'), 'utf-8')
+    return Object.fromEntries(
+      texto.split('\n').filter((l) => l.includes('=') && !l.trim().startsWith('#'))
+        .map((l) => [l.slice(0, l.indexOf('=')).trim(), l.slice(l.indexOf('=') + 1).trim().replace(/^["']|["']$/g, '')]),
+    )
+  } catch {
+    return {}
+  }
+}
+
 function delEntorno(): ConexionMeta | null {
-  const e = process.env
+  const e = { ...delArchivo(), ...Object.fromEntries(Object.entries(process.env).filter(([k, v]) => k.startsWith('META_') && v)) }
   if (!e.META_TOKEN || !e.META_PHONE_NUMBER_ID) return null
   return {
     token: e.META_TOKEN,
@@ -24,6 +40,7 @@ function delEntorno(): ConexionMeta | null {
     wabaId: e.META_WABA_ID ?? '',
     phoneNumberId: e.META_PHONE_NUMBER_ID,
     appSecret: e.META_APP_SECRET ?? '',
+    verifyToken: e.META_VERIFY_TOKEN ?? '',
     origen: 'entorno',
   }
 }
@@ -42,6 +59,7 @@ export async function conexionMeta(): Promise<ConexionMeta | null> {
           wabaId: data.waba_id,
           phoneNumberId: data.phone_number_id,
           appSecret: data.app_secret,
+          verifyToken: data.verify_token,
           origen: 'base',
         }
       : delEntorno()

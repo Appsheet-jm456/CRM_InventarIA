@@ -30,6 +30,7 @@ export const MODULOS: readonly Modulo[] = [
   { clave: 'etapas', titulo: 'Etapas', subtitulo: 'Etapas del embudo y motivos de pérdida', grupo: 'Configuración', ruta: '/etapas', icono: 'etapas', permisos: ['administrar_embudo'] },
   { clave: 'respuestas-rapidas', titulo: 'Respuestas rápidas', subtitulo: 'Atajos de texto del equipo', grupo: 'Configuración', ruta: '/respuestas-rapidas', icono: 'respuestas', permisos: ['administrar_bot'] },
   { clave: 'canal', titulo: 'Canal WhatsApp', subtitulo: 'Plantillas de Meta', grupo: 'Configuración', ruta: '/canal', icono: 'canal', permisos: ['administrar_canal'] },
+  { clave: 'meta', titulo: 'Configuración Meta', subtitulo: 'Conexión con WhatsApp Cloud API', grupo: 'Configuración', ruta: '/meta', icono: 'llave', permisos: ['administrar_meta'] },
   { clave: 'usuarios', titulo: 'Usuarios', subtitulo: 'Usuarios', grupo: 'Configuración', ruta: '/usuarios', icono: 'usuarios', permisos: ['administrar_usuarios'] },
   { clave: 'roles', titulo: 'Roles y permisos', subtitulo: 'Roles y permisos', grupo: 'Configuración', ruta: '/roles', icono: 'roles', permisos: ['administrar_usuarios'] },
 ]
