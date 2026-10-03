@@ -338,7 +338,7 @@ function Panel({ bot, bots, cuadro, cuadros, editable, contexto, alTerminar }: {
       )}
       {editable && (
         <div className="row">
-          <button className="btn primary" data-guardar disabled={ocupado || bloqueado} onClick={guardar}>{ocupado ? 'Guardando…' : 'Guardar en el borrador'}</button>
+          <button className="btn primary" data-guardar data-accion="guardar" disabled={ocupado || bloqueado} onClick={guardar}>{ocupado ? 'Guardando…' : 'Guardar en el borrador'}</button>
           {delDueno(cuadro) && !cuadro.inicio && (
             <button className="btn peligro" data-guardar disabled={ocupado}
               onClick={() => confirm(`¿Borrar el cuadro ${cuadro.nombre} del borrador? Las flechas que llegan quedan sueltas.`)
@@ -450,7 +450,7 @@ function hueco(cuadros: Cuadro[], x: number, y: number) {
 }
 
 type Props = {
-  bot: { id: number; nombre: string; archivado: boolean }
+  bot: { id: number; nombre: string; archivado: boolean; principal?: boolean }
   bots: OtroBot[] // los demás bots, para «Ir a otro bot»
   catalogos: CatalogoOpcion[] // los de Inventario, para el cuadro Catálogos
   puedeSubirCatalogo: boolean
@@ -473,8 +473,10 @@ function LienzoInterno({ bot, bots, catalogos, puedeSubirCatalogo, publicada, bo
   const [verProblemas, setVerProblemas] = useState(false)
   // Cambios del panel sin guardar: no se pierden al tocar fuera, otro cuadro o cerrar la página.
   const sinGuardar = useRef(false)
+  const [pendiente, setPendiente] = useState(false) // lo mismo que la ref, para habilitar «Guardar» en la barra
+  const marcarPendiente = (v: boolean) => { sinGuardar.current = v; setPendiente(v) }
   const puedeSalir = () => !sinGuardar.current
-    || (confirm('Hay cambios sin guardar en este cuadro. ¿Salir y descartarlos?') && ((sinGuardar.current = false), true))
+    || (confirm('Hay cambios sin guardar en este cuadro. ¿Salir y descartarlos?') && (marcarPendiente(false), true))
   useEffect(() => {
     const avisar = (e: BeforeUnloadEvent) => { if (sinGuardar.current) e.preventDefault() }
     window.addEventListener('beforeunload', avisar)
@@ -548,71 +550,78 @@ function LienzoInterno({ bot, bots, catalogos, puedeSubirCatalogo, publicada, bo
   const ladoAbierto = probando || (publicando && !!borrador) || !!elegidoCuadro || (verProblemas && editable && totalProblemas > 0)
 
   return (
-    <section className="panel lienzo">
-      <div className="panel-h">
-        <div>
-          <h2>{archivada ? `Versión ${archivada.version} (${enElBot ? 'la que usa el bot' : 'anterior'})` : editable ? `Borrador · versión ${borrador!.version}` : `Versión publicada ${publicada.version ?? ''}`}</h2>
+    <section className="lienzo-pantalla">
+      <div className="lienzo-barra">
+        <button className="btn chico" title={editable ? 'Sale del lienzo. El borrador se conserva; para descartarlo usa «Descartar borrador».' : 'Volver a la lista de bots'}
+          onClick={() => { if (!puedeSalir()) return; router.push('/bot?t=bots') }}>
+          {editable ? '← Cancelar' : '← Bots'}
+        </button>
+        <div className="lienzo-titulo">
+          <b>{bot.principal ? '⭐ ' : ''}{bot.nombre}</b>
           <small>
-            {archivada ? (enElBot ? 'Solo para ver: los cambios se hacen en el borrador.' : 'Así estaba el flujo en esa versión. Para volver a ella se abre como borrador y se publica.') : editable
-              ? 'Lo que cambies aquí no llega al bot hasta que lo publiques. Arrastra desde el punto de una opción hasta un cuadro para unirlos.'
-              : 'Así está el flujo que usa el bot. Abre un borrador para cambiarlo sin afectar a los clientes.'}
+            {archivada ? `Versión ${archivada.version} (${enElBot ? 'la que usa el bot' : 'anterior'}) · solo para ver` : editable ? `Borrador · versión ${borrador!.version}` : `Versión publicada ${publicada.version ?? ''} · solo para ver`}
           </small>
         </div>
-        <div className="row">
-          <button className="btn chico" onClick={() => { if (!puedeSalir()) return; setElegido(null); setPublicando(false); setVerProblemas(false); setProbando(true) }}>▶ Probar</button>
-          {editable && (
-            <button className={`chip ${totalProblemas ? 'bad' : 'ok'}`} title="Lo que impediría publicar" disabled={!totalProblemas}
-              onClick={() => { setElegido(null); setPublicando(false); setProbando(false); setVerProblemas(true) }}>
-              {totalProblemas ? `${totalProblemas} por resolver` : 'Listo para publicar'}
+        <a className="btn chico" href={`/bot/flujo/${bot.id}?t=historial`} onClick={(e) => { if (!puedeSalir()) e.preventDefault() }}>Historial de versiones</a>
+        <button className="btn chico" onClick={() => { if (!puedeSalir()) return; setElegido(null); setPublicando(false); setVerProblemas(false); setProbando(true) }}>▶ Probar</button>
+        {editable && (
+          <button className={`chip ${totalProblemas ? 'bad' : 'ok'}`} title="Lo que impediría publicar" disabled={!totalProblemas}
+            onClick={() => { setElegido(null); setPublicando(false); setProbando(false); setVerProblemas(true) }}>
+            {totalProblemas ? `${totalProblemas} por resolver` : 'Listo para publicar'}
+          </button>
+        )}
+        {editable ? (
+          <>
+            <MenuAcciones etiqueta="Agregar un cuadro" boton="+ Agregar ▾" desactivado={ocupado} acciones={AGREGAR.map((a) => ({
+              ...a,
+              onClick: () => {
+                if (!puedeSalir()) return
+                // El cuadro nuevo aparece en el primer hueco libre cerca del centro de lo que se ve y queda elegido.
+                const r = document.querySelector('.lienzo-area')?.getBoundingClientRect()
+                const centro = flujo.screenToFlowPosition({ x: (r?.left ?? 0) + (r?.width ?? 600) / 2, y: (r?.top ?? 0) + (r?.height ?? 400) / 2 })
+                const { x, y } = hueco(cuadros, centro.x - 120, centro.y - 70)
+                hacer(() => crearCuadro(bot.id, a.tipo, x, y), (clave) => setElegido(String(clave)))
+              },
+            }))} />
+            <button className="btn chico peligro" disabled={ocupado}
+              onClick={() => confirm('¿Descartar el borrador? Se pierden todos sus cambios; el bot sigue igual.')
+                && hacer(() => descartarBorrador(bot.id), () => setElegido(null))}>Descartar borrador</button>
+            <button className="btn chico" disabled={ocupado} onClick={() => { if (!puedeSalir()) return; setElegido(null); setProbando(false); setVerProblemas(false); setPublicando(true) }}>Publicar…</button>
+            <button className="btn primary chico" disabled={!pendiente || ocupado}
+              title={pendiente ? 'Guarda el cuadro abierto en el borrador' : 'No hay cambios sin guardar en el cuadro abierto'}
+              onClick={() => (document.querySelector('.lienzo-lado button[data-accion="guardar"]') as HTMLButtonElement | null)?.click()}>
+              Guardar
             </button>
-          )}
-          {editable ? (
-            <>
-              <MenuAcciones etiqueta="Agregar un cuadro" boton="+ Agregar ▾" desactivado={ocupado} acciones={AGREGAR.map((a) => ({
-                ...a,
-                onClick: () => {
-                  if (!puedeSalir()) return
-                  // El cuadro nuevo aparece en el primer hueco libre cerca del centro de lo que se ve y queda elegido.
-                  const r = document.querySelector('.lienzo-area')?.getBoundingClientRect()
-                  const centro = flujo.screenToFlowPosition({ x: (r?.left ?? 0) + (r?.width ?? 600) / 2, y: (r?.top ?? 0) + (r?.height ?? 400) / 2 })
-                  const { x, y } = hueco(cuadros, centro.x - 120, centro.y - 70)
-                  hacer(() => crearCuadro(bot.id, a.tipo, x, y), (clave) => setElegido(String(clave)))
-                },
-              }))} />
-              <button className="btn primary chico" disabled={ocupado} onClick={() => { if (!puedeSalir()) return; setElegido(null); setProbando(false); setVerProblemas(false); setPublicando(true) }}>Publicar…</button>
-              <button className="btn chico peligro" disabled={ocupado}
-                onClick={() => confirm('¿Descartar el borrador? Se pierden todos sus cambios; el bot sigue igual.')
-                  && hacer(() => descartarBorrador(bot.id), () => setElegido(null))}>Descartar borrador</button>
-            </>
-          ) : archivada && enElBot ? (
-            <a className="btn primary chico" href={`/bot/flujo/${bot.id}`}>{hayBorrador ? 'Ir al borrador' : 'Editar el flujo'}</a>
-          ) : archivada ? (
-            <>
-              <a className="btn chico" href={`/bot/flujo/${bot.id}?v=${publicada.version}`}>Ver la que usa el bot</a>
-              <button className="btn primary chico" disabled={ocupado} onClick={() => {
-                if (!confirm(hayBorrador
-                  ? `Ya hay un borrador abierto. ¿Reemplazarlo por una copia de la versión ${archivada.version}?`
-                  : `¿Abrir un borrador con la versión ${archivada.version}? El bot no cambia hasta que lo publiques.`)) return
-                hacer(() => volverAVersion(bot.id, archivada.version!, hayBorrador), () => router.push(`/bot/flujo/${bot.id}`))
-              }}>Volver a esta versión</button>
-            </>
-          ) : bot.archivado ? (
-            <span className="chip neu">Bot archivado: solo se puede ver</span>
-          ) : (
-            <button className="btn primary chico" disabled={ocupado} onClick={() => hacer(() => crearBorrador(bot.id))}>
-              {hayBorrador ? 'Seguir con el borrador' : 'Editar el flujo'}
-            </button>
-          )}
-        </div>
+          </>
+        ) : archivada && enElBot ? (
+          <a className="btn primary chico" href={`/bot/flujo/${bot.id}`}>{hayBorrador ? 'Ir al borrador' : 'Editar el flujo'}</a>
+        ) : archivada ? (
+          <>
+            <a className="btn chico" href={`/bot/flujo/${bot.id}?v=${publicada.version}`}>Ver la que usa el bot</a>
+            <button className="btn primary chico" disabled={ocupado} onClick={() => {
+              if (!confirm(hayBorrador
+                ? `Ya hay un borrador abierto. ¿Reemplazarlo por una copia de la versión ${archivada.version}?`
+                : `¿Abrir un borrador con la versión ${archivada.version}? El bot no cambia hasta que lo publiques.`)) return
+              hacer(() => volverAVersion(bot.id, archivada.version!, hayBorrador), () => router.push(`/bot/flujo/${bot.id}`))
+            }}>Volver a esta versión</button>
+          </>
+        ) : bot.archivado ? (
+          <span className="chip neu">Bot archivado: solo se puede ver</span>
+        ) : (
+          <button className="btn primary chico" disabled={ocupado} onClick={() => hacer(() => crearBorrador(bot.id))}>
+            {hayBorrador ? 'Seguir con el borrador' : 'Editar el flujo'}
+          </button>
+        )}
       </div>
       {(aviso.error || aviso.ok) && (
-        <div className="panel-b" style={{ paddingBottom: 0 }}>
+        <div className="lienzo-aviso">
           <div className={`aviso ${aviso.error ? 'bad' : 'ok'}`} role="alert">{aviso.error ?? aviso.ok}</div>
         </div>
       )}
       <details className="lienzo-ayuda">
         <summary>Toca un cuadro para verlo o editarlo · ▶ es el saludo · 🔒 son del sistema · reglas que siempre valen</summary>
         <small className="muted">
+          {editable ? 'Lo que cambies aquí no llega al bot hasta que lo publiques. Arrastra desde el punto de una opción hasta un cuadro para unirlos. ' : 'Abre un borrador para cambiar el flujo sin afectar a los clientes. '}
           Los cuadros 🔒 buscan en el inventario, muestran la ficha o pasan a un asesor: se les cambia el texto pero no lo que hacen.
           Las reglas de siempre siguen en cualquier punto: <b>9</b> o “asesor” pasa a un asesor, un <b>código</b> de equipo abre su ficha,
           “hola” o “menú” vuelve al inicio y el texto libre busca en el inventario.
@@ -644,10 +653,10 @@ function LienzoInterno({ bot, bots, catalogos, puedeSubirCatalogo, publicada, bo
         {ladoAbierto && (
         <aside className="lienzo-lado"
           // Cualquier cambio en un campo, o un botón que edita (no los de guardar o borrar), deja el cuadro "sin guardar".
-          onChangeCapture={() => { sinGuardar.current = true }}
+          onChangeCapture={() => marcarPendiente(true)}
           onClickCapture={(e) => {
             const b = (e.target as HTMLElement).closest('button')
-            if (b && elegidoCuadro && !b.dataset.guardar && b.closest('.lienzo-panel')) sinGuardar.current = true
+            if (b && elegidoCuadro && !b.dataset.guardar && b.closest('.lienzo-panel')) marcarPendiente(true)
           }}>
           {probando ? (
             <Simulador bot={bot.id} version={(archivada ?? borrador ?? publicada).version!} nombres={new Map(cuadros.map((c) => [c.clave, c.nombre]))}
@@ -662,7 +671,7 @@ function LienzoInterno({ bot, bots, catalogos, puedeSubirCatalogo, publicada, bo
               destinos={cuadros.filter((c) => DESTINOS.includes(c.tipo) && c.clave !== elegidoCuadro.clave)}
               alTerminar={(r, borrado) => {
                 setAviso(r)
-                if (!r.error) { sinGuardar.current = false; if (borrado) setElegido(null); router.refresh() }
+                if (!r.error) { marcarPendiente(false); if (borrado) setElegido(null); router.refresh() }
               }} />
           ) : elegidoCuadro?.tipo === 'catalogo' ? (
             <PanelCatalogo key={elegidoCuadro.clave + elegidoCuadro.actualizado_en} bot={bot.id} cuadro={elegidoCuadro} editable={editable}
@@ -670,20 +679,20 @@ function LienzoInterno({ bot, bots, catalogos, puedeSubirCatalogo, publicada, bo
               destinos={cuadros.filter((c) => DESTINOS.includes(c.tipo) && c.clave !== elegidoCuadro.clave)}
               alTerminar={(r, borrado) => {
                 setAviso(r)
-                if (!r.error) { sinGuardar.current = false; if (borrado) setElegido(null); router.refresh() }
+                if (!r.error) { marcarPendiente(false); if (borrado) setElegido(null); router.refresh() }
               }} />
           ) : elegidoCuadro?.tipo === 'condicion' ? (
             <PanelCondiciones key={elegidoCuadro.clave + elegidoCuadro.actualizado_en} bot={bot.id} cuadro={elegidoCuadro} editable={editable}
               destinos={cuadros.filter((c) => DESTINOS.includes(c.tipo) && c.clave !== elegidoCuadro.clave)}
               alTerminar={(r, borrado) => {
                 setAviso(r)
-                if (!r.error) { sinGuardar.current = false; if (borrado) setElegido(null); router.refresh() }
+                if (!r.error) { marcarPendiente(false); if (borrado) setElegido(null); router.refresh() }
               }} />
           ) : elegidoCuadro ? (
             <Panel key={elegidoCuadro.clave + elegidoCuadro.actualizado_en} bot={bot.id} bots={bots} cuadro={elegidoCuadro} cuadros={cuadros} editable={editable}
               contexto={contexto} alTerminar={(r, borrado) => {
                 setAviso(r)
-                if (!r.error) { sinGuardar.current = false; if (borrado) setElegido(null); router.refresh() }
+                if (!r.error) { marcarPendiente(false); if (borrado) setElegido(null); router.refresh() }
               }} />
           ) : (
             <div className="lienzo-panel">

@@ -70,7 +70,7 @@ export function PanelPausa({ bot, cuadro, destinos, editable, alTerminar }: {
       {destino(tiempo, setTiempo, 'Pasó el tiempo, sigue a')}
       {editable && (
         <div className="row">
-          <button className="btn primary" data-guardar disabled={ocupado || fuera}
+          <button className="btn primary" data-guardar data-accion="guardar" disabled={ocupado || fuera}
             onClick={() => iniciar(async () => alTerminar(await guardarPausa(bot, cuadro.clave, nombre, total, respondio, tiempo)))}>
             {ocupado ? 'Guardando…' : 'Guardar en el borrador'}
           </button>

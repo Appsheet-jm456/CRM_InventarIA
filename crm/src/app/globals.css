@@ -591,3 +591,19 @@ button.wa-boton:hover, button.wa-fila:hover { background: rgba(2, 126, 181, .06)
 .op span { color: var(--ink); font-weight: 500 }
 .op-cerrada { font-size: 12.5px; font-weight: 400; margin-top: 4px }
 .embudos-tabs { display: flex; flex-wrap: wrap; gap: 6px }
+
+/* Lienzo a pantalla completa (F4·17, decisión 0030): una capa sobre el panel lateral, con su propia barra. */
+.lienzo-pantalla { position: fixed; inset: 0; z-index: 40; display: flex; flex-direction: column; background: var(--bg) }
+.lienzo-barra { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 8px 14px; background: var(--surface); border-bottom: 1px solid var(--line) }
+.lienzo-titulo { display: grid; min-width: 0; margin-right: auto }
+.lienzo-titulo b { font: 700 15px var(--f-display); overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.lienzo-titulo small { color: var(--muted); font-size: 12px }
+.lienzo-aviso { padding: 8px 14px 0 }
+.lienzo-pantalla .lienzo-ayuda { background: var(--surface) }
+.lienzo-pantalla .lienzo-cuerpo { flex: 1; min-height: 0; grid-template-rows: minmax(0, 1fr); border-top: 0 }
+.lienzo-pantalla .lienzo-area { height: 100%; min-height: 0 }
+.lienzo-pantalla .lienzo-lado { max-height: none; min-height: 0; height: 100%; background: var(--surface) }
+@media (max-width: 1000px) {
+  .lienzo-pantalla .lienzo-cuerpo { grid-template-rows: minmax(0, 1fr) minmax(0, 45%) }
+  .lienzo-pantalla .lienzo-lado { height: auto; border-top: 1px solid var(--line) }
+}

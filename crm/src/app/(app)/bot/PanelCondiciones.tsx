@@ -135,7 +135,7 @@ export function PanelCondiciones({ bot, cuadro, destinos, editable, alTerminar }
       )}
       {editable && (
         <div className="row">
-          <button className="btn primary" data-guardar disabled={ocupado || bloqueado} onClick={guardar}>{ocupado ? 'Guardando…' : 'Guardar en el borrador'}</button>
+          <button className="btn primary" data-guardar data-accion="guardar" disabled={ocupado || bloqueado} onClick={guardar}>{ocupado ? 'Guardando…' : 'Guardar en el borrador'}</button>
           <button className="btn peligro" data-guardar disabled={ocupado}
             onClick={() => confirm(`¿Borrar el cuadro ${cuadro.nombre} del borrador? Las flechas que llegan quedan sueltas.`)
               && iniciar(async () => alTerminar(await borrarCuadro(bot, cuadro.clave), true))}>Borrar cuadro</button>

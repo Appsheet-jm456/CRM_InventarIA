@@ -8,7 +8,7 @@ import { Historial, type VersionFila } from '../../Historial'
 import { Lienzo } from '../../Lienzo'
 import type { CatalogoOpcion } from '../../PanelCatalogo'
 
-// El lienzo de un bot y su historial de versiones (F4·9, decisión 0028). Ocupa todo el ancho de la pantalla.
+// El lienzo de un bot (a pantalla completa, F4·17) y su historial de versiones (F4·9, decisión 0028).
 export default async function BotFlujo({ params, searchParams }: { params: { id: string }; searchParams: { t?: string; v?: string } }) {
   const sesion = (await obtenerSesion())!
   if (!puede(sesion, ['administrar_bot'])) return <SinPermiso />
@@ -58,6 +58,9 @@ export default async function BotFlujo({ params, searchParams }: { params: { id:
         choques={(choques ?? []) as { clave: string; nombre: string }[]} hayBorrador={!!abierto} />
     }
   }
+
+  // El lienzo ocupa toda la pantalla (F4·17): trae su propia barra y tapa el panel lateral. Solo el historial usa la página normal.
+  if (!historial) return contenido
 
   return (
     <div className="bot-pagina">

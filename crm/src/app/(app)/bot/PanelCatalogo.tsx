@@ -87,7 +87,7 @@ export function PanelCatalogo({ bot, cuadro, destinos, catalogos, puedeSubir, ed
       </div>
       {editable && (
         <div className="row">
-          <button className="btn primary" data-guardar disabled={ocupado || !texto.trim() || medida.largo > medida.limite} onClick={guardar}>
+          <button className="btn primary" data-guardar data-accion="guardar" disabled={ocupado || !texto.trim() || medida.largo > medida.limite} onClick={guardar}>
             {ocupado ? 'Guardando…' : 'Guardar en el borrador'}
           </button>
           <button className="btn peligro" data-guardar disabled={ocupado}
