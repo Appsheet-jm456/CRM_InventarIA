@@ -255,14 +255,31 @@ def subir_media(ruta, contenido, mime):
 # Mensajes
 # --------------------------------------------------------------------------- #
 
-def guardar_mensaje(lead_id, lado, texto, tipo="text", meta_id=None, media=None):
+def guardar_mensaje(lead_id, lado, texto, tipo="text", meta_id=None, media=None, cuadro=None, desde_error=False):
     fila = {"lead_id": lead_id, "lado": lado, "texto": texto, "tipo": tipo}
+    if cuadro:  # el cuadro del bot que lo envió, para «Error al enviar» (RF-22)
+        fila["cuadro"] = cuadro
+    if desde_error:
+        fila["desde_error"] = True
     if meta_id:
         fila["meta_id"] = meta_id
     if media:  # {"ruta", "mime", "nombre"}: audio, imagen o documento del cliente (F3·5)
         fila.update(media_ruta=media["ruta"], media_mime=media["mime"], media_nombre=media.get("nombre", ""))
     pedir("mensajes?on_conflict=meta_id" if meta_id else "mensajes", "POST", fila,
           "resolution=ignore-duplicates,return=minimal" if meta_id else "return=minimal")
+
+
+def tomar_error_de_envio(wamid):
+    """Un mensaje del bot que Meta no entregó (estado failed, RF-22): lo marca como atendido y lo devuelve, una sola vez.
+    None si no es de un cuadro con «Error al enviar», ya se atendió o lo envió esa misma salida."""
+    filas = pedir(f"mensajes?meta_id=eq.{q(wamid)}&lado=eq.bot&cuadro=not.is.null&desde_error=is.false&error_atendido=is.false"
+                  "&select=id,lead_id,cuadro", "PATCH", {"error_atendido": True}, "return=representation")
+    return filas[0] if filas else None
+
+
+def telefono_de(lead_id):
+    filas = pedir(f"leads?id=eq.{int(lead_id)}&select=telefono")
+    return filas[0]["telefono"] if filas else None
 
 
 def registrar_estado(estado, error=""):

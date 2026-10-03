@@ -345,10 +345,21 @@ def esperar(st, c):
     return []
 
 
+def salida_de_espera(c):
+    """La salida que sigue el reloj cuando vence la espera del cuadro: «Pasó el tiempo» de una Pausa (RF-14) o
+    «Sin respuesta» de un Mensaje (RF-21). None si el cuadro no espera."""
+    salidas = (c or {}).get("salidas") or {}
+    if (c or {}).get("tipo") == "pausa":
+        return salidas.get("tiempo")
+    if (c or {}).get("tipo") == "mensaje":
+        return salidas.get("sin_respuesta")
+    return None
+
+
 def limpiar_espera(st):
-    """La espera solo vale mientras el cliente siga en su Pausa."""
+    """La espera solo vale mientras el cliente siga en su Pausa o en un Mensaje con «Sin respuesta»."""
     c = (cuadros() or {}).get(st.get("nodo"))
-    if not c or c["tipo"] != "pausa":
+    if not c or (c["tipo"] != "pausa" and not salida_de_espera(c)):
         st.pop("espera_hasta", None)
 
 
@@ -420,9 +431,15 @@ def opciones_de(c):
 
 def mostrar_mensaje(st, c):
     texto = texto_cuadro(c["clave"], uso=st["campos"].get("Uso equipo", ""))
-    if not c.get("opciones"):  # sin botones (RF-09): espera lo que el cliente escriba
-        return [m_texto(texto)]
-    return [menu(texto, opciones_de(c))]
+    salidas = c.get("salidas") or {}
+    if salidas.get("sin_respuesta"):  # RF-21: si el cliente no escribe en ese tiempo, el reloj sigue la flecha
+        segundos = int((c.get("ajustes") or {}).get("espera_segundos") or 900)
+        st["espera_hasta"] = (datetime.now(timezone.utc) + timedelta(seconds=segundos)).isoformat()
+    # sin botones (RF-09) espera lo que el cliente escriba. "_cuadro" (lo quita el receptor) liga un fallo de envío (RF-22).
+    m = m_texto(texto) if not c.get("opciones") else menu(texto, opciones_de(c))
+    if salidas.get("error"):
+        m["_cuadro"] = c["clave"]
+    return [m]
 
 
 def mostrar_presupuesto(st, c):
@@ -547,6 +564,9 @@ def responder(st, texto, avisar=None):
         if cuadros() is None:  # su bot se archivó o ya no tiene versión publicada: vuelve al principal
             st["bot"] = _hilo.bot = db.principal()
             st["nodo"] = None
+        espera_previa = st.pop("espera_hasta", None)  # RF-21: el cliente escribió, se cancela «Sin respuesta»
+        if (cuadros() or {}).get(st.get("nodo"), {}).get("tipo") == "pausa":
+            st["espera_hasta"] = espera_previa  # la Pausa la resuelve _responder (RF-14)
         mensajes, st = _responder(st, texto, avisar)
         limpiar_espera(st)
         return mensajes, st
@@ -592,6 +612,8 @@ def _responder(st, texto, avisar):
         op = elegir(c, n)
         if op:
             return seguir(st, op), st
+        if tipo == "mensaje" and (c.get("salidas") or {}).get("otra"):  # RF-20: no es una opción y el dueño unió la flecha
+            return ir(st, c["salidas"]["otra"]), st
     elif tipo == "presupuesto":
         monto = interprete.monto(n, contexto_presupuesto=True) if n not in ("1", "2", "3", "4") else None
         if n in ("1", "2", "3", "4") or monto:
@@ -629,19 +651,43 @@ def _responder(st, texto, avisar):
 
 
 def tiempo_cumplido(st):
-    """Venció la Pausa en la que está el cliente (el reloj del receptor, o el botón del simulador): sigue por "tiempo".
-    Si el cliente ya no está en una Pausa, no hace nada."""
+    """Venció la espera del cuadro en el que está el cliente (el reloj del receptor, o el botón del simulador): sigue
+    «Pasó el tiempo» de una Pausa o «Sin respuesta» de un Mensaje. Si el cuadro ya no espera, no hace nada."""
     st.setdefault("bot", None)
     if st["bot"] is None:
         st["bot"] = db.principal()
     _hilo.bot, _hilo.texto, _hilo.saltos = st["bot"], "", 0
     try:
         c = (cuadros() or {}).get(st.get("nodo"))
-        if not c or c["tipo"] != "pausa" or st.get("pausa"):
+        destino = salida_de_espera(c)
+        if not c or not destino or st.get("pausa"):
             st.pop("espera_hasta", None)
             return [], st
         st.pop("espera_hasta", None)
-        mensajes = ir(st, (c.get("salidas") or {}).get("tiempo"))
+        mensajes = ir(st, destino)
+        limpiar_espera(st)
+        return mensajes, st
+    finally:
+        _hilo.bot = _hilo.texto = None
+        _hilo.saltos = 0
+
+
+def envio_fallido(st, clave):
+    """Meta no entregó el mensaje que envió el cuadro `clave` (RF-22): sigue «Error al enviar el mensaje».
+
+    Devuelve (mensajes, estado), o None si no aplica: el cuadro no tiene esa salida, el cliente ya está en otro cuadro
+    o el chat está con un asesor."""
+    st.setdefault("bot", None)
+    if st["bot"] is None:
+        st["bot"] = db.principal()
+    _hilo.bot, _hilo.texto, _hilo.saltos = st["bot"], "", 0
+    try:
+        c = (cuadros() or {}).get(clave)
+        destino = ((c or {}).get("salidas") or {}).get("error")
+        if not c or c["tipo"] != "mensaje" or not destino or st.get("pausa") or st.get("nodo") != clave:
+            return None
+        st.pop("espera_hasta", None)
+        mensajes = ir(st, destino)
         limpiar_espera(st)
         return mensajes, st
     finally:

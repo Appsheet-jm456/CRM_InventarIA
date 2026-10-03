@@ -241,8 +241,12 @@ def guardar_estado(lead, st, visible, nombre, del_cliente=True):
     db.actualizar_lead(lead["id"], cambios)
 
 
-def enviar_mensajes(numero, lead, mensajes):
+def enviar_mensajes(numero, lead, mensajes, desde_error=False):
+    """Envía y guarda los mensajes del bot. Devuelve el cuadro del primero que Meta rechazó y tiene «Error al
+    enviar» (RF-22), o None."""
+    rechazado = None
     for m in mensajes:
+        cuadro = m.pop("_cuadro", None)
         m = resolver(m)
         if not m:
             continue
@@ -252,11 +256,40 @@ def enviar_mensajes(numero, lead, mensajes):
             wamid = enviar(numero, m)
         if wamid:
             db.guardar_mensaje(lead["id"], "bot", visor.texto_saliente(m), m["type"],
-                               wamid if wamid != "enviado" else None)
+                               wamid if wamid != "enviado" else None, cuadro=cuadro, desde_error=desde_error)
+        elif cuadro and not desde_error and rechazado is None:
+            rechazado = cuadro
+    return rechazado
+
+
+def seguir_error_de_envio(numero, lead, st, cuadro):
+    """«Error al enviar el mensaje» (RF-22): Meta no entregó lo que envió `cuadro`. Se llama con el candado del
+    número tomado. Lo que se envía desde esta salida no la vuelve a disparar. Devuelve el estado."""
+    r = flujo.envio_fallido(st, cuadro)
+    if r is None:
+        return st
+    mensajes, st = r
+    anotar(f"⚠ {numero}: no se entregó el mensaje de {cuadro} → «Error al enviar» lleva a {st['nodo']}")
+    enviar_mensajes(numero, lead, mensajes, desde_error=True)
+    return st
+
+
+def error_tardio(wamid):
+    """Meta avisó por el webhook que un mensaje del bot falló (estado failed, RF-22)."""
+    m = db.tomar_error_de_envio(wamid)
+    if not m:
+        return
+    numero = db.telefono_de(m["lead_id"])
+    if not numero:
+        return
+    with _candados.setdefault(numero, threading.Lock()):
+        lead = db.lead(numero)
+        st = seguir_error_de_envio(numero, lead, cargar_estado(lead), m["cuadro"])
+        guardar_estado(lead, st, "", None, del_cliente=False)
 
 
 # --------------------------------------------------------------------------- #
-# Reloj de la Pausa (F4·13, RF-14 y RF-15)
+# Reloj de las esperas: Pausa (F4·13, RF-14 y RF-15) y «Sin respuesta» del Mensaje (RF-21)
 # --------------------------------------------------------------------------- #
 
 VENTANA = timedelta(hours=24) - timedelta(minutes=1)  # Meta solo entrega texto libre dentro de las 24 h
@@ -285,8 +318,10 @@ def vencer_espera(numero):
             return
         st = cargar_estado(lead)
         mensajes, st = flujo.tiempo_cumplido(st)
-        anotar(f"⏳ {numero}: venció la Pausa {lead.get('espera_cuadro')} → {st['nodo']}")
-        enviar_mensajes(numero, lead, mensajes)
+        anotar(f"⏳ {numero}: venció la espera de {lead.get('espera_cuadro')} → {st['nodo']}")
+        rechazado = enviar_mensajes(numero, lead, mensajes)
+        if rechazado:
+            st = seguir_error_de_envio(numero, lead, st, rechazado)
         guardar_estado(lead, st, "", None, del_cliente=False)
 
 
@@ -327,7 +362,12 @@ def contestar(numero, entrada, visible, nombre, tipo, meta_id, media=None):
         except Exception as e:  # una falla del árbol o de la base no debe tumbar el receptor
             anotar(f"  ✗ el árbol falló: {e!r}")
             return
-        enviar_mensajes(numero, lead, mensajes)
+        rechazado = enviar_mensajes(numero, lead, mensajes)
+        if rechazado:  # RF-22: Meta lo rechazó al instante
+            try:
+                st = seguir_error_de_envio(numero, lead, st, rechazado)
+            except Exception as e:
+                anotar(f"  ✗ «Error al enviar» falló: {e!r}")
         try:
             guardar_estado(lead, st, visible, nombre)
         except Exception as e:
@@ -371,6 +411,11 @@ def procesar(evento):
                     db.registrar_estado(s, errores)
                 except Exception as e:
                     anotar(f"  ✗ no se pudo guardar el estado: {e!r}")
+                if s.get("status") == "failed" and s.get("id"):
+                    try:
+                        error_tardio(s["id"])
+                    except Exception as e:
+                        anotar(f"  ✗ «Error al enviar» falló: {e!r}")
 
 
 class Webhook(BaseHTTPRequestHandler):
@@ -472,10 +517,17 @@ def simular(pedido):
     antes = st.get("bot")
     avisos = []
     with flujo.con_cuadros(otros, bot):
-        if pedido.get("evento") == "tiempo":  # "Simular que pasó el tiempo" en una Pausa (F4·13)
+        if pedido.get("evento") == "tiempo":  # "Simular que pasó el tiempo": Pausa (F4·13) o «Sin respuesta» (RF-21)
             mensajes, st = flujo.tiempo_cumplido(st)
+        elif pedido.get("evento") == "fallo":  # "Simular fallo de envío" (RF-22)
+            r = flujo.envio_fallido(st, st.get("nodo"))
+            mensajes, st = r if r else ([], st)
+            if not r:
+                avisos.append("Este cuadro no tiene «Error al enviar el mensaje» conectado.")
         else:
             mensajes, st = flujo.responder(st, str(pedido["texto"])[:1000], avisos.append)
+    for m in mensajes:
+        m.pop("_cuadro", None)
     if st.get("bot") != antes:  # "Ir a otro bot", o "hola" desde otro bot: se avisa a quien prueba
         avisos.append(f"El cliente pasó al bot «{db.nombre_bot(st['bot'])}».")
     return {"avisos": avisos, "mensajes": mensajes, "estado": st}
