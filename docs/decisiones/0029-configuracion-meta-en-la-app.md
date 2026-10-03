@@ -1,6 +1,6 @@
 # 0029 · Configuración Meta en la app, con los secretos en Vault
 
-**Estado:** Propuesta · 3 oct 2026 · Diseño de F4·16 · Detalle en [CONFIGURACION-META.md](../CONFIGURACION-META.md)
+**Estado:** Aceptada · 3 oct 2026 (hecha el mismo día) · Diseño de F4·16 · Detalle en [CONFIGURACION-META.md](../CONFIGURACION-META.md)
 
 ## Contexto
 

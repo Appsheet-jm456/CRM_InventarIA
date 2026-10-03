@@ -95,10 +95,10 @@ Pasos B3 a B11 de [TUNEL-WEBHOOK.md](TUNEL-WEBHOOK.md) con la dirección `bot.<d
 |---|---|---|---|
 | 5.1 | Autorizar el servidor en Cloudflare | Dueño + Claude | `cloudflared tunnel login` → el dueño abre el enlace y aprueba `<dominio>` (B3) |
 | 5.2 | Túnel con nombre | Claude | `crm-inventaria` → `bot.<dominio>`, publica **solo** `/webhook` → 8095; servicio `crm-meta-tunel-fijo` (B4–B8) |
-| 5.3 | Respaldo | Claude | Copia de `.env.meta` y `crm/.env.local` (`*.bak-futurgreen`, fuera de git) para poder volver |
-| 5.4 | Cambiar a la app nueva | Dueño + Claude | Comando con `read -s` que pide **token** y **clave secreta** sin mostrarlos; Claude escribe App ID, WABA ID y Phone Number ID. Archivos: `.env.meta` (`META_TOKEN`, `META_APP_ID`, `META_WABA_ID`, `META_PHONE_NUMBER_ID`, `META_APP_SECRET`) y `crm/.env.local` (`META_TOKEN`, `META_WABA_ID`, `META_PHONE_NUMBER_ID`) |
-| 5.5 | Registrar el webhook | Claude | `POST /{app}/subscriptions` con `https://bot.<dominio>/webhook`, `META_VERIFY_TOKEN`, campo `messages` (B9) |
-| 5.6 | Suscribir la app a la WABA | Claude | `POST /{WABA}/subscribed_apps` (sin esto no llegan mensajes) |
+| 5.3 | Respaldo | Claude | Desde F4·16 la conexión vive en la base: antes de cambiarla, anotar la actual (App ID, WABA y número; el token no se puede leer, pero sigue en Meta). `.env.meta.bak` y `crm/.env.local.bak` (fuera de git) guardan las claves de la app *Futur Green bot* por si hay que volver |
+| 5.4 | Cambiar a la app nueva | Dueño + Claude | El dueño, en **Configuración → Meta** (por Tailscale), escribe App ID, WABA ID, Phone Number ID, token y App Secret de la app nueva y pulsa «Probar y guardar»: ya no se tocan archivos ni se reinicia nada (F4·16) |
+| 5.5 | Registrar el webhook | Dueño | En Configuración → Meta, «Registrar webhook en Meta» con `https://bot.<dominio>/webhook` (envía el token de verificación guardado, campo `messages`) (B9) |
+| 5.6 | Suscribir la app a la WABA | Dueño | En Configuración → Meta, «Suscribir la app a la WABA» (sin esto no llegan mensajes) |
 | 5.7 | Apagar lo provisional | Claude | `systemctl --user disable --now crm-meta-tunel` (el túnel rápido registraría otra URL) |
 | 5.8 | Reiniciar y probar | Dueño + Claude | Reiniciar `crm-meta-receptor` y `crm-inventaria-app`; el dueño escribe «hola» al +57 320 521 1803; revisar `eventos.log`, la respuesta del bot y la Bandeja |
 

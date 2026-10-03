@@ -1,6 +1,6 @@
 # Configuración Meta (F4·16, decisión 0029)
 
-**Estado:** Borrador para aprobar · 3 oct 2026 · Mejora pedida por el dueño.
+**Estado:** Hecha el 3 oct 2026 (bloques A a D) · Mejora pedida por el dueño. Desde ese día la conexión está guardada en la base (Vault) y `.env.meta` solo conserva `CRM_INTERNO_TOKEN`.
 
 ## Para qué
 

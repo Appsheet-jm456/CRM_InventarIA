@@ -25,6 +25,7 @@ es la versión del brief (`--version`), y solo con autorización del dueño.
 
 ## Reglas del proyecto
 
+- **La conexión con Meta no está en archivos:** se cambia en la app, Configuración → Meta (`/meta`, decisión 0029). Los secretos van cifrados en Vault y no se pueden leer; nunca pedirlos ni escribirlos en `.env.meta`. Ese archivo solo tiene `CRM_INTERNO_TOKEN`.
 - Commit por bloque de trabajo terminado; push solo con autorización.
 - El bot de WhatsApp es **híbrido** (decisión 0016, confirmado el 1 oct 2026): menú guiado y texto libre con IA que solo extrae filtros; **la respuesta y los precios salen siempre de la base**, nunca de la IA. No cambiarlo sin decisión del dueño.
 - El embudo del CRM **solo avanza**: nunca mover un lead a una etapa anterior automáticamente.

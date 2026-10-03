@@ -85,8 +85,10 @@ de las Fases 1 y 2 abajo. **Código nuevo:** el bot de prueba sobre Supabase (`h
 
 ## Conexión con Meta (probada el 30 sep 2026)
 
-- **Datos en `.env.meta`** (no se commitea): `META_TOKEN` (usuario del sistema `crm-bot`, no vence),
-  `META_APP_ID`, `META_WABA_ID`, `META_PHONE_NUMBER_ID`, `META_APP_SECRET` y `META_VERIFY_TOKEN`.
+- **Datos de la conexión (desde el 3 oct 2026, F4·16):** viven en la base, en **Configuración → Meta** (`/meta`): identificadores a la vista
+  y token, App Secret y token de verificación cifrados en Vault, que nadie puede leer. Se cambian desde la pantalla, sin reiniciar. Los
+  secretos salieron de `.env.meta` (queda solo `CRM_INTERNO_TOKEN`) y de `crm/.env.local`; copias en `.env.meta.bak` y `crm/.env.local.bak`
+  (fuera de git, borrar cuando el dueño lo decida). Si se pierde `VAULT_ENC_KEY` de `supabase/.env`, hay que volver a escribir los secretos.
 - **Receptor de prueba:** `herramientas/meta-webhook-prueba/receptor.py` en el puerto 8095, más
   `~/.local/bin/cloudflared tunnel --url http://127.0.0.1:8095`. La URL de `trycloudflare` **cambia en cada
   reinicio**: al levantarlo de nuevo hay que pegarla otra vez en Meta → WhatsApp → Configuración → Webhook.
