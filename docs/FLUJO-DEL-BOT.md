@@ -20,6 +20,8 @@
 | ✅ **F4·12** Catálogos (1 oct, migración 0018) | Encabezado más un catálogo elegido de Inventario o subido en una ventana; envía y sigue |
 | ✅ **F4·13** Pausa y recordatorio (1 oct, migración 0019) | Espera horas, minutos y segundos; salidas "El cliente respondió" y "Pasó el tiempo"; reloj en el receptor |
 | **F4·14** Arranque por palabra clave y por etapa del embudo | Un bot arranca si el cliente escribe su palabra clave o si su oportunidad entra a cierta etapa |
+| **F4·17** Lienzo a pantalla completa (3 oct, decisión 0030) | El lienzo de un bot ocupa toda la pantalla, con barra superior: ← Cancelar, Probar, Publicar… y Guardar. Se mantiene el borrador |
+| **F4·18** Salidas del Mensaje (3 oct, decisión 0030, migración 0021) | «Otra respuesta», «Sin respuesta» (con tiempo) y «Error al enviar el mensaje», como en Kommo |
 | **F4·15** Simulador y pruebas | Probar los cuadros y bots nuevos en el simulador (la Pausa con "Simular que pasó el tiempo"), pruebas de la base y del motor |
 
 ## Reglas
@@ -93,6 +95,21 @@ asesor ve todo y puede escribir (el bot no se apaga). Si el cliente pide asesor 
 de 24 h desde el último mensaje del cliente, el inicio se envía como **plantilla aprobada** del bot; sin plantilla
 aprobada no se envía y queda registrado en el chat. No arranca si el bot no tiene versión publicada. Una etapa solo
 dispara un bot.
+
+**RF-20 · Otra respuesta** (0030). Un Mensaje con botones o lista puede tener una salida «Otra respuesta»: si lo que escribe el cliente no es
+ninguna opción, sigue esa flecha en vez de la búsqueda con IA. Las reglas globales de RF-11 (`reiniciar`, saludos, código de equipo, `9`) van
+primero, y un audio o una imagen sigue pasando a asesor. Sin flecha conectada todo queda como antes (búsqueda con IA y, tras tres fallos, asesor).
+No es obligatoria al publicar.
+
+**RF-21 · Sin respuesta** (0030). Cualquier Mensaje puede tener una salida «Sin respuesta» con su propio tiempo (de 1 s a 23 h 59 min 59 s, por
+defecto 15 min). El tiempo cuenta desde que el bot lo envía; si el cliente escribe antes, se cancela. Al vencer sigue la flecha, con las reglas de
+RF-15 (nada si hay asesor, si el cliente ya está en otro cuadro o si pasaron 24 h). No puede apuntar al mismo cuadro (se repetiría sin fin). Con
+la flecha conectada hace falta el tiempo; sin flecha no pasa nada.
+
+**RF-22 · Error al enviar el mensaje** (0030). Un Mensaje puede tener una salida «Error al enviar el mensaje» que se sigue si Meta **rechaza**
+el envío al instante o si luego avisa por el webhook que el mensaje **falló** (estado `failed`: fuera de las 24 h, número inválido, cliente que bloqueó).
+Solo se sigue una vez por mensaje, solo si el cliente sigue en ese cuadro y el bot no está en pausa, y lo que se envía desde esa salida no vuelve
+a dispararla. A dónde lleva lo decide el dueño (por ejemplo a un asesor o a un aviso).
 
 ## Límites de WhatsApp (F4·4, migración 0010)
 
