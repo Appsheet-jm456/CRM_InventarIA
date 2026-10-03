@@ -54,7 +54,7 @@ select case when (pg_temp.cuadro(:b, 'B00')).salidas = jsonb_build_object('otra'
             then 'ok' else 'not ok' end || ' 4 - guardar el texto conserva las salidas y cambia el tiempo a 1 h';
 
 select borrador_guardar_cuadro('B00', null, null, null, :b, '{"otra": null}');
-select case when (pg_temp.cuadro(:b, 'B00')).salidas->'otra' = 'null'::jsonb and (pg_temp.cuadro(:b, 'B00')).salidas->>'error' = 'B-ASESOR'
+select case when not ((pg_temp.cuadro(:b, 'B00')).salidas ? 'otra') and (pg_temp.cuadro(:b, 'B00')).salidas->>'error' = 'B-ASESOR'
             then 'ok' else 'not ok' end || ' 5 - soltar una salida desde el panel no toca las otras';
 
 select case when pg_temp.falla(format('select borrador_conectar(%L, %L, %L, %s)', 'B00', 'sin_respuesta', 'B00', :b))
@@ -67,7 +67,7 @@ select case when pg_temp.falla(format('select borrador_conectar(%L, %L, %L, %s)'
 
 -- Sin botones: «Otra respuesta» no aplica y se suelta; quedan respuesta, sin_respuesta y error
 select borrador_guardar_cuadro(:'m', null, 'Escríbeme tu ciudad', '[]', :b, ('{"respuesta": "B00", "otra": "' || :'n' || '", "error": "' || :'n' || '"}')::jsonb);
-select case when (pg_temp.cuadro(:b, :'m')).salidas = jsonb_build_object('respuesta', 'B00', 'sin_respuesta', null, 'error', :'n')
+select case when (pg_temp.cuadro(:b, :'m')).salidas = jsonb_build_object('respuesta', 'B00', 'error', :'n')
             then 'ok' else 'not ok' end || ' 7 - sin botones guarda «Cuando responda», «Sin respuesta» y «Error», y descarta «Otra respuesta»';
 
 select borrador_conectar(:'m', 'error', 'B00', :b);

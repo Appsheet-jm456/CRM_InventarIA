@@ -1,6 +1,13 @@
 -- Pruebas de la migración 0020 (F4·16 bloque A): Configuración Meta y secretos en Vault. Todo con ROLLBACK. Uso: supabase/migrar.sh --probar
 begin;
 
+-- Las pruebas parten de una base sin conexión: la del dueño se aparta aquí y vuelve con el ROLLBACK.
+delete from vault.secrets where name in ('meta_token', 'meta_app_secret', 'meta_verify_token');
+update meta_conexion set estado = 'sin_conexion', app_id = null, waba_id = null, phone_number_id = null, numero_visible = null,
+  nombre_verificado = null, calidad = null, token_id = null, app_secret_id = null, verify_token_id = null, token_guardado_en = null,
+  app_secret_guardado_en = null, verify_token_guardado_en = null, ultima_prueba_en = null, ultima_prueba = null where id = 1;
+delete from meta_conexion_historial;
+
 create function pg_temp.falla(sentencia text) returns boolean language plpgsql as $$
 begin
   execute sentencia;

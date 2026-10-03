@@ -115,7 +115,9 @@ begin
         raise exception '«Sin respuesta» no puede volver al mismo mensaje: se repetiría sin fin.';
       end if;
     end if;
-    extra := extra || jsonb_build_object(s, v);
+    if jsonb_typeof(v) = 'string' then  -- solo las conectadas: un mensaje sin ellas queda igual que antes
+      extra := extra || jsonb_build_object(s, v);
+    end if;
   end loop;
   espera := coalesce((p_salidas->>'espera_segundos')::int, (c.ajustes->>'espera_segundos')::int, 900);
   if espera not between 1 and 86399 then
