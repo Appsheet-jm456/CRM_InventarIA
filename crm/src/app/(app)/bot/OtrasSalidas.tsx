@@ -40,22 +40,21 @@ export function OtrasSalidas({ sinBotones, destinos, todos, deshabilitado, otra,
           <small className="muted">Si el cliente escribe algo que no es una opción. Va antes de la búsqueda en el inventario; «9», «hola», «reiniciar» y un código de equipo siguen funcionando igual.</small>
         </label>
       )}
-      <label className="field">Sin respuesta, sigue a
+      {/* El temporizador se ve siempre: primero se fija el tiempo y luego a dónde va (RF-21). */}
+      <fieldset className="pausa-tiempo" disabled={deshabilitado}>
+        <legend>⏱ Sin respuesta: si el cliente no escribe en</legend>
+        <label><input type="number" min={0} max={23} value={h} onChange={(e) => setEspera(numero(e.target.value, 23) * 3600 + m * 60 + s)} aria-label="Horas" /> h</label>
+        <label><input type="number" min={0} max={59} value={m} onChange={(e) => setEspera(h * 3600 + numero(e.target.value, 59) * 60 + s)} aria-label="Minutos" /> min</label>
+        <label><input type="number" min={0} max={59} value={s} onChange={(e) => setEspera(h * 3600 + m * 60 + numero(e.target.value, 59))} aria-label="Segundos" /> s</label>
+      </fieldset>
+      <label className="field">…sigue a
         {selector(sinRespuesta, setSinRespuesta, destinos, 'Sin respuesta')}
       </label>
-      {sinRespuesta && (
-        <>
-          <fieldset className="pausa-tiempo" disabled={deshabilitado}>
-            <legend>Si no responde en</legend>
-            <label><input type="number" min={0} max={23} value={h} onChange={(e) => setEspera(numero(e.target.value, 23) * 3600 + m * 60 + s)} aria-label="Horas" /> h</label>
-            <label><input type="number" min={0} max={59} value={m} onChange={(e) => setEspera(h * 3600 + numero(e.target.value, 59) * 60 + s)} aria-label="Minutos" /> min</label>
-            <label><input type="number" min={0} max={59} value={s} onChange={(e) => setEspera(h * 3600 + m * 60 + numero(e.target.value, 59))} aria-label="Segundos" /> s</label>
-          </fieldset>
-          {fuera
-            ? <div className="aviso bad">La espera va de 1 segundo a 23 h 59 min 59 s: Meta solo deja escribirle al cliente dentro de las 24 h.</div>
-            : <small className="muted">No sale si el chat está con un asesor, si el cliente ya siguió por otro lado o si pasaron 24 h desde su último mensaje.</small>}
-        </>
-      )}
+      {fuera
+        ? <div className="aviso bad">La espera va de 1 segundo a 23 h 59 min 59 s: Meta solo deja escribirle al cliente dentro de las 24 h.</div>
+        : <small className="muted">{sinRespuesta
+          ? 'No sale si el chat está con un asesor, si el cliente ya siguió por otro lado o si pasaron 24 h desde su último mensaje.'
+          : 'Elige a qué cuadro va para que el temporizador funcione. Sin destino no pasa nada.'}</small>}
       <label className="field">Error al enviar el mensaje, sigue a
         {selector(error, setError, todos, 'Error al enviar el mensaje')}
         <small className="muted">Si Meta no entrega este mensaje (fuera de las 24 h, número inválido o cliente que bloqueó). Lo que se envíe desde aquí no vuelve a dispararlo.</small>
