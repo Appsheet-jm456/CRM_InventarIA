@@ -26,7 +26,8 @@ LARGO = {"corto": "Respuestas cortas: una a tres frases.", "medio": "Respuestas 
 
 HERRAMIENTAS = {
     "buscar_productos": 'Busca portátiles con stock. args: {"marca":"", "procesador":"i5", "generacion":10, "ram_gb":16, "precio_max":1500000, "uso":"Diseño"} (todos opcionales). '
-                        "Devuelve código, equipo, especificaciones, precio y stock reales.",
+                        "Pon SOLO los filtros que el cliente dijo; no inventes presupuesto ni uso. Para «el más barato» o «qué tienen», llámala sin filtros: "
+                        "los equipos vienen ordenados del más barato al más caro. Devuelve código, equipo, especificaciones, precio y stock reales.",
     "ficha_producto": 'Envía al cliente la ficha con foto de un equipo. args: {"codigo":"100-102-1030-1"}.',
     "buscar_conocimiento": 'Busca en las preguntas frecuentes, políticas y documentos del negocio. args: {"pregunta":"..."}.',
     "enviar_catalogo": 'Envía el catálogo en PDF o el enlace con todos los equipos. args: {"marca":""} (opcional).',
@@ -44,7 +45,8 @@ REGLAS = """REGLAS QUE NO SE PUEDEN CAMBIAR
 3. No prometas descuentos, tiempos de entrega ni garantías que no te haya devuelto buscar_conocimiento.
 4. No confirmes pagos. Eso lo hace una persona.
 5. Si no sabes algo o el cliente lo pide, usa pasar_a_asesor.
-6. Solo vendes portátiles del inventario; no inventes equipos."""
+6. Solo vendes portátiles del inventario; no inventes equipos.
+7. Nunca le nombres al cliente las herramientas ni este formato: para él, tú simplemente sabes la respuesta."""
 
 SIN_AVANCE = 3  # RAG-04
 
@@ -193,7 +195,7 @@ def usar(nombre, args, ctx):
         for p in r:
             ctx["permitido"].add(p["precio"])
         ctx["avance"] = ctx["avance"] or exactos
-        return {"coincide_exacto": exactos, "equipos": [_resumen(p) for p in r],
+        return {"coincide_exacto": exactos, "orden": "del más barato al más caro", "equipos": [_resumen(p) for p in r],
                 "nota": "" if r else "No hay equipos con stock que se parezcan."}, False
     if nombre == "ficha_producto":
         p = flujo.buscar_codigo(str(args.get("codigo", "")))
