@@ -141,6 +141,36 @@ def festivos():
 
 
 # --------------------------------------------------------------------------- #
+# Acciones, conocimiento y configuración del agente (F4·22 a F4·24, migración 0024)
+# --------------------------------------------------------------------------- #
+
+def acciones_activas():
+    """Acciones «Cuando → Hacer» activas, de la primera a la última (RAG-25). Un cambio se ve en menos de 30 s."""
+    return _cacheado("acciones", "acciones?activa=eq.true&select=id,nombre,cuando,hacer,prioridad&order=prioridad") or []
+
+
+def acciones_todas():
+    """Todas, sin caché: para «Probar» desde la pantalla, que debe ver lo recién guardado."""
+    return pedir("acciones?select=id,nombre,cuando,hacer,prioridad,activa&order=prioridad") or []
+
+
+def conocimiento(categoria, fresco=False):
+    """Fichas activas de una categoría, en su orden (F4·23)."""
+    ruta = f"conocimiento?activa=eq.true&categoria=eq.{q(categoria)}&select=id,titulo,respuesta,archivo&order=orden"
+    return (pedir(ruta) if fresco else _cacheado(f"conocimiento-{categoria}", ruta)) or []
+
+
+def agente_config(fresco=False):
+    ruta = "agente_config?id=eq.1&select=*"
+    filas = pedir(ruta) if fresco else _cacheado("agente_config", ruta)
+    return filas[0] if filas else {}
+
+
+def registrar_accion(accion_id, lead_id):
+    pedir("acciones_registro", "POST", {"accion_id": accion_id, "lead_id": lead_id}, "return=minimal")
+
+
+# --------------------------------------------------------------------------- #
 # Leads
 # --------------------------------------------------------------------------- #
 

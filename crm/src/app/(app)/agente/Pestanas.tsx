@@ -3,9 +3,12 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
-// Pestañas del módulo Agente (docs/AGENTE.md). Se suman a medida que se construyen: Acciones (F4·24), Compra y cotización
+// Pestañas del módulo Agente (docs/AGENTE.md). Se suman a medida que se construyen: Compra y cotización
 // (F4·25, F4·26), Cerebro (F4·27), Personalidad, Probar y Registro (F4·28).
-const PESTANAS = [{ ruta: '/agente/conocimiento', texto: 'Conocimiento' }]
+const PESTANAS = [
+  { ruta: '/agente/conocimiento', texto: 'Conocimiento' },
+  { ruta: '/agente/acciones', texto: 'Acciones' },
+]
 
 export function Pestanas() {
   const ruta = usePathname()

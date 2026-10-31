@@ -25,6 +25,8 @@ def texto_saliente(mensaje):
     """Lo que ve el cliente, en texto: el cuerpo y las opciones de la lista o los botones."""
     if mensaje.get("type") == "text":
         return mensaje["text"]["body"]
+    if mensaje.get("type") == "image":
+        return f"🖼️ {mensaje['image'].get('caption') or 'Imagen'}"
     if mensaje.get("type") == "document":
         return f"📄 {mensaje['document'].get('caption') or mensaje['document'].get('filename', 'Documento')}"
     i = mensaje.get("interactive", {})

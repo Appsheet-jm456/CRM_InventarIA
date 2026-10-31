@@ -1,6 +1,6 @@
 # Módulo Agente: menú, acciones, compra, cotización y el agente Avi (F4·22 a F4·29)
 
-**Estado:** 🔵 En construcción · F4·22 (base) hecha y F4·23 (conocimiento) construida el 31 oct 2026 · Dividido en F4·22 a F4·29 · 31 oct 2026 · con las respuestas del dueño, Acciones y flujo de cotización · Decisión [0032](decisiones/0032-modulo-agente.md) (modifica la 0016)
+**Estado:** 🔵 En construcción · F4·22 (base) hecha; F4·23 (conocimiento) y F4·24 (acciones) construidas el 31 oct 2026 · Dividido en F4·22 a F4·29 · 31 oct 2026 · con las respuestas del dueño, Acciones y flujo de cotización · Decisión [0032](decisiones/0032-modulo-agente.md) (modifica la 0016)
 Referencias que trajo el dueño: diagramas de agentes de otros CRM (canales → buffer → agente → respuesta, con modelo, memoria,
 conocimiento y herramientas alrededor).
 
@@ -337,7 +337,7 @@ Cada tarea se construye, la prueba el dueño y se aprueba antes de pasar a la si
 |---|---|---|---|
 | **F4·22** ✅ | **Base del agente** (migración 0024, 15 pruebas SQL, 31 oct 2026) | Migración: `acciones`, `conocimiento`, `cotizaciones` (con consecutivo), `agente_config`, `agente_turnos`; `bots.modo`; `leads.resumen_agente`; etapas *Esperando pago* y *Pago por confirmar*; etiquetas de compra; permiso `administrar_agente`; llaves del proveedor en Vault; pruebas SQL | No |
 | **F4·23** 🔵 | **Conocimiento** (construida 31 oct 2026, falta la prueba del dueño) | Pantalla de preguntas frecuentes y políticas (texto o imagen) por categoría: ubicación, garantía, devoluciones, envíos, pagos, distribuidores | No |
-| **F4·24** | **Acciones «Cuando → Hacer»** | Motor en el receptor + pantalla con prioridad, prueba con una frase y contador. Acciones iniciales: ubicación, cuentas, garantía, devoluciones, horario, asesor | No |
+| **F4·24** 🔵 | **Acciones «Cuando → Hacer»** (construida 31 oct 2026, falta la prueba del dueño) | Motor en el receptor + pantalla con prioridad, prueba con una frase y contador. Acciones iniciales: ubicación, cuentas, garantía, devoluciones, horario, asesor | No |
 | **F4·25** | **Flujo de compra** | «Quiero comprar <código>» → confirmar equipo y total → cuentas con texto aprobado → datos de envío → *Esperando pago* → comprobante (foto/PDF/«ya pagué») → *Pago por confirmar* → Bandeja con resumen; 20 min, 12 h y cancelación | No |
 | **F4·26** | **Flujo de cotización** | Captura nombre, cédula, celular, producto y cantidad → PDF con reglas del negocio y logo → etapa Cotización; reenviar y descargar desde la Bandeja | No |
 | **F4·32** | **Documentos de conocimiento** | Subir texto, PDF, Excel o CSV; extraer texto, partir en trozos con índice en español; reemplazar, apagar, eliminar, ver texto extraído y probar búsqueda. Lo usa el agente (F4·28) | No |
@@ -396,3 +396,12 @@ porque es su material de consulta; F4·27 a F4·29 suman a Avi encima. (F4·32 t
   fichas por categoría con título, respuesta (contador hasta 4.096 caracteres, el límite de WhatsApp), imagen o PDF opcional (bucket
   `conocimiento`, servido por `/archivos/conocimiento/…`), interruptor Activa (no se activa sin contenido), borrar y crear con categoría
   nueva. Cada categoría muestra qué acción la usa y avisa si una acción quedaría sin fichas activas.
+- **F4·24 (31 oct 2026):** motor `acciones.py` en el receptor: corre antes del menú, solo con texto escrito (no con botones del menú
+  ni media) y nunca con el chat en manos de un asesor; gana la primera acción activa que coincide; si la acción no tiene nada que enviar
+  (categoría sin fichas activas, cuentas sin texto) el mensaje sigue por el menú. Pasos que ya corren: texto (con `{nombre}` y `{horario}`),
+  conocimiento (texto e imagen o PDF de las fichas, subidos a Meta y reutilizados 25 días), cuentas, ir a otro bot, etiqueta y pasar a asesor.
+  Compra y cotización quedan para F4·25 y F4·26 (una acción con esos pasos no se puede activar). Cada uso queda en `acciones_registro`.
+  Pestaña **Acciones**: editar frases (contiene / es igual a / empieza por) y pasos, activar, subir y bajar, borrar, crear, contador de 30 días
+  y **Probar con una frase** (ruta interna `/interno/acciones` del receptor, el mismo motor sin enviar nada). 18 pruebas del motor en
+  `herramientas/meta-webhook-prueba/prueba_acciones.py`. Migraciones 0025 y 0026 ajustan las frases iniciales (sin «una persona», con
+  «dónde queda») y quitan el motivo repetido de «Pasar a asesor».

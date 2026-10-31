@@ -31,6 +31,7 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 import db
+import acciones
 import flujo
 import interprete
 import visor
@@ -175,8 +176,33 @@ def subir_foto(p):
     return media_id
 
 
+_medios_conocimiento = {}  # ruta del bucket → (id de medio en Meta, cuándo se subió): se reutiliza 25 días
+
+
+def subir_conocimiento(ruta):
+    """La imagen o PDF de una ficha de conocimiento en Meta (F4·23 y F4·24). Cada archivo nuevo tiene ruta nueva."""
+    media_id, en = _medios_conocimiento.get(ruta, (None, None))
+    if vigente(media_id, en):
+        return media_id
+    nombre = Path(ruta).name
+    mime = "application/pdf" if nombre.endswith(".pdf") else MIME_FOTO.get(nombre.rsplit(".", 1)[-1].lower(), "image/jpeg")
+    media_id = subir_a_meta(db.descargar("conocimiento", ruta), mime, nombre)
+    _medios_conocimiento[ruta] = (media_id, datetime.now().astimezone().isoformat())
+    return media_id
+
+
 def resolver(mensaje):
     """Convierte las marcas internas del árbol en mensajes de la API ({'_pdf': catálogo} → documento)."""
+    if "_conocimiento" in mensaje:  # imagen o PDF de una ficha (RAG-24)
+        f = mensaje["_conocimiento"]
+        try:
+            media_id = subir_conocimiento(f["archivo"])
+        except Exception as e:
+            anotar(f"  ✗ no se pudo subir el archivo de «{f['titulo']}»: {e!r}")
+            return None
+        if f["archivo"].endswith(".pdf"):
+            return {"type": "document", "document": {"id": media_id, "filename": f"{f['titulo']}.pdf", "caption": f"📄 {f['titulo']}"}}
+        return {"type": "image", "image": {"id": media_id, "caption": f["titulo"]}}
     if "_pdf" in mensaje:
         c = mensaje["_pdf"]
         try:
@@ -358,7 +384,24 @@ def contestar(numero, entrada, visible, nombre, tipo, meta_id, media=None):
                 if wamid:
                     db.guardar_mensaje(lead["id"], "bot", texto, meta_id=wamid if wamid != "enviado" else None)
 
-            mensajes, st = flujo.responder(st, entrada, avisar)
+            # Acciones «Cuando → Hacer» primero (F4·24, RAG-25): solo con texto escrito, no con botones del menú ni media.
+            atendida = None
+            if tipo in ("text", "button") and not st["pausa"]:
+                try:
+                    atendida = acciones.responder(st, entrada, lead)
+                except Exception as e:  # si las acciones fallan, el menú responde como siempre
+                    anotar(f"  ✗ las acciones fallaron: {e!r}")
+            if atendida:
+                accion, mensajes, st, etiquetas = atendida
+                anotar(f"  ⚡ acción «{accion['nombre']}»")
+                if etiquetas:
+                    lead["etiquetas"] = list(dict.fromkeys(list(lead.get("etiquetas") or []) + etiquetas))
+                try:
+                    db.registrar_accion(accion["id"], lead["id"])
+                except Exception as e:
+                    anotar(f"  ✗ no se pudo anotar la acción: {e!r}")
+            else:
+                mensajes, st = flujo.responder(st, entrada, avisar)
         except Exception as e:  # una falla del árbol o de la base no debe tumbar el receptor
             anotar(f"  ✗ el árbol falló: {e!r}")
             return
@@ -468,6 +511,8 @@ class Webhook(BaseHTTPRequestHandler):
             return self.interno(lambda p: buscar(str(p["texto"])[:500]))
         if ruta == "/interno/simular":
             return self.interno(simular)
+        if ruta == "/interno/acciones":  # «Probar con una frase» (F4·24, RAG-26)
+            return self.interno(lambda p: acciones.probar(str(p["texto"])[:500]))
         if urlparse(self.path).path != "/webhook":
             return self.responder(404)
         crudo = self.rfile.read(int(self.headers.get("Content-Length", 0)))
