@@ -8,6 +8,7 @@ las tablas tienen RLS sin políticas, así que la clave pública no ve nada.
 import json
 import time
 from datetime import datetime, timedelta, timezone
+import urllib.error
 import urllib.parse
 import urllib.request
 from pathlib import Path
@@ -204,6 +205,22 @@ def mensajes_del_cliente(lead_id, cuantos=200):
     return mensajes_recientes(lead_id, cuantos)
 
 
+def vaciar_papelera():
+    """Borra los leads con más de 30 días en la papelera (0035). Devuelve {borrados, media, cotizaciones} con los archivos a quitar."""
+    return pedir("rpc/leads_vaciar_papelera", "POST", {}) or {}
+
+
+def borrar_archivos(bucket, rutas):
+    """Quita archivos del almacenamiento (fotos y audios del chat, PDF de cotizaciones) de leads ya borrados."""
+    if not rutas:
+        return
+    url = REST.replace("/rest/v1", f"/storage/v1/object/{bucket}")
+    for i in range(0, len(rutas), 100):
+        peticion = urllib.request.Request(url, method="DELETE", headers=_CABECERAS, data=json.dumps({"prefixes": rutas[i:i + 100]}).encode())
+        with urllib.request.urlopen(peticion, timeout=30) as r:
+            r.read()
+
+
 def compra_mover(lead_id, paso):
     """Lleva la oportunidad abierta del cliente al paso de compra (0027): solo hacia adelante, salvo cancelar."""
     return pedir("rpc/compra_mover", "POST", {"p_lead": lead_id, "p_paso": paso})
@@ -253,14 +270,18 @@ def registrar_accion(accion_id, lead_id):
 # --------------------------------------------------------------------------- #
 
 def lead(telefono):
-    filas = pedir(f"leads?telefono=eq.{q(telefono)}&select=*")
+    """El lead activo de ese teléfono. Los de la papelera no cuentan: si el cliente vuelve a escribir, entra como nuevo (RL-11, 0035)."""
+    filas = pedir(f"leads?telefono=eq.{q(telefono)}&eliminado_en=is.null&select=*")
     return filas[0] if filas else None
 
 
 def crear_lead(telefono, nombre):
-    """Un cliente nuevo entra siempre en la primera etapa del embudo."""
-    pedir("leads?on_conflict=telefono", "POST", {"telefono": telefono, "nombre": nombre or "", "etapa": "Nuevo"},
-          "resolution=ignore-duplicates,return=minimal")
+    """Un cliente nuevo entra siempre en la primera etapa del embudo. Si otro hilo ya lo creó (teléfono único entre los activos), se usa ese."""
+    try:
+        pedir("leads", "POST", {"telefono": telefono, "nombre": nombre or "", "etapa": "Nuevo"}, "return=minimal")
+    except urllib.error.HTTPError as e:
+        if e.code != 409:
+            raise
     return lead(telefono)
 
 

@@ -6,6 +6,11 @@ de las Fases 1 y 2 abajo. **Código nuevo:** el bot de prueba sobre Supabase (`h
 
 ## Dónde retomar (en este orden)
 
+0. **31 oct 2026 · F4·30 Módulo Leads construido 🔵 (A a E, migraciones 0032 a 0035, [LEADS.md](LEADS.md)):** atributos personalizados
+   (Configuración → Atributos del lead), lista de Leads (búsqueda, filtros, columnas, vistas, acciones en grupo, exportar CSV), ficha del lead (datos,
+   atributos, oportunidades, tareas, cotizaciones, archivos, estadísticas y línea de tiempo con chat, notas y tareas), archivar y papelera (30 días,
+   borrar ya por Ley 1581). **Falta la prueba del dueño.** Sigue F4·31 (capacidad) antes de unificar Kommo.
+
 0. **31 oct 2026 · F4·28 Avi construido 🔵** (`agente.py`, pestañas Avi, Probar y Registro; AGENTE.md): conversa con herramientas, verifica precios y pasa a asesor. **Para probarlo
    (dueño):** 1) llave y presupuesto en Cerebro, 2) en la pestaña Avi poner un bot en modo *Agente* (mejor uno de prueba) y encender para *Números de prueba* con su número, 3) usar
    **Probar** y luego escribir por WhatsApp. Completo el mismo día: buffer, resumen, catálogo/etapa/seguimiento, 3 sin avance, chips en la Bandeja y métricas.

@@ -8,7 +8,7 @@ import { asignar, cerrar, liberar, reanudarBot, responder, tomar } from '../../b
 import { Entrega, Media, hora, iniciales, partirOpciones, type Mensaje } from '../../bandeja/Bandeja'
 import { OportunidadesCliente, type Embudo, type Etapa } from '../../bandeja/OportunidadesCliente'
 import { ComponerPlantilla } from '../../bandeja/Plantilla'
-import { archivoLead, crearTarea, cumplirTarea, editarLead, etiquetaLead, guardarAtributos, notaLead, type Resultado } from './acciones'
+import { archivoLead, borrarYa, crearTarea, cumplirTarea, editarLead, etiquetaLead, guardarAtributos, notaLead, type Resultado } from './acciones'
 
 export type LeadFicha = {
   id: number
@@ -397,6 +397,19 @@ export function Ficha({ lead: inicial, yo, usuarios, asesores, embudos, etapas, 
               ? <button className="btn chico" disabled={ocupado} onClick={() => hacer(() => archivoLead(lead.id, 'restaurar'))}>Restaurar</button>
               : <button className="btn chico peligro" disabled={ocupado}
                   onClick={() => confirm('¿Enviar a la papelera? Se puede restaurar durante 30 días.') && hacer(() => archivoLead(lead.id, 'eliminar'))}>Eliminar</button>)}
+            {yo.eliminar && yo.verTodas && (
+              <button className="btn chico peligro" disabled={ocupado} style={{ marginLeft: 'auto' }}
+                title="Borra ya, sin papelera, todo lo del cliente: datos, mensajes, archivos y cotizaciones (Ley 1581)"
+                onClick={async () => {
+                  const t = prompt(`Borrado definitivo a pedido del cliente: se borran sus datos, mensajes, archivos y cotizaciones, y no se puede deshacer.\n\nPara confirmar, escribe su teléfono: ${lead.telefono}`)
+                  if (t === null) return
+                  setOcupado(true)
+                  const r = await borrarYa(lead.id, t)
+                  setOcupado(false)
+                  if (r.error) setAviso(r)
+                  else router.push('/leads')
+                }}>Borrar ya (pedido del cliente)</button>
+            )}
           </div>
         </div>
       </div>

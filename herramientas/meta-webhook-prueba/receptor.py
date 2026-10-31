@@ -367,10 +367,27 @@ def vencer_espera(numero):
         guardar_estado(lead, st, "", None, del_cliente=False)
 
 
+def vaciar_papelera():
+    """Leads con más de 30 días en la papelera: se borran con sus mensajes y sus archivos (F4·30 E, 0035)."""
+    r = db.vaciar_papelera()
+    if r.get("borrados"):
+        db.borrar_archivos("media", r.get("media") or [])
+        db.borrar_archivos("cotizaciones", r.get("cotizaciones") or [])
+        anotar(f"🗑 papelera: {r['borrados']} lead(s) de más de 30 días borrados con sus archivos")
+
+
 def reloj():
-    """Cada 5 s atiende las Pausas vencidas. Si el receptor estuvo apagado, al volver atiende las que siguen en ventana."""
+    """Cada 5 s atiende las Pausas vencidas. Si el receptor estuvo apagado, al volver atiende las que siguen en ventana.
+    Una vez por hora vacía la papelera de leads."""
+    ultima_papelera = 0
     while True:
         time.sleep(5)
+        if time.time() - ultima_papelera > 3600:
+            ultima_papelera = time.time()
+            try:
+                vaciar_papelera()
+            except Exception as e:
+                anotar(f"  ✗ no se pudo vaciar la papelera: {e!r}")
         try:
             for numero in db.esperas_vencidas():
                 try:

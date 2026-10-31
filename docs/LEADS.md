@@ -1,6 +1,6 @@
 # Módulo Leads: lista, ficha del cliente, atributos y tareas (F4·30) · Capacidad para 1.000 clientes al día (F4·31)
 
-**Estado:** 🔵 En construcción · F4·30 A (base) hecha el 31 oct 2026 · Decisión [0033](decisiones/0033-modulo-leads-y-capacidad.md) aceptada
+**Estado:** 🔵 Construido (F4·30 A a E, 31 oct 2026); falta la prueba del dueño · F4·31 (capacidad) pendiente · Decisión [0033](decisiones/0033-modulo-leads-y-capacidad.md) aceptada
 Referencia que trajo el dueño: la lista «Todos los leads» y la ficha del lead de Kommo (panel de datos a la izquierda, chat a la derecha).
 
 ## Qué pidió el dueño (31 oct 2026)
@@ -154,7 +154,7 @@ Postgres maneja millones de filas con los índices correctos; 400.000 mensajes a
 | **F4·30 B** 🔵 | Atributos (construido, falta la prueba del dueño) | Configuración → Atributos del lead: crear, editar, ordenar, secciones, archivar |
 | **F4·30 C** 🔵 | Lista (construida, falta la prueba del dueño) | Módulo Leads: columnas, búsqueda, filtros, vistas guardadas, paginación en servidor, acciones en grupo, exportar |
 | **F4·30 D** 🔵 | Ficha (construida, falta la prueba del dueño) | Ficha a pantalla completa: datos y atributos, etapa, responsable, tareas, línea de tiempo con chat, notas y respuesta (reutiliza la Bandeja) |
-| **F4·30 E** | Archivar y papelera | Archivar, papelera de 30 días, restaurar, borrado por solicitud del cliente |
+| **F4·30 E** 🔵 | Archivar y papelera (construido, falta la prueba del dueño) | Archivar, papelera de 30 días, restaurar, borrado por solicitud del cliente |
 | **F4·31** | Capacidad | Arreglos 2 a 4 y 7 (Bandeja, Embudo, tiempo real, búsqueda), prueba de carga; coordina 1, 5, 6 y 9 con sus tareas |
 
 Orden sugerido: **F4·30 A → B → C → D → E**, y **F4·31 antes de unificar Kommo**. F4·30 y el Agente (F4·22–F4·29) son independientes; el dueño
@@ -185,8 +185,7 @@ elige cuál va primero.
   nombre, valor, etiquetas, cada atributo, archivar, papelera), oportunidades (etapa del embudo) y seguimientos (tarea creada y cumplida), con quién lo
   hizo o el sistema; lo que el bot cambia en cada mensaje no deja rastro; `seguimientos.tipo` y `resultado` con `lead_tarea_tipos`; `leads_archivar`
   (asesor, solo sus leads) y `leads_eliminar` (papelera y restaurar, con permiso); índices de búsqueda con trigramas (nombre, teléfono, mensajes) y
-  GIN en atributos. Falta para E: que un lead archivado se desarchive al escribir, que el bot ignore los de la papelera (el teléfono es único) y que
-  Bandeja y Embudo los oculten.
+  GIN en atributos. Lo que quedaba para E se hizo en la migración 0035.
 - **F4·30 B (31 oct 2026):** módulo **Configuración → Atributos del lead** (`/atributos`, permiso `administrar_atributos`): atributos agrupados por sección
   con orden (↑↓), nombre y sección editables, tipo fijo, opciones de las listas (no deja quitar una opción que algún cliente ya tiene guardada),
   obligatorio para pasar a ciertas etapas, «En la lista», «Lo llena el bot», cuántos clientes tienen el dato, archivar y restaurar; crear con nombre,
@@ -209,3 +208,11 @@ elige cuál va primero.
   la Bandeja, respuestas rápidas con «/», plantilla de Meta fuera de 24 h), **Nota** (solo el equipo) y **Tarea**. Se actualiza cada 10 s. Funciones
   nuevas: `lead_editar`, `lead_guardar_atributos`, `lead_nota`, `crear_tarea`, `cumplir_tarea`; `mover_oportunidad` ahora pide los **atributos
   obligatorios** de la etapa (ficha y Embudo; el bot no pasa por ahí). 12 pruebas SQL.
+- **F4·30 E (31 oct 2026), migración 0035:** el teléfono es único **solo entre los leads que no están en la papelera** (índice parcial): si un cliente
+  eliminado vuelve a escribir, entra como **lead nuevo** (RL-11) y el viejo no se puede restaurar mientras exista el nuevo. El receptor ya no usa
+  `on_conflict=telefono` (crea y, si otro hilo se adelantó, reutiliza) y busca solo leads fuera de la papelera. Un mensaje del **cliente desarchiva**
+  al lead (disparador en `mensajes`; los del bot no). **Bandeja y Embudo** ocultan archivados y papelera. La **papelera se vacía a los 30 días**: el
+  receptor llama a `leads_vaciar_papelera()` una vez por hora y borra del almacenamiento las fotos y audios del chat (bucket `media`) y los PDF de
+  cotizaciones. **Borrar ya** en la ficha (administrador: `eliminar_leads` y `ver_todas_conversaciones`, escribiendo el teléfono del cliente):
+  borra todo al instante con sus archivos. Las dos rutas dejan **constancia en `leads_borrados`** (id, fecha, quién, motivo, cuántos mensajes y
+  archivos), sin datos personales. **Límite:** `eventos.log` del receptor (texto plano en el servidor, fuera de git) conserva sus líneas. 10 pruebas SQL.

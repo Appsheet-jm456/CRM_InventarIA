@@ -130,6 +130,8 @@ export function Bandeja({ yo, usuarios, asesores, embudos, etapas, rapidas, inic
     const { data } = await clienteNavegador()
       .from('leads')
       .select(COLUMNAS)
+      .is('archivado_en', null) // archivados y papelera salen de la Bandeja; si el cliente escribe, se desarchiva solo (F4·30 E)
+      .is('eliminado_en', null)
       .order('fecha_ultimo_contacto', { ascending: false, nullsFirst: false })
       .limit(300)
     setLeads((data ?? []) as unknown as Lead[])

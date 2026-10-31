@@ -1,6 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { crearClienteAdmin } from '@/lib/supabase/admin'
 import { crearCliente } from '@/lib/supabase/server'
 
 export type Resultado = { error?: string; ok?: string }
@@ -51,7 +52,22 @@ export async function archivoLead(lead: number, accion: 'archivar' | 'desarchiva
   const r = await llamar('leads_en_grupo', { p_accion: accion, p_ids: [lead], p_dato: {} }, lead)
   if (r.error) return r
   const g = r.data as { hechos: number }
-  if (!g.hechos) return { error: 'No se pudo: no tienes permiso o ya estaba así.' }
+  if (!g.hechos) return { error: accion === 'restaurar'
+    ? 'No se pudo restaurar: ya hay otro lead activo con ese teléfono (el cliente volvió a escribir).'
+    : 'No se pudo: no tienes permiso o ya estaba así.' }
   revalidatePath('/leads')
   return { ok: { archivar: 'Archivado.', desarchivar: 'Desarchivado.', eliminar: 'Enviado a la papelera.', restaurar: 'Restaurado.' }[accion] }
+}
+
+// Borrado inmediato a pedido del cliente (Ley 1581): la base exige el permiso y el teléfono escrito (lead_borrar_ya, 0035) y devuelve
+// los archivos; se quitan del almacenamiento con la llave del servidor, solo después de que la base borró al cliente.
+export async function borrarYa(lead: number, confirmacion: string): Promise<Resultado> {
+  const { data, error } = await crearCliente().rpc('lead_borrar_ya', { p_lead: lead, p_confirmacion: confirmacion })
+  if (error) return { error: error.code === '42501' ? 'Solo el administrador puede borrar datos de un cliente.' : error.message }
+  const r = data as { media: string[]; cotizaciones: string[] }
+  const almacen = crearClienteAdmin().storage
+  if (r.media.length) await almacen.from('media').remove(r.media)
+  if (r.cotizaciones.length) await almacen.from('cotizaciones').remove(r.cotizaciones)
+  revalidatePath('/leads')
+  return { ok: 'Borrado.' }
 }
