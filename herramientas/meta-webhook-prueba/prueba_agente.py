@@ -228,5 +228,13 @@ prueba(44, "«hola», «menú» y «reiniciar» van al menú guiado; el texto li
         and not agente.atiende(st0, lead_b, "text", "menú", CONFIG) and not agente.atiende(st0, lead_b, "text", "reiniciar", CONFIG)
         and agente.atiende(st0, lead_b, "text", "hola, busco un dell", CONFIG))
 
-print(f"\n{44 - fallos}/44 pruebas bien")
+FICHAS.append({"fuente": "ficha", "id": 5, "titulo": "Medios de pago", "texto": "Bancolombia ahorros 82547373550, llave @x", "puntaje": 1})
+CONFIG["texto_cuentas"] = "Bancolombia ahorros 82547373550"
+r = turno([{"herramienta": "buscar_conocimiento", "args": {"pregunta": "medios de pago"}},
+           {"responder": "Puedes pagar a Bancolombia 82547373550"}, {"responder": "Puedes pagar a Bancolombia 825 4737 3550"}])
+prueba(45, "aunque una ficha traiga las cuentas, Avi no puede escribir sus números (RAG-09)", r["asesor"]
+        and not any("82547373550" in t.replace(" ", "") for t in textos(r)) and "número de cuenta" in r["nota"])
+CONFIG["texto_cuentas"] = ""
+
+print(f"\n{45 - fallos}/45 pruebas bien")
 sys.exit(1 if fallos else 0)

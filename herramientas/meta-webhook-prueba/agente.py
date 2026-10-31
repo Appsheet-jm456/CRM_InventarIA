@@ -157,9 +157,14 @@ def cifras(texto):
     return {_a_pesos(t) for t in _DINERO.findall(texto or "")} - {0}
 
 
-def revisar(respuesta, permitido, texto_permitido=""):
-    """Problemas de una respuesta: precios que no salieron de una herramienta y números largos (cuentas, cédulas)."""
+def revisar(respuesta, permitido, texto_permitido="", texto_cuentas=""):
+    """Problemas de una respuesta: precios que no salieron de una herramienta, números largos (cuentas, cédulas) y cualquier número
+    del texto de cuentas aunque una ficha lo traiga (RAG-09: las cuentas solo salen con el flujo de compra o la acción)."""
     problemas = []
+    plano = re.sub(r"[\s.\-]", "", respuesta or "")
+    cuentas = set(re.findall(r"\d{6,}", re.sub(r"[\s.\-]", "", texto_cuentas or "")))
+    if any(n in plano for n in cuentas):
+        problemas.append("tiene un número de cuenta o cédula: las cuentas solo se envían con iniciar_compra")
     for c in sorted(cifras(respuesta) - permitido):
         problemas.append(f"el valor {c:,} no salió de ninguna herramienta".replace(",", "."))
     nombradas = [h for h in HERRAMIENTAS if h in (respuesta or "")]
@@ -361,7 +366,7 @@ def responder(st, entrada, lead, config=None, simulador=False, previo=None):
                 mensajes += [{"role": "assistant", "content": r["texto"]},
                              {"role": "user", "content": 'Responde en el formato JSON: {"responder": "..."}'}]
                 continue
-            problemas = revisar(texto, ctx["permitido"], ctx["texto_permitido"])
+            problemas = revisar(texto, ctx["permitido"], ctx["texto_permitido"], config.get("texto_cuentas") or "")
             if problemas and not reintento:  # RAG-02: una oportunidad más
                 reintento = True
                 traza.append({"tipo": "bloqueado", "problemas": problemas, "texto": texto})
