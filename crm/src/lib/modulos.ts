@@ -28,6 +28,7 @@ export const MODULOS: readonly Modulo[] = [
 
   { clave: 'bot', titulo: 'Bot y horario', subtitulo: 'Árbol del bot y horario de atención', grupo: 'Configuración', ruta: '/bot', icono: 'bot', permisos: ['administrar_bot'] },
   { clave: 'etapas', titulo: 'Etapas', subtitulo: 'Etapas del embudo y motivos de pérdida', grupo: 'Configuración', ruta: '/etapas', icono: 'etapas', permisos: ['administrar_embudo'] },
+  { clave: 'atributos', titulo: 'Atributos del lead', subtitulo: 'Campos personalizados de cada cliente', grupo: 'Configuración', ruta: '/atributos', icono: 'atributos', permisos: ['administrar_atributos'] },
   { clave: 'respuestas-rapidas', titulo: 'Respuestas rápidas', subtitulo: 'Atajos de texto del equipo', grupo: 'Configuración', ruta: '/respuestas-rapidas', icono: 'respuestas', permisos: ['administrar_bot'] },
   { clave: 'canal', titulo: 'Canal WhatsApp', subtitulo: 'Plantillas de Meta', grupo: 'Configuración', ruta: '/canal', icono: 'canal', permisos: ['administrar_canal'] },
   { clave: 'agente', titulo: 'Agente', subtitulo: 'Conocimiento, acciones y el agente Avi', grupo: 'Configuración', ruta: '/agente', icono: 'agente', permisos: ['administrar_agente'] },

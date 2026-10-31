@@ -151,7 +151,7 @@ Postgres maneja millones de filas con los índices correctos; 400.000 mensajes a
 | # | Tarea | Qué entrega |
 |---|---|---|
 | **F4·30 A** ✅ | Base (migración 0032, 19 pruebas SQL) | `lead_atributos` (definiciones), `leads.atributos` (jsonb con índice), `leads.archivado_en` y `eliminado_en`, `lead_eventos`, tipo y resultado en `seguimientos`, permisos nuevos, índices de búsqueda; pruebas SQL |
-| **F4·30 B** | Atributos | Configuración → Atributos del lead: crear, editar, ordenar, secciones, archivar |
+| **F4·30 B** 🔵 | Atributos (construido, falta la prueba del dueño) | Configuración → Atributos del lead: crear, editar, ordenar, secciones, archivar |
 | **F4·30 C** | Lista | Módulo Leads: columnas, búsqueda, filtros, vistas guardadas, paginación en servidor, acciones en grupo, exportar |
 | **F4·30 D** | Ficha | Ficha a pantalla completa: datos y atributos, etapa, responsable, tareas, línea de tiempo con chat, notas y respuesta (reutiliza la Bandeja) |
 | **F4·30 E** | Archivar y papelera | Archivar, papelera de 30 días, restaurar, borrado por solicitud del cliente |
@@ -187,3 +187,7 @@ elige cuál va primero.
   (asesor, solo sus leads) y `leads_eliminar` (papelera y restaurar, con permiso); índices de búsqueda con trigramas (nombre, teléfono, mensajes) y
   GIN en atributos. Falta para E: que un lead archivado se desarchive al escribir, que el bot ignore los de la papelera (el teléfono es único) y que
   Bandeja y Embudo los oculten.
+- **F4·30 B (31 oct 2026):** módulo **Configuración → Atributos del lead** (`/atributos`, permiso `administrar_atributos`): atributos agrupados por sección
+  con orden (↑↓), nombre y sección editables, tipo fijo, opciones de las listas (no deja quitar una opción que algún cliente ya tiene guardada),
+  obligatorio para pasar a ciertas etapas, «En la lista», «Lo llena el bot», cuántos clientes tienen el dato, archivar y restaurar; crear con nombre,
+  tipo (12, con ejemplo), sección y opciones. La clave se saca del nombre y no cambia.
