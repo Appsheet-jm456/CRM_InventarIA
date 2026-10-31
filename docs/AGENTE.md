@@ -336,8 +336,8 @@ Cada tarea se construye, la prueba el dueño y se aprueba antes de pasar a la si
 | # | Tarea | Qué entrega | Usa IA |
 |---|---|---|---|
 | **F4·22** ✅ | **Base del agente** (migración 0024, 15 pruebas SQL, 31 oct 2026) | Migración: `acciones`, `conocimiento`, `cotizaciones` (con consecutivo), `agente_config`, `agente_turnos`; `bots.modo`; `leads.resumen_agente`; etapas *Esperando pago* y *Pago por confirmar*; etiquetas de compra; permiso `administrar_agente`; llaves del proveedor en Vault; pruebas SQL | No |
-| **F4·23** 🔵 | **Conocimiento** (construida 31 oct 2026, falta la prueba del dueño) | Pantalla de preguntas frecuentes y políticas (texto o imagen) por categoría: ubicación, garantía, devoluciones, envíos, pagos, distribuidores | No |
-| **F4·24** 🔵 | **Acciones «Cuando → Hacer»** (construida 31 oct 2026, falta la prueba del dueño) | Motor en el receptor + pantalla con prioridad, prueba con una frase y contador. Acciones iniciales: ubicación, cuentas, garantía, devoluciones, horario, asesor | No |
+| **F4·23** ✅ | **Conocimiento** (hecha y probada por WhatsApp el 31 oct 2026) | Pantalla de preguntas frecuentes y políticas (texto o imagen) por categoría: ubicación, garantía, devoluciones, envíos, pagos, distribuidores | No |
+| **F4·24** ✅ | **Acciones «Cuando → Hacer»** (hecha y probada por WhatsApp el 31 oct 2026) | Motor en el receptor + pantalla con prioridad, prueba con una frase y contador. Acciones iniciales: ubicación, cuentas, garantía, devoluciones, horario, asesor | No |
 | **F4·25** 🔵 | **Flujo de compra** (construida 31 oct 2026, falta la prueba del dueño) | «Quiero comprar <código>» → confirmar equipo y total → cuentas con texto aprobado → datos de envío → *Esperando pago* → comprobante (foto/PDF/«ya pagué») → *Pago por confirmar* → Bandeja con resumen; 20 min, 12 h y cancelación | No |
 | **F4·26** 🔵 | **Flujo de cotización** (construida 31 oct 2026, falta la prueba del dueño) | Captura nombre, cédula, celular, producto y cantidad → PDF con reglas del negocio y logo → etapa Cotización; reenviar y descargar desde la Bandeja | No |
 | **F4·32** 🔵 | **Documentos de conocimiento** (construida 31 oct 2026, falta la prueba del dueño) | Subir texto, PDF, Excel o CSV; extraer texto, partir en trozos con índice en español; reemplazar, apagar, eliminar, ver texto extraído y probar búsqueda. Lo usa el agente (F4·28) | No |
@@ -435,3 +435,7 @@ porque es su material de consulta; F4·27 a F4·29 suman a Avi encima. (F4·32 t
   Excel con el mismo lector de la carga del inventario y CSV fila por fila con encabezados, texto partido en trozos de ~800 caracteres que no
   cortan frases y repiten la última frase corta. En la pestaña Conocimiento: **Documentos para el agente** (subir, reemplazar, activar o
   apagar, borrar con sus trozos, ver el texto extraído) y **Probar búsqueda**. 9 pruebas SQL. Lo usará Avi (F4·28) con `buscar_conocimiento`.
+- **Prueba real (31 oct 2026):** el dueño probó por WhatsApp la ficha y la acción «Devoluciones» y respondió bien. En esa prueba salieron tres
+  hallazgos, ya corregidos: (1) la regla «contiene» exigía la palabra entera y no reconocía plurales (ahora busca al inicio de la palabra);
+  (2) una lista de más de 1.024 caracteres la rechazaba Meta (la lista de equipos ahora se corta y avisa cuántos más hay); (3) una ficha activa
+  no responde si su acción está apagada: Conocimiento ya lo avisa. Falta probar por WhatsApp Compra (F4·25) y Cotización (F4·26).

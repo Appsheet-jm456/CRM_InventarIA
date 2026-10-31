@@ -14,7 +14,8 @@ de las Fases 1 y 2 abajo. **Código nuevo:** el bot de prueba sobre Supabase (`h
 0. **31 oct 2026 · Módulo Agente documentado y dividido en F4·22 a F4·29** ([AGENTE.md](AGENTE.md), decisión 0032 aceptada):
    F4·22 base · F4·23 conocimiento · F4·24 acciones «Cuando → Hacer» · F4·25 flujo de compra · F4·26 cotización con PDF (todas sin IA) →
    F4·27 cerebro DeepSeek · F4·28 agente Avi · F4·29 piloto en Distribuidores. El dueño eligió el Agente primero.
-   ✅ **F4·22 hecha** (migración 0024, 15 pruebas). 🔵 **F4·23 Conocimiento construida** (Configuración → Agente):
+   ✅ **F4·22, F4·23 y F4·24 hechas y probadas** (la ficha y la acción «Devoluciones» respondieron por WhatsApp, 31 oct). Faltan por probar
+   por WhatsApp Compra (F4·25) y Cotización (F4·26). Antes, F4·23 (Configuración → Agente):
    falta que el dueño la pruebe y llene las fichas (ubicación, garantía, devoluciones, envíos, pagos). 🔵 **F4·24 Acciones construida** (motor en el receptor + pestaña Acciones): falta que el dueño
    la pruebe; hoy solo «Pasar a asesor» está activa. 🔵 **F4·25 Flujo de compra construida** (pestaña Compra): falta que el
    dueño pegue el texto de cuentas, active «Quiero comprar» y lo pruebe por WhatsApp. 🔵 **F4·26 Cotización construida**
