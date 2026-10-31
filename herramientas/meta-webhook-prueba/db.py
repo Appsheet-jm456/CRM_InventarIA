@@ -7,7 +7,7 @@ las tablas tienen RLS sin políticas, así que la clave pública no ve nada.
 
 import json
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import urllib.parse
 import urllib.request
 from pathlib import Path
@@ -164,6 +164,32 @@ def agente_config(fresco=False):
     ruta = "agente_config?id=eq.1&select=*"
     filas = pedir(ruta) if fresco else _cacheado("agente_config", ruta)
     return filas[0] if filas else {}
+
+
+def bot_modo(bot):
+    """Cómo atiende un bot: menu, hibrido o agente (F4·22, RAG-14). Un cambio se ve en menos de 30 s."""
+    filas = _cacheado("bots-modo", "bots?select=id,modo") or []
+    return next((b["modo"] for b in filas if b["id"] == bot), "hibrido")
+
+
+def mensajes_recientes(lead_id, cuantos):
+    """Los últimos mensajes de la conversación, del más viejo al más nuevo (memoria del agente, RAG-12)."""
+    filas = pedir(f"mensajes?lead_id=eq.{int(lead_id)}&select=lado,texto,tipo,creado_en&order=creado_en.desc&limit={int(cuantos)}") or []
+    return list(reversed(filas))
+
+
+def buscar_conocimiento(texto, limite=5):
+    """Fichas y documentos activos que más se parecen a la pregunta (F4·32, RAG-29)."""
+    return pedir("rpc/buscar_conocimiento", "POST", {"p_texto": texto, "p_limite": limite}) or []
+
+
+def turnos_del_dia(lead_id):
+    """Turnos del agente con este cliente desde la medianoche de Colombia (límite por conversación, RAG-08)."""
+    ahora = datetime.now(timezone.utc) - timedelta(hours=5)
+    desde = ahora.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(hours=5)
+    filas = pedir(f"agente_turnos?lead_id=eq.{int(lead_id)}&detalle-%3E%3Epaso=eq.1&resultado=neq.simulador"
+                  f"&en=gte.{q(desde.isoformat())}&select=id") or []
+    return len(filas)
 
 
 def compra_mover(lead_id, paso):

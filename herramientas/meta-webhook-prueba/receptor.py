@@ -10,6 +10,7 @@ Qué hace:
   GET  /webhook  verificación de Meta (hub.verify_token == META_VERIFY_TOKEN)
   POST /interno/buscar  Chat InventarIA de la app (token CRM_INTERNO_TOKEN; no responde por el túnel)
   POST /interno/simular Simulador del lienzo: el motor sobre una versión, sin escribir ni enviar (mismo token)
+  POST /interno/agente  «Probar» de Configuración → Agente: un turno de Avi sin escribir ni enviar (mismo token)
   POST /webhook  valida la firma X-Hub-Signature-256 con META_APP_SECRET, anota el evento en
                  eventos.log y responde con el árbol de respuesta de prueba (flujo.py)
 
@@ -32,6 +33,7 @@ from urllib.parse import parse_qs, urlparse
 
 import db
 import acciones
+import agente
 import compra
 import cotizacion
 import flujo
@@ -447,7 +449,19 @@ def contestar(numero, entrada, visible, nombre, tipo, meta_id, media=None):
                 except Exception as e:
                     anotar(f"  ✗ no se pudo anotar la acción: {e!r}")
             elif mensajes is None:
-                mensajes, st = flujo.responder(st, entrada, avisar)
+                avi = None
+                if agente.atiende(st, lead, tipo, entrada):  # Avi (F4·28): bot en modo Agente y encendido para este número
+                    try:
+                        avi = agente.responder(st, entrada, lead)
+                    except Exception as e:  # si Avi falla, atiende el Híbrido como siempre (RAG-10)
+                        anotar(f"  ✗ Avi falló: {e!r}")
+                if avi:
+                    mensajes, st = avi["mensajes"], avi["st"]
+                    anotar(f"  🤖 Avi · {len(avi['traza'])} paso(s) · US$ {avi['costo_usd']}"
+                           + (" · pasó a asesor" if avi["asesor"] else "") + (f" · {avi['flujo']}" if avi["flujo"] else ""))
+                    extras_de_compra(lead, avi["etiquetas"], None, avi["nota"])
+                else:
+                    mensajes, st = flujo.responder(st, entrada, avisar)
         except Exception as e:  # una falla del árbol o de la base no debe tumbar el receptor
             anotar(f"  ✗ el árbol falló: {e!r}")
             return
@@ -557,6 +571,8 @@ class Webhook(BaseHTTPRequestHandler):
             return self.interno(lambda p: buscar(str(p["texto"])[:500]))
         if ruta == "/interno/simular":
             return self.interno(simular)
+        if ruta == "/interno/agente":  # «Probar» el agente (F4·28): sin escribir en la base ni enviar a WhatsApp
+            return self.interno(probar_agente)
         if ruta == "/interno/acciones":  # «Probar con una frase» (F4·24, RAG-26)
             return self.interno(lambda p: acciones.probar(str(p["texto"])[:500]))
         if urlparse(self.path).path != "/webhook":
@@ -622,6 +638,21 @@ def simular(pedido):
     if st.get("bot") != antes:  # "Ir a otro bot", o "hola" desde otro bot: se avisa a quien prueba
         avisos.append(f"El cliente pasó al bot «{db.nombre_bot(st['bot'])}».")
     return {"avisos": avisos, "mensajes": mensajes, "estado": st}
+
+
+def probar_agente(pedido):
+    """Un turno de Avi con la conversación que lleva la pantalla Probar. No usa lead real: no guarda datos ni cuenta turnos del día."""
+    previo = [{"role": "assistant" if m.get("role") == "assistant" else "user", "content": str(m.get("content", ""))[:1000]}
+              for m in (pedido.get("mensajes") or [])[-30:] if str(m.get("content", "")).strip()]
+    if not previo or previo[-1]["role"] != "user":
+        raise ValueError("falta el mensaje del cliente")
+    lead = {"id": None, "telefono": "", "nombre": str(pedido.get("nombre", ""))[:80], "etiquetas": []}
+    st = pedido.get("estado") or flujo.estado_vacio()
+    r = agente.responder(st, previo[-1]["content"], lead, config=db.agente_config(fresco=True), simulador=True, previo=previo)
+    if r is None:
+        return {"hibrido": True}
+    return {"textos": [visor.texto_saliente(m) for m in r["mensajes"]], "traza": r["traza"], "asesor": r["asesor"],
+            "flujo": r["flujo"], "costo_usd": r["costo_usd"], "tokens": r["tokens"], "nota": r["nota"], "estado": r["st"]}
 
 
 if __name__ == "__main__":

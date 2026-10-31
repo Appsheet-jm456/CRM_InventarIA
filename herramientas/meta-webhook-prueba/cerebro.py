@@ -107,7 +107,7 @@ def tope():
     return db.pedir("rpc/agente_tope", "POST", {})
 
 
-def completar(mensajes, sistema="", lead_id=None, config=None, llaves=None, simulador=False):
+def completar(mensajes, sistema="", lead_id=None, config=None, llaves=None, simulador=False, detalle=None):
     """Respuesta del modelo a la conversación (lista de {role, content}). Principal, luego respaldo (RAG-10).
 
     Lanza TopeAgotado si ya se gastó el presupuesto (no llama a ningún modelo de pago) y CerebroError si fallan todos.
@@ -117,7 +117,7 @@ def completar(mensajes, sistema="", lead_id=None, config=None, llaves=None, simu
     if not config:
         raise CerebroError("sin configuración del agente")
     if not simulador and config["proveedor"] != "local" and tope().get("agotado"):
-        registrar(lead_id, {"proveedor": config["proveedor"], "modelo": config["modelo"]}, "tope")
+        registrar(lead_id, {"proveedor": config["proveedor"], "modelo": config["modelo"]}, "tope", detalle=detalle)
         raise TopeAgotado()
     errores = []
     for respaldo in (False, True):
@@ -128,9 +128,9 @@ def completar(mensajes, sistema="", lead_id=None, config=None, llaves=None, simu
             r = _llamar(m, mensajes, sistema, float(config["temperatura"]), int(config["tokens_max"]), int(config["espera_segundos"]))
         except CerebroError as e:
             errores.append(str(e))
-            registrar(lead_id, m, "simulador" if simulador else "error", detalle={"error": str(e), "respaldo": respaldo})
+            registrar(lead_id, m, "simulador" if simulador else "error", detalle={**(detalle or {}), "error": str(e), "respaldo": respaldo})
             continue
-        registrar(lead_id, m, "simulador" if simulador else "respondido", r, {"respaldo": respaldo})
+        registrar(lead_id, m, "simulador" if simulador else "respondido", r, {**(detalle or {}), "respaldo": respaldo})
         r["respaldo"] = respaldo
         return r
     raise CerebroError("; ".join(errores) or "sin modelo configurado")

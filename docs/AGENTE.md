@@ -346,7 +346,7 @@ Cada tarea se construye, la prueba el dueño y se aprueba antes de pasar a la si
 | **F4·26** 🔵 | **Flujo de cotización** (construida 31 oct 2026, falta la prueba del dueño) | Captura nombre, cédula, celular, producto y cantidad → PDF con reglas del negocio y logo → etapa Cotización; reenviar y descargar desde la Bandeja | No |
 | **F4·32** 🔵 | **Documentos de conocimiento** (construida 31 oct 2026, falta la prueba del dueño) | Subir texto, PDF, Excel o CSV; extraer texto, partir en trozos con índice en español; reemplazar, apagar, eliminar, ver texto extraído y probar búsqueda. Lo usa el agente (F4·28) | No |
 | **F4·27** 🔵 | **Cerebro (cualquier proveedor)** | Pantalla Cerebro: proveedor, llave cifrada, modelo de respaldo, Probar conexión, presupuesto mensual y contador de costo | Conexión |
-| **F4·28** | **Agente Avi** | Motor del agente en el tramo de compra: memoria, herramientas, verificación RAG-02, personalidad parametrizable, tope → «¿Quieres un asesor?»; pestañas Personalidad, Probar y Registro; etiqueta *Agente* en la Bandeja | Sí |
+| **F4·28** 🔵 | **Agente Avi** (construido 31 oct 2026, falta la prueba del dueño con llave real) | Motor del agente en el tramo de compra: memoria, herramientas, verificación RAG-02, personalidad parametrizable, tope → «¿Quieres un asesor?»; pestañas Personalidad, Probar y Registro; etiqueta *Agente* en la Bandeja | Sí |
 | **F4·29** | **Piloto Distribuidores** | Bot de Distribuidores en modo Agente con números de prueba (lista blanca), juego fijo de conversaciones, métricas de costo y conversión; requisito: **webhook fijo** (F2·17) | Sí |
 
 Al terminar F4·26 el CRM ya cierra ventas con **menú + acciones + compra + cotización + asesor**, sin IA. F4·32 (documentos) va antes de Avi
@@ -451,3 +451,14 @@ porque es su material de consulta; F4·27 a F4·29 suman a Avi encima. (F4·32 t
   `cerebro.py` en el receptor: principal → respaldo → `CerebroError` (atiende el Híbrido), `TopeAgotado` (asesor), cada intento anotado en
   `agente_turnos`. Pruebas: 12 SQL (`0030_cerebro.sql`) y 16 de `prueba_cerebro.py` con un proveedor falso. **Aún no responde a clientes**: eso es F4·28.
   Falta que el dueño consiga la llave de DeepSeek (con saldo), la pegue en Cerebro, ponga el presupuesto (propuesta: US$ 5 al mes) y pruebe la conexión.
+- **F4·28 (31 oct 2026):** `agente.py` en el receptor y pestañas **Avi** (`/agente/personalidad`), **Probar** y **Registro**. Avi pide las herramientas en JSON
+  dentro del texto (`{"herramienta", "args"}` o `{"responder"}`), así funciona con cualquier proveedor de F4·27. Herramientas: `buscar_productos`, `ficha_producto`,
+  `buscar_conocimiento`, `capturar_datos`, `iniciar_compra`, `iniciar_cotizacion` y `pasar_a_asesor` (esta no se puede apagar). **La compra y la cotización siguen siendo
+  los flujos fijos**: Avi solo los inicia y el turno termina ahí, así nunca escribe cuentas (RAG-09). Verificación RAG-02 antes de enviar: todo valor en pesos debe
+  haber salido de `buscar_productos`, `ficha_producto` o una ficha de conocimiento (no de un documento, RAG-30) y no pasa un número largo que no sea de una herramienta;
+  si falla, un reintento y luego asesor con la etiqueta `Revisar-Agente` y la nota. Límites: pasos y mensajes por turno, turnos por día y cliente, memoria. Sin presupuesto:
+  «¿Quieres que te atienda un asesor? 🙌» y a la Bandeja. Si ningún modelo responde, atiende el Híbrido. **Cuándo entra:** texto escrito (los números 0 a 9 van al menú), chat sin
+  asesor, **bot en modo Agente** (se cambia en la pestaña Avi) y agente **encendido** (Solo en Probar / Números de prueba / Todos); antes corren las Acciones y los flujos de
+  compra y cotización. Probar usa el inventario real pero no guarda, no envía y no cuenta para el presupuesto (`/interno/agente`). Pruebas: 28 de `prueba_agente.py`.
+  **Pendiente de F4·28 (no construido):** el buffer de 15 s que junta mensajes seguidos, el resumen de conversaciones anteriores (`leads.resumen_agente`), las herramientas
+  `enviar_catalogo`, `mover_etapa` y `crear_seguimiento`, «tres respuestas sin avance → asesor», la etiqueta *Agente* en la Bandeja y las métricas del agente.

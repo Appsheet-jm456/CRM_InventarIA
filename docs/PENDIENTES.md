@@ -6,6 +6,10 @@ de las Fases 1 y 2 abajo. **Código nuevo:** el bot de prueba sobre Supabase (`h
 
 ## Dónde retomar (en este orden)
 
+0. **31 oct 2026 · F4·28 Avi construido 🔵** (`agente.py`, pestañas Avi, Probar y Registro; AGENTE.md): conversa con herramientas, verifica precios y pasa a asesor. **Para probarlo
+   (dueño):** 1) llave y presupuesto en Cerebro, 2) en la pestaña Avi poner un bot en modo *Agente* (mejor uno de prueba) y encender para *Números de prueba* con su número, 3) usar
+   **Probar** y luego escribir por WhatsApp. Faltan buffer de 15 s, resumen, tres herramientas menores, etiqueta *Agente* en la Bandeja y métricas.
+
 0. **31 oct 2026 · F4·27 Cerebro construida 🔵** (migración 0030, `/agente/cerebro`, `cerebro.py`; AGENTE.md, RAG-34): cualquier proveedor de IA o local, llave en Vault,
    Probar conexión, respaldo y presupuesto. **Falta del dueño:** conseguir la llave de DeepSeek (con saldo), pegarla en Configuración → Agente → Cerebro, poner el
    presupuesto (propuesta US$ 5 al mes) y pulsar Probar conexión. Todavía no responde a clientes: sigue F4·28 (agente Avi). Las pruebas 4 y 6 de `0024` dependen de lo
