@@ -33,6 +33,7 @@ from urllib.parse import parse_qs, urlparse
 import db
 import acciones
 import compra
+import cotizacion
 import flujo
 import interprete
 import visor
@@ -194,6 +195,15 @@ def subir_conocimiento(ruta):
 
 def resolver(mensaje):
     """Convierte las marcas internas del árbol en mensajes de la API ({'_pdf': catálogo} → documento)."""
+    if "_cotizacion" in mensaje:  # PDF de la cotización (F4·26), recién guardado en el bucket cotizaciones
+        c = mensaje["_cotizacion"]
+        try:
+            media_id = subir_a_meta(db.descargar("cotizaciones", c["ruta"]), "application/pdf", f"{c['numero']}.pdf")
+        except Exception as e:
+            anotar(f"  ✗ no se pudo subir la cotización {c['numero']}: {e!r}")
+            return None
+        return {"type": "document", "document": {"id": media_id, "filename": f"Cotizacion {c['numero']}.pdf",
+                                                 "caption": f"📄 Cotización {c['numero']}"}}
     if "_conocimiento" in mensaje:  # imagen o PDF de una ficha (RAG-24)
         f = mensaje["_conocimiento"]
         try:
@@ -232,7 +242,7 @@ _candados = {}
 def cargar_estado(lead):
     guardado = lead.get("estado_bot") or {}
     st = flujo.estado_vacio()
-    st.update({k: v for k, v in guardado.items() if k in ("campos", "rango", "marcas", "valor", "compra")})
+    st.update({k: v for k, v in guardado.items() if k in ("campos", "rango", "marcas", "valor", "compra", "cotizacion")})
     st.update(nodo=lead["paso_menu"] or None, etapa=lead["etapa"], errores=lead["errores_bot"],
               pausa=lead["pausar_bot"], bot=lead.get("bot_id"))
     if lead.get("espera_vence_en") and lead.get("espera_cuadro") == st["nodo"]:  # en una Pausa (F4·13)
@@ -254,7 +264,7 @@ def guardar_estado(lead, st, visible, nombre, del_cliente=True):
         "presupuesto": campos.get("Presupuesto", lead["presupuesto"]),
         "marca_interes": campos.get("Marca interés", lead["marca_interes"]),
         "cotiz_producto": campos.get("Código producto", lead["cotiz_producto"]),
-        "estado_bot": {k: st[k] for k in ("campos", "rango", "marcas", "valor", "compra") if k in st},
+        "estado_bot": {k: st[k] for k in ("campos", "rango", "marcas", "valor", "compra", "cotizacion") if k in st},
         "espera_vence_en": st.get("espera_hasta"), "espera_cuadro": st["nodo"] if st.get("espera_hasta") else None,
         # En el principal se guarda null: si el principal cambia, el cliente sigue al nuevo (RF-16).
         "bot_id": None if st.get("bot") in (None, db.principal()) else st["bot"],
@@ -405,16 +415,19 @@ def contestar(numero, entrada, visible, nombre, tipo, meta_id, media=None):
                     db.guardar_mensaje(lead["id"], "bot", texto, meta_id=wamid if wamid != "enviado" else None)
 
             mensajes = None
-            # Una compra en curso atiende primero (F4·25): botones del resumen, comprobante (foto o PDF), cancelar.
-            if compra.activa(st) and not st["pausa"]:
+            # Una compra (F4·25) o una cotización (F4·26) en curso atienden primero: botones, datos, comprobante, cancelar.
+            for nombre_flujo, modulo, icono in (("compra", compra, "🛒"), ("cotizacion", cotizacion, "📄")):
+                if mensajes is not None or not modulo.activa(st) or st["pausa"]:
+                    continue
                 try:
-                    r = compra.responder(st, entrada, tipo if tipo in ("text", "button", "interactive") else "media", lead)
-                except Exception as e:  # si falla, el mensaje sigue por el menú como siempre
-                    anotar(f"  ✗ el flujo de compra falló: {e!r}")
+                    r = modulo.responder(st, entrada, tipo if tipo in ("text", "button", "interactive") else "media", lead)
+                except Exception as e:  # si falla, se deja el flujo y el mensaje sigue por el menú como siempre
+                    anotar(f"  ✗ el flujo de {nombre_flujo} falló: {e!r}")
+                    st.pop(nombre_flujo, None)
                     r = None
                 if r is not None:
                     mensajes, etiquetas, paso_embudo, nota = r
-                    anotar(f"  🛒 compra · {(st.get('compra') or {}).get('paso') or 'terminó'}"
+                    anotar(f"  {icono} {nombre_flujo} · {(st.get(nombre_flujo) or {}).get('paso') or 'terminó'}"
                            + (f" · embudo → {paso_embudo}" if paso_embudo else ""))
                     extras_de_compra(lead, etiquetas, paso_embudo, nota)
             # Acciones «Cuando → Hacer» (F4·24, RAG-25): solo con texto escrito, no con botones del menú ni media.

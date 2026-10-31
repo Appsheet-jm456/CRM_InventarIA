@@ -178,6 +178,34 @@ def agregar_nota(lead_id, notas_actuales, nota):
     return notas
 
 
+def crear_cotizacion(fila):
+    """Guarda la cotización y devuelve la fila con su consecutivo (F4·26)."""
+    return pedir("cotizaciones?select=id,consecutivo", "POST", fila, "return=representation")[0]
+
+
+def guardar_pdf_cotizacion(cotizacion_id, ruta, contenido):
+    """Sube el PDF al bucket privado 'cotizaciones' y lo anota en la cotización."""
+    url = REST.replace("/rest/v1", f"/storage/v1/object/cotizaciones/{urllib.parse.quote(ruta)}")
+    peticion = urllib.request.Request(url, method="POST", data=contenido, headers={
+        "apikey": _CLAVE, "Authorization": f"Bearer {_CLAVE}", "Content-Type": "application/pdf", "x-upsert": "true"})
+    with urllib.request.urlopen(peticion, timeout=60):
+        pass
+    pedir(f"cotizaciones?id=eq.{int(cotizacion_id)}", "PATCH", {"pdf": ruta}, "return=minimal")
+
+
+def apariencia_para_pdf():
+    """Colores y logo de Apariencia (F4·19) para el PDF: (colores, bytes del logo o None, mime)."""
+    filas = _cacheado("apariencia", "apariencia?id=eq.1&select=color_panel,color_principal,color_acento,logo", 300) or [{}]
+    a = filas[0] if filas else {}
+    if not a.get("logo"):
+        return a, None, "image/png"
+    try:
+        ext = a["logo"].rsplit(".", 1)[-1]
+        return a, descargar("marca", a["logo"]), {"jpg": "image/jpeg", "webp": "image/webp"}.get(ext, "image/png")
+    except Exception:
+        return a, None, "image/png"
+
+
 def registrar_accion(accion_id, lead_id):
     pedir("acciones_registro", "POST", {"accion_id": accion_id, "lead_id": lead_id}, "return=minimal")
 

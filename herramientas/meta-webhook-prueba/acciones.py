@@ -6,18 +6,18 @@ Se revisan antes que el menú y que el agente, no usan IA y responden al instant
 coincide (por prioridad); «Pasar a asesor» es siempre la primera.
 
 Pasos que se ejecutan hoy: texto, conocimiento (fichas activas de una categoría), cuentas (texto aprobado), ir a otro
-bot, etiqueta, pasar a asesor e iniciar el flujo de compra (F4·25). La cotización (F4·26) llega en su tarea: una acción
-con un paso que todavía no existe no se ejecuta (la pantalla tampoco deja activarla).
+bot, etiqueta, pasar a asesor e iniciar los flujos de compra (F4·25) y cotización (F4·26).
 """
 
 import re
 
 import compra
+import cotizacion
 import db
 import flujo
 
 PASOS_LISTOS = {"texto", "conocimiento", "cuentas", "bot", "etiqueta", "asesor", "flujo"}
-FLUJOS_LISTOS = {"compra"}  # la cotización llega en F4·26
+FLUJOS_LISTOS = {"compra", "cotizacion"}
 
 
 def normalizar(s):
@@ -99,6 +99,8 @@ def _ejecutar(accion, st, lead, fresco, texto):
             mensajes += flujo.cambiar_de_bot(st, int(paso["bot_id"]))
         elif tipo == "flujo" and paso.get("flujo") == "compra":  # F4·25: el flujo sigue con los próximos mensajes
             mensajes += compra.iniciar(st, texto, lead)
+        elif tipo == "flujo" and paso.get("flujo") == "cotizacion":  # F4·26
+            mensajes += cotizacion.iniciar(st, texto, lead)
         elif tipo == "asesor":
             mensajes += flujo.asesor(st, etiqueta="Escalado-Asesor", motivo=(paso.get("texto") or "").strip() or None)
     if not mensajes and not st.get("pausa"):

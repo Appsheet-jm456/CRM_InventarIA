@@ -1,8 +1,8 @@
 import { crearCliente } from '@/lib/supabase/server'
 
-const BUCKETS = new Set(['productos', 'catalogos', 'conocimiento'])
+const BUCKETS = new Set(['productos', 'catalogos', 'conocimiento', 'cotizaciones'])
 
-// Foto de un equipo, catálogo PDF o imagen/PDF del conocimiento del agente (F4·23). Se baja con la sesión de quien pide: el RLS de storage deja leer a
+// Foto de un equipo, catálogo PDF o imagen/PDF del conocimiento del agente (F4·23) o PDF de una cotización (F4·26). Se baja con la sesión de quien pide: el RLS de storage deja leer a
 // cualquier usuario activo (RI-01, migración 0009).
 export async function GET(_: Request, { params }: { params: { bucket: string; ruta: string[] } }) {
   if (!BUCKETS.has(params.bucket)) return new Response('No encontrado', { status: 404 })

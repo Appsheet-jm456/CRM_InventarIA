@@ -1,6 +1,6 @@
 # Módulo Agente: menú, acciones, compra, cotización y el agente Avi (F4·22 a F4·29)
 
-**Estado:** 🔵 En construcción · F4·22 (base) hecha; F4·23 (conocimiento), F4·24 (acciones) y F4·25 (compra) construidas el 31 oct 2026 · Dividido en F4·22 a F4·29 · 31 oct 2026 · con las respuestas del dueño, Acciones y flujo de cotización · Decisión [0032](decisiones/0032-modulo-agente.md) (modifica la 0016)
+**Estado:** 🔵 En construcción · F4·22 (base) hecha; F4·23 a F4·26 (conocimiento, acciones, compra y cotización) construidas el 31 oct 2026 · Dividido en F4·22 a F4·29 · 31 oct 2026 · con las respuestas del dueño, Acciones y flujo de cotización · Decisión [0032](decisiones/0032-modulo-agente.md) (modifica la 0016)
 Referencias que trajo el dueño: diagramas de agentes de otros CRM (canales → buffer → agente → respuesta, con modelo, memoria,
 conocimiento y herramientas alrededor).
 
@@ -339,7 +339,7 @@ Cada tarea se construye, la prueba el dueño y se aprueba antes de pasar a la si
 | **F4·23** 🔵 | **Conocimiento** (construida 31 oct 2026, falta la prueba del dueño) | Pantalla de preguntas frecuentes y políticas (texto o imagen) por categoría: ubicación, garantía, devoluciones, envíos, pagos, distribuidores | No |
 | **F4·24** 🔵 | **Acciones «Cuando → Hacer»** (construida 31 oct 2026, falta la prueba del dueño) | Motor en el receptor + pantalla con prioridad, prueba con una frase y contador. Acciones iniciales: ubicación, cuentas, garantía, devoluciones, horario, asesor | No |
 | **F4·25** 🔵 | **Flujo de compra** (construida 31 oct 2026, falta la prueba del dueño) | «Quiero comprar <código>» → confirmar equipo y total → cuentas con texto aprobado → datos de envío → *Esperando pago* → comprobante (foto/PDF/«ya pagué») → *Pago por confirmar* → Bandeja con resumen; 20 min, 12 h y cancelación | No |
-| **F4·26** | **Flujo de cotización** | Captura nombre, cédula, celular, producto y cantidad → PDF con reglas del negocio y logo → etapa Cotización; reenviar y descargar desde la Bandeja | No |
+| **F4·26** 🔵 | **Flujo de cotización** (construida 31 oct 2026, falta la prueba del dueño) | Captura nombre, cédula, celular, producto y cantidad → PDF con reglas del negocio y logo → etapa Cotización; reenviar y descargar desde la Bandeja | No |
 | **F4·32** | **Documentos de conocimiento** | Subir texto, PDF, Excel o CSV; extraer texto, partir en trozos con índice en español; reemplazar, apagar, eliminar, ver texto extraído y probar búsqueda. Lo usa el agente (F4·28) | No |
 | **F4·27** | **Cerebro (DeepSeek)** | Pantalla Cerebro: proveedor, llave cifrada, modelo de respaldo, Probar conexión, presupuesto mensual y contador de costo | Conexión |
 | **F4·28** | **Agente Avi** | Motor del agente en el tramo de compra: memoria, herramientas, verificación RAG-02, personalidad parametrizable, tope → «¿Quieres un asesor?»; pestañas Personalidad, Probar y Registro; etiqueta *Agente* en la Bandeja | Sí |
@@ -417,3 +417,13 @@ porque es su material de consulta; F4·27 a F4·29 suman a Avi encima. (F4·32 t
   etapa de cancelación elegida: `compra_etapas.cancelada_id` vacío). Sin texto de cuentas, al confirmar pasa al asesor para que las envíe.
   Pestaña **Compra**: los seis pasos, estado de la acción que la inicia, texto de cuentas (solo en la base, no en el repositorio), textos de
   comprobante, ¿sigues interesado? y cancelación, horas del recordatorio y cargo de configuración. 21 pruebas en `prueba_compra.py` y 5 SQL.
+- **F4·26 (31 oct 2026):** `cotizacion.py` en el receptor, sin IA. Se inicia con la acción que tiene el paso «Iniciar flujo de
+  cotización» («Cotización», apagada). Pide **nombre** (completo, sin números), **cédula o NIT** (6 a 10 números; se limpian puntos y guiones),
+  **celular** (ofrece el de WhatsApp con botones Sí, ese / Otro número; 10 dígitos que empiezan por 3), **equipo** (el escrito, el de la última
+  ficha o lo pide), **cantidad** (hasta el stock) y **tipo** (los de `Interes-Distribuidor` no lo ven). Precio del inventario al generar; cliente
+  final + configuración por equipo; si se agotó, no cotiza (RAG-28). Guarda la fila en `cotizaciones` (consecutivo `COT-000123`), genera el PDF
+  con `pdf_cotizacion.py` (wkhtmltopdf, colores y logo de Apariencia, validez, recargo con tarjeta como opción que no se suma), lo sube al bucket
+  `cotizaciones` y lo envía como documento con un mensaje que invita a escribir «quiero comprar». El cliente pasa a la etapa *Cotización*, con
+  valor y código (así la compra sigue con ese equipo), etiqueta `Cotizacion-Enviada` y nota para el asesor. Pestaña **Cotización**: estado de la
+  acción, validez, recargo y las 50 últimas con su PDF. 22 pruebas en `prueba_cotizacion.py` (generan un PDF real). **Pendiente de RAG-27:**
+  reenviar y descargar desde la ficha del cliente en la Bandeja (llega con la ficha de F4·30).

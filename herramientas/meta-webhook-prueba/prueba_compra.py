@@ -27,7 +27,7 @@ ACCIONES = [
      "cuando": [{"forma": "contiene", "texto": "quiero comprar"}, {"forma": "contiene", "texto": "lo quiero"}],
      "hacer": [{"tipo": "flujo", "flujo": "compra"}]},
     {"id": 4, "nombre": "Cotización", "prioridad": 30, "activa": True, "cuando": [{"forma": "contiene", "texto": "cotizacion"}],
-     "hacer": [{"tipo": "flujo", "flujo": "cotizacion"}]},
+     "hacer": [{"tipo": "flujo", "flujo": "garantia"}]},
 ]
 
 flujo.inventario = lambda: INVENTARIO
@@ -138,7 +138,7 @@ CONFIG["texto_cuentas"] = "💳 Bancolombia 123 · Davivienda 456"
 
 # 14. Cotización todavía no corre; «0» sale al menú
 st = nuevo()
-ok(acciones.responder(st, "quiero una cotizacion", {"etiquetas": []}) is None, "una acción de cotización no corre hasta F4·26")
+ok(acciones.responder(st, "quiero una cotizacion", {"etiquetas": []}) is None, "una acción con un flujo que no existe no corre")
 acciones.responder(st, "quiero comprar 100-102-1030-1", {"etiquetas": []})
 ok(compra.responder(st, "0", "text") is None and "compra" not in st, "«0» antes de las cuentas sale de la compra y sigue por el menú")
 

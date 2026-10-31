@@ -18,7 +18,7 @@ ACCIONES = [
     {"id": 2, "nombre": "Cuentas", "prioridad": 10, "activa": True,
      "cuando": [{"forma": "contiene", "texto": "cuentas"}, {"forma": "contiene", "texto": "cómo pago"}], "hacer": [{"tipo": "cuentas"}]},
     {"id": 3, "nombre": "Cotización", "prioridad": 20, "activa": True,
-     "cuando": [{"forma": "contiene", "texto": "cotizacion"}], "hacer": [{"tipo": "flujo", "flujo": "cotizacion"}]},
+     "cuando": [{"forma": "contiene", "texto": "cotizacion"}], "hacer": [{"tipo": "flujo", "flujo": "garantia"}]},
     {"id": 5, "nombre": "Ubicación", "prioridad": 40, "activa": True,
      "cuando": [{"forma": "contiene", "texto": "ubicación"}, {"forma": "contiene", "texto": "dónde quedan"}],
      "hacer": [{"tipo": "conocimiento", "categoria": "Ubicación"}, {"tipo": "etiqueta", "etiqueta": "Pidio-Ubicacion"}]},
@@ -66,7 +66,7 @@ ok(nombre("mándame las cuentas") == "Cuentas", "cuentas")
 ok(nombre("quiero un asesor para las cuentas") == "Pasar a asesor", "gana la de menor prioridad (asesor primero)")
 ok(nombre("hago intercambio") is None, "«contiene» exige palabras enteras: «cambio» no se dispara con «intercambio»")
 ok(nombre("quiero hacer un cambio") is None, "una acción apagada no corre")
-ok(nombre("quiero una cotización") is None, "una acción con un paso que no existe todavía (cotización, F4·26) no corre")
+ok(nombre("quiero una cotización") is None, "una acción con un flujo que no existe no corre")
 ok(nombre("info") == "Saludo exacto" and nombre("más info") is None, "«es igual a» solo con el texto exacto")
 ok(nombre("") is None and nombre("👍") is None, "vacío o solo emojis no dispara nada")
 

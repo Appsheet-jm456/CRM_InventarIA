@@ -57,7 +57,7 @@ export async function activarAccion(id: number, activa: boolean): Promise<Result
   if (activa) {
     const { data: a } = await supabase.from('acciones').select('hacer').eq('id', id).maybeSingle()
     if (!((a?.hacer as Paso[] | undefined) ?? []).every(pasoListo))
-      return { error: 'Tiene un paso que todavía no existe (la cotización llega en F4·26).' }
+      return { error: 'Tiene un paso que el bot no sabe hacer.' }
   }
   const { data, error } = await supabase.from('acciones').update({ activa }).eq('id', id).select('id')
   return listo(error, data, activa ? 'Acción activa: el bot la usa en menos de 30 s.' : 'Acción apagada.')
