@@ -121,7 +121,7 @@ Se cambia **Archivo + IBM Plex Sans** por una sola familia más redonda y legibl
 
 ## Panel lateral como Futur Green (F4·20)
 
-**Estado:** 🔵 Construida el 31 oct 2026, falta que el dueño la apruebe · pedido del dueño al probar F4·19.
+**Estado:** ✅ Hecha y aprobada por el dueño el 31 oct 2026 · pedido del dueño al probar F4·19.
 De paso se arreglaron dos fallas viejas del plegado: el contador de Bandeja no se veía y, con muchos módulos, la columna encogía los elementos.
 
 Al probar F4·19 el dueño vio que el panel de módulos se ve desordenado frente al de Futur Green: barra de desplazamiento blanca del
