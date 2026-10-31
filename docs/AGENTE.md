@@ -1,6 +1,6 @@
 # Módulo Agente: menú, acciones, compra, cotización y el agente Avi (F4·22 a F4·29)
 
-**Estado:** 📝 Documentado y dividido en F4·22 a F4·29, por construir · 31 oct 2026 · con las respuestas del dueño, Acciones y flujo de cotización · Decisión [0032](decisiones/0032-modulo-agente.md) (modifica la 0016)
+**Estado:** 🔵 En construcción · F4·22 (base) hecha el 31 oct 2026; sigue F4·23 · Dividido en F4·22 a F4·29 · 31 oct 2026 · con las respuestas del dueño, Acciones y flujo de cotización · Decisión [0032](decisiones/0032-modulo-agente.md) (modifica la 0016)
 Referencias que trajo el dueño: diagramas de agentes de otros CRM (canales → buffer → agente → respuesta, con modelo, memoria,
 conocimiento y herramientas alrededor).
 
@@ -292,7 +292,7 @@ Cada tarea se construye, la prueba el dueño y se aprueba antes de pasar a la si
 
 | # | Tarea | Qué entrega | Usa IA |
 |---|---|---|---|
-| **F4·22** | **Base del agente** | Migración: `acciones`, `conocimiento`, `cotizaciones` (con consecutivo), `agente_config`, `agente_turnos`; `bots.modo`; `leads.resumen_agente`; etapas *Esperando pago* y *Pago por confirmar*; etiquetas de compra; permiso `administrar_agente`; llaves del proveedor en Vault; pruebas SQL | No |
+| **F4·22** ✅ | **Base del agente** (migración 0024, 15 pruebas SQL, 31 oct 2026) | Migración: `acciones`, `conocimiento`, `cotizaciones` (con consecutivo), `agente_config`, `agente_turnos`; `bots.modo`; `leads.resumen_agente`; etapas *Esperando pago* y *Pago por confirmar*; etiquetas de compra; permiso `administrar_agente`; llaves del proveedor en Vault; pruebas SQL | No |
 | **F4·23** | **Conocimiento** | Pantalla de preguntas frecuentes y políticas (texto o imagen) por categoría: ubicación, garantía, devoluciones, envíos, pagos, distribuidores | No |
 | **F4·24** | **Acciones «Cuando → Hacer»** | Motor en el receptor + pantalla con prioridad, prueba con una frase y contador. Acciones iniciales: ubicación, cuentas, garantía, devoluciones, horario, asesor | No |
 | **F4·25** | **Flujo de compra** | «Quiero comprar <código>» → confirmar equipo y total → cuentas con texto aprobado → datos de envío → *Esperando pago* → comprobante (foto/PDF/«ya pagué») → *Pago por confirmar* → Bandeja con resumen; 20 min, 12 h y cancelación | No |
@@ -336,3 +336,14 @@ Al terminar F4·26 el CRM ya cierra ventas con **menú + acciones + compra + cot
    (`~/kommo-salesbot/docs/SALESBOT-COMPRA.md`) sirve tal cual.
 
 **Pendiente del dueño antes de F4·23:** los textos de ubicación (con enlace de Maps), garantía, devoluciones, envíos y pagos (o sus imágenes).
+
+## Notas de construcción
+
+- **F4·22 (31 oct 2026), migración 0024:** permiso `administrar_agente`; etapas *Esperando pago* y *Pago por confirmar* en Cliente Final
+  («Confirmar transfer» pasó a llamarse *Pago por confirmar*) y en Distribuidor, con `compra_etapas` para que el motor no dependa del nombre;
+  `bots.modo` (todos en `hibrido`); `leads.resumen_agente`; tablas `conocimiento` (6 fichas vacías y apagadas: Ubicación, Garantía,
+  Devoluciones, Envíos, Pagos, Distribuidores), `acciones` (8 iniciales: solo «Pasar a asesor» activa, no se puede apagar ni borrar),
+  `acciones_registro`, `cotizaciones` (consecutivo, cédula y celular validados), `agente_config` (Avi, amigable, DeepSeek, apagado; no se
+  enciende para clientes sin llave y presupuesto), `agente_turnos` y `agente_gasto_mes()`; llaves en Vault (`agente_guardar_llave`,
+  `agente_llaves` solo para el servidor); buckets privados `conocimiento` y `cotizaciones`. **El texto de cuentas no va en el repositorio:**
+  se pega en la pantalla (F4·25). Nada de esto cambia todavía cómo responde el bot.

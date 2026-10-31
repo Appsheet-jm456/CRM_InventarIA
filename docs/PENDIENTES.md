@@ -13,7 +13,10 @@ de las Fases 1 y 2 abajo. **Código nuevo:** el bot de prueba sobre Supabase (`h
 
 0. **31 oct 2026 · Módulo Agente documentado y dividido en F4·22 a F4·29** ([AGENTE.md](AGENTE.md), decisión 0032 aceptada):
    F4·22 base · F4·23 conocimiento · F4·24 acciones «Cuando → Hacer» · F4·25 flujo de compra · F4·26 cotización con PDF (todas sin IA) →
-   F4·27 cerebro DeepSeek · F4·28 agente Avi · F4·29 piloto en Distribuidores. **Esperando la orden del dueño para empezar F4·22.**
+   F4·27 cerebro DeepSeek · F4·28 agente Avi · F4·29 piloto en Distribuidores. El dueño eligió el Agente primero.
+   ✅ **F4·22 hecha** (migración 0024, 15 pruebas). **Sigue F4·23 Conocimiento.**
+   **Pruebas del bot frágiles:** `0012_borrador`, `0014_publicar` y `0015_varios_bots` dependen de los borradores y versiones vivos (fallan
+   cuando el dueño tiene un borrador abierto); hay que aislarlas con datos propios dentro de cada prueba.
    Pendiente del dueño: textos de ubicación, garantía, devoluciones, envíos y pagos, y confirmar el texto de cuentas del Salesbot «Compra».
    **Webhook fijo (F2·17 / F2·10):** puede esperar, pero es requisito del piloto F4·29 y de la Fase 5.
 0. **31 oct 2026 · F4·19 Apariencia (✅ probada por el dueño) y F4·20 panel lateral como Futur Green (✅ aprobado, [APARIENCIA.md](APARIENCIA.md#panel-lateral-como-futur-green-f420)):** quitar el verde, módulo Configuración → Apariencia con tres
