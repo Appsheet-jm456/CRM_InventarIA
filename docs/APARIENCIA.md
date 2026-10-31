@@ -143,7 +143,7 @@ entre grupos; `next build` sin errores y el dueño lo aprueba.
 
 ## Lienzo del bot con los colores de la app (F4·21)
 
-**Estado:** 🔵 Construida el 31 oct 2026, falta que el dueño la apruebe · pedido del dueño.
+**Estado:** ✅ Hecha y aprobada por el dueño el 31 oct 2026 · pedido del dueño.
 
 En Bot y horario → lienzo (por ejemplo el bot «Bienvenida»), el fondo salía **negro** aunque la app estuviera en modo claro: el
 lienzo (React Flow) seguía el modo del computador (`colorMode="system"`) y no el que el usuario eligió en Apariencia, y usaba sus

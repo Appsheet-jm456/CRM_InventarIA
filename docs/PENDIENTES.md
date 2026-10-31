@@ -8,7 +8,7 @@ de las Fases 1 y 2 abajo. **Código nuevo:** el bot de prueba sobre Supabase (`h
 
 0. **31 oct 2026 · F4·19 Apariencia (✅ probada por el dueño) y F4·20 panel lateral como Futur Green (✅ aprobado, [APARIENCIA.md](APARIENCIA.md#panel-lateral-como-futur-green-f420)):** quitar el verde, módulo Configuración → Apariencia con tres
    colores y paletas, modo oscuro por usuario y fuente más amigable ([APARIENCIA.md](APARIENCIA.md), decisión 0031, migración 0023).
-   Incluye **logo personalizable** (bucket `marca`). El dueño probó todo con sesión y quedó OK. F4·20 aprobado el mismo día. Lo que sigue en la lista: F4·14
+   Incluye **logo personalizable** (bucket `marca`). El dueño probó todo con sesión y quedó OK. F4·20 y F4·21 (lienzo del bot con los colores de la app) aprobados el mismo día. Lo que sigue en la lista: F4·14
    (arranques del bot, migración 0022) y las pruebas en rojo de 0014/0015.
    **Ojo:** `supabase/migrar.sh --probar` tiene en rojo pruebas de `0014_publicar` y `0015_varios_bots` (versión publicada del bot con
    problemas); no son de F4·19, hay que revisarlas aparte.
