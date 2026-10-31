@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { llamarModelo } from '@/lib/cerebro'
-import { PROVEEDORES, type Modelo } from '@/lib/cerebroProveedores'
+import { COLUMNAS_CEREBRO, PROVEEDORES, type Modelo } from '@/lib/cerebroProveedores'
 import { obtenerSesion, puede } from '@/lib/sesion'
 import { crearClienteAdmin } from '@/lib/supabase/admin'
 import { crearCliente } from '@/lib/supabase/server'
@@ -66,7 +66,7 @@ export type Prueba = { error?: string; texto?: string; ms?: number; tokens?: num
 export async function probarConexion(respaldo: boolean): Promise<Prueba> {
   const sesion = await obtenerSesion()
   if (!sesion || !puede(sesion, ['administrar_agente'])) return { error: 'No tienes permiso para probar el cerebro.' }
-  const { data: c } = await crearCliente().from('agente_config').select('*').eq('id', 1).maybeSingle()
+  const { data: c } = await crearCliente().from('agente_config').select(COLUMNAS_CEREBRO).eq('id', 1).maybeSingle()
   if (!c) return { error: 'No se encontró la configuración del agente.' }
   const m: Modelo | null = respaldo
     ? (c.proveedor_respaldo ? { proveedor: c.proveedor_respaldo, modelo: c.modelo_respaldo, url_base: c.url_base_respaldo, protocolo: c.protocolo_respaldo,

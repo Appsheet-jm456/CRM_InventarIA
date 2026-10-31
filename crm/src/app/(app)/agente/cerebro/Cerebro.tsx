@@ -142,7 +142,7 @@ export function Cerebro({ datos, llaves, tope, turnos }: {
             <h2>Cerebro del agente</h2>
             <small>El modelo de IA que usará Avi. Si el principal falla o tarda más de {datos.espera_segundos} s, responde el de respaldo; si fallan los dos, atiende el modo Híbrido.</small>
           </div>
-          {tope.agotado && !local ? <span className="chip bad">Presupuesto agotado: el agente pasa los chats a un asesor</span>
+          {tope.agotado && !local && tope.presupuesto > 0 ? <span className="chip bad">Presupuesto agotado: el agente pasa los chats a un asesor</span>
             : (tope.porcentaje ?? 0) >= 80 && !local ? <span className="chip warn">Más del 80 % del presupuesto</span> : null}
         </div>
         <div className="panel-b" style={{ display: 'grid', gap: 8 }}>

@@ -30,3 +30,7 @@ export const PROVEEDORES: { id: Proveedor; nombre: string; ayuda: string; base: 
 export function costoUsd(m: Pick<Modelo, 'precio_entrada_usd' | 'precio_salida_usd'>, tokensEntrada: number, tokensSalida: number) {
   return (tokensEntrada * m.precio_entrada_usd + tokensSalida * m.precio_salida_usd) / 1_000_000
 }
+
+// Columnas del cerebro que la sesión puede leer (los ids de las llaves están ocultos, 0024 y 0031).
+export const COLUMNAS_CEREBRO =
+  'proveedor, modelo, url_base, protocolo, precio_entrada_usd, precio_salida_usd, proveedor_respaldo, modelo_respaldo, url_base_respaldo, protocolo_respaldo, precio_entrada_usd_respaldo, precio_salida_usd_respaldo, temperatura, tokens_max, espera_segundos, presupuesto_usd, llave_guardada_en'
