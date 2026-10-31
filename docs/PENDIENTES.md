@@ -6,10 +6,10 @@ de las Fases 1 y 2 abajo. **Código nuevo:** el bot de prueba sobre Supabase (`h
 
 ## Dónde retomar (en este orden)
 
-0. **31 oct 2026 · F4·19 Apariencia (construida, falta probar con sesión):** quitar el verde, módulo Configuración → Apariencia con tres
+0. **31 oct 2026 · F4·19 Apariencia (✅ probada por el dueño) y F4·20 panel lateral como Futur Green (en construcción, [APARIENCIA.md](APARIENCIA.md#panel-lateral-como-futur-green-f420)):** quitar el verde, módulo Configuración → Apariencia con tres
    colores y paletas, modo oscuro por usuario y fuente más amigable ([APARIENCIA.md](APARIENCIA.md), decisión 0031, migración 0023).
-   Incluye **logo personalizable** (bucket `marca`). Siguiente paso: entrar con un usuario administrador a Configuración → Apariencia y
-   probar vista previa, guardar, Restaurar, subir y quitar logo y el modo oscuro (también el atajo del panel). El login ya se ve con la marca nueva.
+   Incluye **logo personalizable** (bucket `marca`). El dueño probó todo con sesión y quedó OK. Siguiente paso: que el dueño apruebe el
+   panel de F4·20 (sin barras blancas, plegado centrado con rayas entre grupos, logo en ficha blanca).
    **Ojo:** `supabase/migrar.sh --probar` tiene en rojo pruebas de `0014_publicar` y `0015_varios_bots` (versión publicada del bot con
    problemas); no son de F4·19, hay que revisarlas aparte.
    El mismo día se validó el **número de prueba**: estaba en PENDING en Meta; se activó enviando el mensaje de prueba desde

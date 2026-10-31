@@ -1,6 +1,6 @@
 # Apariencia: colores, modo oscuro y fuente (F4·19)
 
-**Estado:** 🔵 Construida el 31 oct 2026, falta probarla con sesión · migración 0023 (7 pruebas SQL) · Decisión [0031](decisiones/0031-apariencia-y-marca.md)
+**Estado:** ✅ Hecha y probada por el dueño el 31 oct 2026 · migración 0023 (7 pruebas SQL) · Panel lateral: F4·20 · Decisión [0031](decisiones/0031-apariencia-y-marca.md)
 Prototipo para revisar con el dueño: artefacto «Apariencia CRM InventarIA» (MVP visual, no es código de la app).
 
 ## Qué pidió el dueño (31 oct 2026)
@@ -113,8 +113,30 @@ Se cambia **Archivo + IBM Plex Sans** por una sola familia más redonda y legibl
 - [ ] Contraste AA en las 4 paletas, claro y oscuro.
 - [ ] Subir, cambiar y quitar el logo se ve en el panel (abierto y plegado), el login y la pestaña.
 - [ ] Un asesor sin permiso no ve el módulo y la base le niega el cambio (prueba SQL).
-- [ ] Prueba en el navegador con sesión (módulo, vista previa, logo, modo oscuro): pendiente, hace falta un usuario para entrar.
+- [x] Prueba en el navegador con sesión: el dueño la hizo el 31 oct 2026 y quedó OK.
 
 ## Pendientes y preguntas al dueño
 
 - ¿Los colores de las etapas del embudo siguen la marca o se quedan como están?
+
+## Panel lateral como Futur Green (F4·20)
+
+**Estado:** 🔵 Construida el 31 oct 2026, falta que el dueño la apruebe · pedido del dueño al probar F4·19.
+De paso se arreglaron dos fallas viejas del plegado: el contador de Bandeja no se veía y, con muchos módulos, la columna encogía los elementos.
+
+Al probar F4·19 el dueño vio que el panel de módulos se ve desordenado frente al de Futur Green: barra de desplazamiento blanca del
+navegador (vertical y, plegado, también horizontal) y los grupos sin separación. Se copia el estilo del panel de Futur Green, **sin
+cambiar la estructura** (mismos módulos, mismo plegado y mismo cajón en celular).
+
+- RP-01. **Sin barras del navegador:** abierto, una barra fina y translúcida solo si los módulos no caben; plegado, ninguna. Nunca
+  barra horizontal (la causaba la rayita del módulo activo, que salía del panel).
+- RP-02. **Módulo activo:** fondo del color Principal con una raya del color Acento por dentro del borde izquierdo (como Futur Green).
+- RP-03. **Plegado:** íconos centrados en la columna de 68 px; los nombres de grupo se vuelven una raya fina entre bloques de íconos;
+  el logo centrado; el pie muestra solo el avatar y el atajo de modo oscuro, uno sobre otro.
+- RP-04. **Logo en ficha blanca** con sombra suave (como Futur Green): el «VV» va en el color Principal y conserva el punto del Acento;
+  un logo subido se ve sobre blanco.
+- RP-05. **Fondo del panel** con un degradado leve del color del Panel hacia el Principal, y avatar con los colores de la marca.
+- RP-06. Todo sigue saliendo de los tres colores de Apariencia: cambiar la paleta cambia el panel.
+
+**Terminado cuando:** abierto y plegado, en claro y en oscuro, no se ve ninguna barra blanca; el plegado queda centrado con rayas
+entre grupos; `next build` sin errores y el dueño lo aprueba.

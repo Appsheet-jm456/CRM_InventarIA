@@ -5,6 +5,8 @@
 - Apariencia configurable (0031, `docs/APARIENCIA.md`): Configuración → Apariencia con logo propio, tres colores de marca
   con paletas y Restaurar, fuente y modo oscuro por usuario (atajo en el panel). Nueva marca Azul Ventas Virtuales: se quita
   el verde. Fuente Figtree en lugar de Archivo + IBM Plex Sans, servida por la app. Migración 0023.
+- Panel lateral con el estilo de Futur Green (F4·20): sin barras blancas, plegado centrado con rayas entre grupos, logo en
+  ficha blanca y raya del acento en el módulo activo.
 
 ## v1.0 · 30 sep 2026 (F4·8)
 
