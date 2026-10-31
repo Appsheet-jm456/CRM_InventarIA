@@ -6,6 +6,11 @@ de las Fases 1 y 2 abajo. **Código nuevo:** el bot de prueba sobre Supabase (`h
 
 ## Dónde retomar (en este orden)
 
+0. **31 oct 2026 · F4·30 Módulo Leads y F4·31 Capacidad (documentados, por construir):** lista de leads, ficha como Kommo con atributos
+   personalizados, tareas y chat, archivar y papelera ([LEADS.md](LEADS.md), decisión 0033 propuesta). Capacidad: el servidor aguanta
+   1.000 clientes/día; hay que ajustar Bandeja, Embudo, tiempo real y búsqueda, y **confirmar el costo de Meta (F1·6)**, que es el
+   punto crítico con ese volumen. F4·31 es requisito antes de unificar Kommo. El dueño elige si va primero F4·22 (Agente) o F4·30 (Leads).
+
 0. **31 oct 2026 · Módulo Agente documentado y dividido en F4·22 a F4·29** ([AGENTE.md](AGENTE.md), decisión 0032 aceptada):
    F4·22 base · F4·23 conocimiento · F4·24 acciones «Cuando → Hacer» · F4·25 flujo de compra · F4·26 cotización con PDF (todas sin IA) →
    F4·27 cerebro DeepSeek · F4·28 agente Avi · F4·29 piloto en Distribuidores. **Esperando la orden del dueño para empezar F4·22.**
