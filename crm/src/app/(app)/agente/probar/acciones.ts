@@ -27,7 +27,7 @@ export async function probarAvi(mensajes: { role: 'user' | 'assistant'; content:
       headers: { 'Content-Type': 'application/json', 'X-Interno-Token': process.env.CRM_INTERNO_TOKEN },
       body: JSON.stringify({ mensajes, estado }),
       cache: 'no-store',
-      signal: AbortSignal.timeout(90000),
+      signal: AbortSignal.timeout(240000),
     })
     if (!r.ok) return { error: `El receptor del bot respondió ${r.status}.` }
     return (await r.json()) as Turno
