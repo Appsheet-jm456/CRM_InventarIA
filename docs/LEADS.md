@@ -152,7 +152,7 @@ Postgres maneja millones de filas con los índices correctos; 400.000 mensajes a
 |---|---|---|
 | **F4·30 A** ✅ | Base (migración 0032, 19 pruebas SQL) | `lead_atributos` (definiciones), `leads.atributos` (jsonb con índice), `leads.archivado_en` y `eliminado_en`, `lead_eventos`, tipo y resultado en `seguimientos`, permisos nuevos, índices de búsqueda; pruebas SQL |
 | **F4·30 B** 🔵 | Atributos (construido, falta la prueba del dueño) | Configuración → Atributos del lead: crear, editar, ordenar, secciones, archivar |
-| **F4·30 C** | Lista | Módulo Leads: columnas, búsqueda, filtros, vistas guardadas, paginación en servidor, acciones en grupo, exportar |
+| **F4·30 C** 🔵 | Lista (construida, falta la prueba del dueño) | Módulo Leads: columnas, búsqueda, filtros, vistas guardadas, paginación en servidor, acciones en grupo, exportar |
 | **F4·30 D** | Ficha | Ficha a pantalla completa: datos y atributos, etapa, responsable, tareas, línea de tiempo con chat, notas y respuesta (reutiliza la Bandeja) |
 | **F4·30 E** | Archivar y papelera | Archivar, papelera de 30 días, restaurar, borrado por solicitud del cliente |
 | **F4·31** | Capacidad | Arreglos 2 a 4 y 7 (Bandeja, Embudo, tiempo real, búsqueda), prueba de carga; coordina 1, 5, 6 y 9 con sus tareas |
@@ -191,3 +191,12 @@ elige cuál va primero.
   con orden (↑↓), nombre y sección editables, tipo fijo, opciones de las listas (no deja quitar una opción que algún cliente ya tiene guardada),
   obligatorio para pasar a ciertas etapas, «En la lista», «Lo llena el bot», cuántos clientes tienen el dato, archivar y restaurar; crear con nombre,
   tipo (12, con ejemplo), sección y opciones. La clave se saca del nombre y no cambia.
+- **F4·30 C (31 oct 2026), migración 0033:** módulo **Leads** (`/leads`, en Atención, permiso `atender_bandeja`). `leads_lista` pagina y cuenta en la
+  base (50, 100 o 200 por página; total y suma del valor de todo lo filtrado) con los permisos de quien consulta: busca por nombre, teléfono, código de
+  equipo y texto de los mensajes; filtra por estado (activos, ganados, perdidos, archivados, papelera, todos), embudo, etapa, responsable (yo, sin
+  asignar, otro), etiqueta, tareas vencidas, fechas (último contacto o creado) y atributo; ordena por nombre, valor, último contacto o creado.
+  Columnas a elección (también los atributos), recordadas en el navegador; **vistas guardadas** por usuario (`lead_vistas`, una predeterminada que abre
+  al entrar). **Acciones en grupo** (`leads_en_grupo`, hasta 500): cambiar etapa (abre la oportunidad si no hay; Perdido pide motivo), responsable,
+  poner o quitar etiqueta, crear tarea con tipo, archivar o desarchivar, papelera o restaurar; reutilizan las funciones de Bandeja y Embudo, lo que
+  falla en un lead se informa sin frenar a los demás, y todo queda en el historial. **Exportar CSV** de todo lo filtrado (permiso `exportar_leads`,
+  abre bien en Excel). Por ahora el nombre abre la conversación en la Bandeja; la ficha propia llega en D. 18 pruebas SQL.
