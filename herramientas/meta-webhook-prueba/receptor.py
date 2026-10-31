@@ -244,7 +244,7 @@ _candados = {}
 def cargar_estado(lead):
     guardado = lead.get("estado_bot") or {}
     st = flujo.estado_vacio()
-    st.update({k: v for k, v in guardado.items() if k in ("campos", "rango", "marcas", "valor", "compra", "cotizacion")})
+    st.update({k: v for k, v in guardado.items() if k in ("campos", "rango", "marcas", "valor", "compra", "cotizacion", "agente")})
     st.update(nodo=lead["paso_menu"] or None, etapa=lead["etapa"], errores=lead["errores_bot"],
               pausa=lead["pausar_bot"], bot=lead.get("bot_id"))
     if lead.get("espera_vence_en") and lead.get("espera_cuadro") == st["nodo"]:  # en una Pausa (F4·13)
@@ -266,7 +266,7 @@ def guardar_estado(lead, st, visible, nombre, del_cliente=True):
         "presupuesto": campos.get("Presupuesto", lead["presupuesto"]),
         "marca_interes": campos.get("Marca interés", lead["marca_interes"]),
         "cotiz_producto": campos.get("Código producto", lead["cotiz_producto"]),
-        "estado_bot": {k: st[k] for k in ("campos", "rango", "marcas", "valor", "compra", "cotizacion") if k in st},
+        "estado_bot": {k: st[k] for k in ("campos", "rango", "marcas", "valor", "compra", "cotizacion", "agente") if k in st},
         "espera_vence_en": st.get("espera_hasta"), "espera_cuadro": st["nodo"] if st.get("espera_hasta") else None,
         # En el principal se guarda null: si el principal cambia, el cliente sigue al nuevo (RF-16).
         "bot_id": None if st.get("bot") in (None, db.principal()) else st["bot"],
@@ -397,7 +397,55 @@ def extras_de_compra(lead, etiquetas, paso_embudo, nota):
             anotar(f"  ✗ no se pudo anotar la compra: {e!r}")
 
 
+_lotes = {}
+_lotes_candado = threading.Lock()
+
+
+def para_avi(numero, entrada, tipo):
+    """(lead, segundos) si este mensaje lo atenderá Avi con buffer; None si no. Lo que gana antes que Avi (asesor en el chat,
+    compra o cotización en curso, una Acción) responde al instante, sin esperar."""
+    if tipo != "text":
+        return None
+    lead = db.lead(numero)
+    if not lead:
+        return None
+    config = db.agente_config()
+    segundos = int(config.get("buffer_segundos") or 0)
+    st = cargar_estado(lead)
+    if segundos <= 0 or compra.activa(st) or cotizacion.activa(st) or not agente.atiende(st, lead, tipo, entrada, config):
+        return None
+    if acciones.ganadora(entrada):
+        return None
+    return lead, segundos
+
+
 def contestar(numero, entrada, visible, nombre, tipo, meta_id, media=None):
+    """Buffer de Avi (F4·28): los mensajes seguidos de un mismo cliente se juntan y Avi responde una sola vez.
+    El primero espera unos segundos; los que llegan mientras tanto solo se guardan y se suman a su lote."""
+    try:
+        avi = para_avi(numero, entrada, tipo)
+    except Exception as e:  # si algo falla al decidir, se atiende sin buffer
+        anotar(f"  ✗ buffer de Avi: {e!r}")
+        avi = None
+    if not avi:
+        return _contestar(numero, entrada, visible, nombre, tipo, meta_id, media)
+    lead, segundos = avi
+    db.guardar_mensaje(lead["id"], "cliente", visible, tipo, meta_id)
+    with _lotes_candado:
+        lote = _lotes.get(numero)
+        if lote is not None:
+            lote.append(entrada)
+            anotar(f"  ⏳ se suma al lote de Avi ({len(lote)} mensajes)")
+            return
+        _lotes[numero] = lote = [entrada]
+    time.sleep(segundos)
+    with _lotes_candado:
+        textos = _lotes.pop(numero, lote)
+    junto = "\n".join(textos)
+    return _contestar(numero, junto, junto, nombre, tipo, meta_id, guardado=True)
+
+
+def _contestar(numero, entrada, visible, nombre, tipo, meta_id, media=None, guardado=False):
     # Un cliente que escribe rápido manda mensajes casi a la vez: se atienden en orden, uno por uno.
     with _candados.setdefault(numero, threading.Lock()):
         try:
@@ -408,7 +456,8 @@ def contestar(numero, entrada, visible, nombre, tipo, meta_id, media=None):
                     guardada = guardar_media(lead["id"], meta_id, media)
                 except Exception as e:  # sin la media, el mensaje queda igual con su etiqueta
                     anotar(f"  ✗ no se pudo guardar la media: {e!r}")
-            db.guardar_mensaje(lead["id"], "cliente", visible, tipo, meta_id, guardada)
+            if not guardado:  # con el buffer, cada mensaje ya se guardó al llegar
+                db.guardar_mensaje(lead["id"], "cliente", visible, tipo, meta_id, guardada)
             st = cargar_estado(lead)
 
             def avisar(texto):
@@ -416,7 +465,7 @@ def contestar(numero, entrada, visible, nombre, tipo, meta_id, media=None):
                 if wamid:
                     db.guardar_mensaje(lead["id"], "bot", texto, meta_id=wamid if wamid != "enviado" else None)
 
-            mensajes = None
+            mensajes = avi = None
             # Una compra (F4·25) o una cotización (F4·26) en curso atienden primero: botones, datos, comprobante, cancelar.
             for nombre_flujo, modulo, icono in (("compra", compra, "🛒"), ("cotizacion", cotizacion, "📄")):
                 if mensajes is not None or not modulo.activa(st) or st["pausa"]:
@@ -449,7 +498,6 @@ def contestar(numero, entrada, visible, nombre, tipo, meta_id, media=None):
                 except Exception as e:
                     anotar(f"  ✗ no se pudo anotar la acción: {e!r}")
             elif mensajes is None:
-                avi = None
                 if agente.atiende(st, lead, tipo, entrada):  # Avi (F4·28): bot en modo Agente y encendido para este número
                     try:
                         avi = agente.responder(st, entrada, lead)
@@ -471,6 +519,9 @@ def contestar(numero, entrada, visible, nombre, tipo, meta_id, media=None):
                 st = seguir_error_de_envio(numero, lead, st, rechazado)
             except Exception as e:
                 anotar(f"  ✗ «Error al enviar» falló: {e!r}")
+        if avi and not avi["asesor"]:  # memoria larga de Avi: resume lo que ya no cabe en la memoria corta
+            if agente.resumir(st, lead):
+                anotar("  🧠 Avi actualizó el resumen del cliente")
         try:
             guardar_estado(lead, st, visible, nombre)
         except Exception as e:

@@ -8,6 +8,9 @@ const HERRAMIENTAS: [string, string][] = [
   ['buscar_productos', 'Buscar equipos en el inventario'],
   ['ficha_producto', 'Enviar la ficha con foto'],
   ['buscar_conocimiento', 'Consultar fichas y documentos'],
+  ['enviar_catalogo', 'Enviar el catálogo'],
+  ['mover_etapa', 'Avanzar la etapa del embudo'],
+  ['crear_seguimiento', 'Dejar un seguimiento al asesor'],
   ['capturar_datos', 'Guardar los datos del cliente'],
   ['iniciar_compra', 'Pasar al flujo de compra'],
   ['iniciar_cotizacion', 'Pasar al flujo de cotización'],
@@ -18,7 +21,7 @@ const REGLAS = [
   'Nunca escribe cuentas, titulares ni cédulas: para pagar usa el flujo de compra.',
   'No promete descuentos, tiempos ni garantías que no estén en el conocimiento.',
   'No confirma pagos: lo hace una persona.',
-  'Si no sabe o el cliente lo pide, pasa a un asesor.',
+  'Si no sabe o el cliente lo pide, pasa a un asesor; también tras 3 respuestas seguidas sin avanzar la venta.',
   'Antes de enviar, el sistema revisa que ningún precio ni número largo sea inventado.',
 ]
 const ESTADOS: [DatosAvi['estado'], string, string][] = [
@@ -39,7 +42,7 @@ export function Personalidad({ datos, listo, bots }: {
   const [ocupado, setOcupado] = useState(false)
   const cambio = JSON.stringify(d) !== JSON.stringify(datos)
   const poner = <K extends keyof DatosAvi>(k: K, v: DatosAvi[K]) => setD({ ...d, [k]: v })
-  const numero = (k: 'memoria_mensajes' | 'max_pasos' | 'max_mensajes' | 'max_turnos_dia', t: string, min: number, max: number) => (
+  const numero = (k: 'memoria_mensajes' | 'max_pasos' | 'max_mensajes' | 'max_turnos_dia' | 'buffer_segundos', t: string, min: number, max: number) => (
     <label className="field" style={{ flex: '0 1 200px' }}>
       {t}
       <input type="number" min={min} max={max} value={d[k]} disabled={ocupado} onChange={(e) => poner(k, Number(e.target.value))} />
@@ -159,6 +162,7 @@ export function Personalidad({ datos, listo, bots }: {
               {numero('max_pasos', 'Pasos por turno', 1, 12)}
               {numero('max_mensajes', 'Mensajes por turno', 1, 5)}
               {numero('max_turnos_dia', 'Turnos por día y cliente', 1, 200)}
+              {numero('buffer_segundos', 'Segundos para juntar mensajes', 0, 60)}
             </div>
             {(aviso.error || aviso.ok) && <div className={`aviso ${aviso.error ? 'bad' : 'ok'}`} role="alert">{aviso.error ?? aviso.ok}</div>}
             <div className="row">

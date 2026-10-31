@@ -109,7 +109,7 @@ prueba(9, "cuenta tokens y costo del turno", r["tokens"] == 300 and abs(r["costo
 r = turno([{"responder": "Te lo dejo en $1.000.000"}, {"responder": "Cuesta $1.000.000, no hay más"}])
 prueba(10, "un precio que no salió de una herramienta no se envía y pasa a asesor tras el segundo intento",
        r["asesor"] and textos(r) == ["Te paso con un asesor 🙌"] and "no salió de ninguna herramienta" in r["nota"] and
-       any(t["tipo"] == "bloqueado" for t in r["traza"]) and REGISTRO[-1][0] == "bloqueado")
+       any(t["tipo"] == "bloqueado" for t in r["traza"]) and [x[0] for x in REGISTRO][-2:] == ["bloqueado", "asesor"])
 r = turno([{"responder": "Cuesta $1.000.000"}, {"herramienta": "buscar_productos", "args": {"marca": "HP"}}, {"responder": "El HP está en $1.200.000"}])
 prueba(11, "si el primer intento falla, el modelo se corrige consultando la herramienta", not r["asesor"] and textos(r) == ["El HP está en $1.200.000"])
 r = turno([{"responder": "Paga a la cuenta 12345678901 de Bancolombia"}, {"responder": "Cuenta 12345678901"}])
@@ -159,5 +159,63 @@ prueba(27, "una herramienta que no existe no rompe el turno", r["traza"][0]["res
 # --- Cifras (28)
 prueba(28, "lee «1,5 millones», «$1.500.000» y «1.500.000» como el mismo valor", agente.cifras("de 1,5 millones, $1.500.000 o 1.500.000") == {1500000})
 
-print(f"\n{28 - fallos}/28 pruebas bien")
+
+# --- Herramientas nuevas (29-34)
+flujo.mensajes_catalogo = lambda categoria, marca: [flujo.m_texto(f"CATALOGO {categoria} {marca}")]
+r = turno([{"herramienta": "enviar_catalogo", "args": {"marca": "Dell"}}, {"responder": "Te envié el catálogo"}])
+prueba(29, "enviar_catalogo manda el catálogo después del texto", textos(r) == ["Te envié el catálogo", "CATALOGO Portátiles Dell"])
+st = dict(flujo.estado_vacio(), etapa="Cotización")
+r = turno([{"herramienta": "mover_etapa", "args": {"etapa": "En Conversación"}}, {"responder": "Listo"}], st=st)
+prueba(30, "mover_etapa nunca retrocede el embudo", st["etapa"] == "Cotización" and r["traza"][0]["resultado"]["cambio"] is False)
+st = flujo.estado_vacio()
+r = turno([{"herramienta": "mover_etapa", "args": {"etapa": "Vendido"}}, {"herramienta": "mover_etapa", "args": {"etapa": "Cotización"}}, {"responder": "Listo"}], st=st)
+prueba(31, "mover_etapa solo acepta las etapas del bot y avanza", r["traza"][0]["resultado"].get("error") and st["etapa"] == "Cotización")
+SEGUIMIENTOS = []
+db.crear_seguimiento = lambda *a: SEGUIMIENTOS.append(a)
+CONFIG["actualizado_por"] = "admin-uuid"
+r = turno([{"herramienta": "crear_seguimiento", "args": {"que": "Llamar mañana", "horas": 30}}, {"responder": "Te escribimos mañana"}],
+          lead={"id": 7, "telefono": "573001112233", "nombre": "", "etiquetas": [], "asignado_a": "asesor-uuid"})
+prueba(32, "crear_seguimiento se lo deja al asesor del cliente", SEGUIMIENTOS == [(7, "Llamar mañana", 30, "asesor-uuid", "admin-uuid")])
+SEGUIMIENTOS.clear()
+r = turno([{"herramienta": "crear_seguimiento", "args": {"que": "Llamar"}}, {"responder": "Ok"}], simulador=True)
+prueba(33, "en el simulador crear_seguimiento no escribe nada", not SEGUIMIENTOS and r["traza"][0]["resultado"]["simulado"])
+CONFIG["actualizado_por"] = None
+r = turno([{"herramienta": "crear_seguimiento", "args": {"que": "Llamar"}}, {"responder": "Ok"}])
+prueba(34, "sin asesor a quien asignarlo, el seguimiento queda en la nota", not SEGUIMIENTOS and "Seguimiento pedido por Avi: Llamar" in r["nota"])
+
+# --- Tres respuestas sin avance (35-36) y etiqueta Agente (37)
+st = flujo.estado_vacio()
+for _ in range(2):
+    r = turno([{"responder": "¿Para qué lo vas a usar?"}], st=st)
+prueba(35, "dos respuestas sin avance siguen con Avi", not r["asesor"] and st["agente"]["sin_avance"] == 2)
+r = turno([{"responder": "¿Y de qué presupuesto?"}], st=st)
+prueba(36, "a la tercera respuesta sin avance pasa a asesor, después de responder", r["asesor"] and textos(r)[0] == "¿Y de qué presupuesto?"
+        and "3 veces seguidas" in r["nota"] and st["agente"]["sin_avance"] == 0)
+st = flujo.estado_vacio(); st["agente"] = {"sin_avance": 2}
+r = turno([{"herramienta": "capturar_datos", "args": {"uso": "Oficina"}}, {"responder": "Perfecto"}], st=st)
+prueba(37, "un avance (datos, ficha, búsqueda con resultados) reinicia la cuenta; cada turno deja la etiqueta Agente",
+       not r["asesor"] and st["agente"]["sin_avance"] == 0 and r["etiquetas"] == ["Agente"])
+
+# --- Resumen (38-41)
+prueba(38, "resume solo cuando quedan 20 mensajes nuevos fuera de la memoria", not agente.falta_resumen(39, 20, 0) and agente.falta_resumen(40, 20, 0)
+        and not agente.falta_resumen(50, 20, 20))
+CHARLA = [{"lado": "cliente" if i % 2 == 0 else "bot", "texto": f"mensaje {i}"} for i in range(45)]
+db.mensajes_del_cliente = lambda lead_id, cuantos=200: CHARLA
+GUARDADO = {}
+db.actualizar_lead = lambda lead_id, campos: GUARDADO.update(campos)
+lead = {"id": 7, "telefono": "573001112233", "resumen_agente": "- Busca un Dell"}
+st = flujo.estado_vacio()
+SALIDAS[:] = ["- Busca un Dell i5 para diseño\n- Cuenta 123456789012"]; LLAMADAS.clear()
+r = agente.resumir(st, lead, CONFIG)
+prueba(39, "resume los 25 mensajes viejos con el resumen anterior y guarda cuántos cubrió", r and st["agente"]["resumidos"] == 25
+        and "mensaje 24" in LLAMADAS[0]["mensajes"][0]["content"] and "mensaje 25" not in LLAMADAS[0]["mensajes"][0]["content"]
+        and "Busca un Dell" in LLAMADAS[0]["mensajes"][0]["content"])
+prueba(40, "el resumen nunca guarda números largos (cuentas, cédulas)", "123456789012" not in GUARDADO["resumen_agente"])
+LLAMADAS.clear()
+prueba(41, "con el resumen al día no vuelve a llamar al modelo", agente.resumir(st, lead, CONFIG) is None and not LLAMADAS)
+SALIDAS[:] = []
+r = turno([{"responder": "Hola"}], lead=dict(lead))
+prueba(42, "el resumen va en el prompt de Avi", "LO QUE PASÓ EN CONVERSACIONES ANTERIORES" in LLAMADAS[0]["sistema"])
+
+print(f"\n{42 - fallos}/42 pruebas bien")
 sys.exit(1 if fallos else 0)

@@ -192,6 +192,18 @@ def turnos_del_dia(lead_id):
     return len(filas)
 
 
+def crear_seguimiento(lead_id, que, horas, asignado_a, creado_por):
+    """Recordatorio para un asesor (F3·6). El agente no es un usuario: lo firma quien configuró el agente."""
+    vence = (datetime.now(timezone.utc) + timedelta(hours=horas)).isoformat()
+    pedir("seguimientos", "POST", {"lead_id": lead_id, "que": que, "vence_en": vence, "asignado_a": asignado_a,
+                                   "creado_por": creado_por, "nota": "Lo dejó Avi"}, "return=minimal")
+
+
+def mensajes_del_cliente(lead_id, cuantos=200):
+    """Hasta `cuantos` mensajes de la conversación, del más viejo al más nuevo (para el resumen del agente)."""
+    return mensajes_recientes(lead_id, cuantos)
+
+
 def compra_mover(lead_id, paso):
     """Lleva la oportunidad abierta del cliente al paso de compra (0027): solo hacia adelante, salvo cancelar."""
     return pedir("rpc/compra_mover", "POST", {"p_lead": lead_id, "p_paso": paso})

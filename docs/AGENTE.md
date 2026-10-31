@@ -346,7 +346,7 @@ Cada tarea se construye, la prueba el dueño y se aprueba antes de pasar a la si
 | **F4·26** 🔵 | **Flujo de cotización** (construida 31 oct 2026, falta la prueba del dueño) | Captura nombre, cédula, celular, producto y cantidad → PDF con reglas del negocio y logo → etapa Cotización; reenviar y descargar desde la Bandeja | No |
 | **F4·32** 🔵 | **Documentos de conocimiento** (construida 31 oct 2026, falta la prueba del dueño) | Subir texto, PDF, Excel o CSV; extraer texto, partir en trozos con índice en español; reemplazar, apagar, eliminar, ver texto extraído y probar búsqueda. Lo usa el agente (F4·28) | No |
 | **F4·27** 🔵 | **Cerebro (cualquier proveedor)** | Pantalla Cerebro: proveedor, llave cifrada, modelo de respaldo, Probar conexión, presupuesto mensual y contador de costo | Conexión |
-| **F4·28** 🔵 | **Agente Avi** (construido 31 oct 2026, falta la prueba del dueño con llave real) | Motor del agente en el tramo de compra: memoria, herramientas, verificación RAG-02, personalidad parametrizable, tope → «¿Quieres un asesor?»; pestañas Personalidad, Probar y Registro; etiqueta *Agente* en la Bandeja | Sí |
+| **F4·28** 🔵 | **Agente Avi** (completo 31 oct 2026, falta la prueba del dueño con llave real) | Motor del agente en el tramo de compra: memoria, herramientas, verificación RAG-02, personalidad parametrizable, tope → «¿Quieres un asesor?»; pestañas Personalidad, Probar y Registro; etiqueta *Agente* en la Bandeja | Sí |
 | **F4·29** | **Piloto Distribuidores** | Bot de Distribuidores en modo Agente con números de prueba (lista blanca), juego fijo de conversaciones, métricas de costo y conversión; requisito: **webhook fijo** (F2·17) | Sí |
 
 Al terminar F4·26 el CRM ya cierra ventas con **menú + acciones + compra + cotización + asesor**, sin IA. F4·32 (documentos) va antes de Avi
@@ -460,5 +460,11 @@ porque es su material de consulta; F4·27 a F4·29 suman a Avi encima. (F4·32 t
   «¿Quieres que te atienda un asesor? 🙌» y a la Bandeja. Si ningún modelo responde, atiende el Híbrido. **Cuándo entra:** texto escrito (los números 0 a 9 van al menú), chat sin
   asesor, **bot en modo Agente** (se cambia en la pestaña Avi) y agente **encendido** (Solo en Probar / Números de prueba / Todos); antes corren las Acciones y los flujos de
   compra y cotización. Probar usa el inventario real pero no guarda, no envía y no cuenta para el presupuesto (`/interno/agente`). Pruebas: 28 de `prueba_agente.py`.
-  **Pendiente de F4·28 (no construido):** el buffer de 15 s que junta mensajes seguidos, el resumen de conversaciones anteriores (`leads.resumen_agente`), las herramientas
-  `enviar_catalogo`, `mover_etapa` y `crear_seguimiento`, «tres respuestas sin avance → asesor», la etiqueta *Agente* en la Bandeja y las métricas del agente.
+  **Completado el mismo día (segunda parte):** buffer en el receptor (los mensajes seguidos se guardan al llegar y Avi responde una vez con
+  todo junto; lo que atiende una Acción, la compra, la cotización o una foto no espera; los segundos se cambian en la pestaña Avi, 0 = sin buffer);
+  **resumen** de conversaciones anteriores en `leads.resumen_agente` (una llamada barata cada 20 mensajes que salen de la memoria corta, sin números largos,
+  va en el prompt); herramientas `enviar_catalogo`, `mover_etapa` (solo avanza las etapas del bot) y `crear_seguimiento` (al asesor del cliente o, si no
+  tiene, a quien configuró el agente; si no hay nadie, queda en la nota); **tres respuestas seguidas sin avance → asesor** (avance = búsqueda con
+  resultados, ficha, catálogo, datos, etapa); etiquetas `Agente` y `Revisar-Agente` con chips *🤖 Avi* y *Revisar Avi* en la Bandeja; cada paso a
+  asesor queda en `agente_turnos`; **métricas del mes** arriba del Registro: conversaciones, pasadas a asesor, cotizaciones, en pago, ventas, costo
+  total, por conversación y por venta. Pruebas: 42 de `prueba_agente.py` y 5 de `prueba_buffer.py`.

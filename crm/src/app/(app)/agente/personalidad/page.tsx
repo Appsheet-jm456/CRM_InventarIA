@@ -14,7 +14,7 @@ export default async function PaginaPersonalidad() {
       datos={{
         estado: c.estado, lista_blanca: (c.lista_blanca ?? []).join('\n'), nombre: c.nombre, tono: c.tono, emojis: c.emojis, trato: c.trato,
         largo: c.largo, prompt: c.prompt, herramientas_apagadas: c.herramientas_apagadas ?? [], memoria_mensajes: c.memoria_mensajes,
-        max_pasos: c.max_pasos, max_mensajes: c.max_mensajes, max_turnos_dia: c.max_turnos_dia,
+        max_pasos: c.max_pasos, max_mensajes: c.max_mensajes, max_turnos_dia: c.max_turnos_dia, buffer_segundos: c.buffer_segundos,
       }}
       listo={Boolean(c.llave_id || c.proveedor === 'local') && (Number(c.presupuesto_usd) > 0 || c.proveedor === 'local')}
       bots={(bots ?? []).map((b) => ({ id: b.id, nombre: b.nombre, principal: b.principal, modo: b.modo }))}

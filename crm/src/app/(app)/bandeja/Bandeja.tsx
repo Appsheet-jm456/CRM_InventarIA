@@ -321,6 +321,12 @@ export function Bandeja({ yo, usuarios, asesores, embudos, etapas, rapidas, inic
                   {l.estado_chat === 'asignada' && l.asignado_a && l.asignado_a !== yo.id && (
                     <span className="chip neu">{nombres.get(l.asignado_a) ?? 'Otro asesor'}</span>
                   )}
+                  {l.etiquetas?.includes('Agente') && (
+                    <span className="chip acc" title="Avi, el agente de IA, atendió esta conversación">🤖 Avi</span>
+                  )}
+                  {l.etiquetas?.includes('Revisar-Agente') && (
+                    <span className="chip warn" title="Avi no pudo responder sin inventar un dato o llegó a un límite: revisa la conversación">Revisar Avi</span>
+                  )}
                   {(abiertas.get(l.id) ?? []).map((t) => <span key={t} className="chip neu">{t}</span>)}
                 </span>
               </button>

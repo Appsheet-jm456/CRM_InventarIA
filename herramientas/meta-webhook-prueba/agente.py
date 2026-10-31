@@ -29,6 +29,9 @@ HERRAMIENTAS = {
                         "Devuelve código, equipo, especificaciones, precio y stock reales.",
     "ficha_producto": 'Envía al cliente la ficha con foto de un equipo. args: {"codigo":"100-102-1030-1"}.',
     "buscar_conocimiento": 'Busca en las preguntas frecuentes, políticas y documentos del negocio. args: {"pregunta":"..."}.',
+    "enviar_catalogo": 'Envía el catálogo en PDF o el enlace con todos los equipos. args: {"marca":""} (opcional).',
+    "mover_etapa": 'Avanza al cliente en el embudo cuando corresponda: "En Conversación" (ya dijo qué busca) o "Cotización" (pidió precio de un equipo concreto). args: {"etapa":"..."}. Nunca retrocede.',
+    "crear_seguimiento": 'Deja un recordatorio a un asesor para escribirle al cliente más tarde. args: {"que":"Llamar para confirmar el equipo", "horas":24}.',
     "capturar_datos": 'Guarda lo que el cliente cuenta. args: {"nombre":"", "ciudad":"", "uso":"", "presupuesto":"", "marca":""} (los que sepas).',
     "iniciar_compra": 'El cliente quiere comprar un equipo: arranca el flujo de compra (confirma total, envía cuentas y pide el comprobante). args: {"codigo":"..."}. Termina tu turno.',
     "iniciar_cotizacion": 'El cliente pide una cotización: arranca el flujo que pide sus datos y genera el PDF. args: {"codigo":"..."}. Termina tu turno.',
@@ -42,6 +45,8 @@ REGLAS = """REGLAS QUE NO SE PUEDEN CAMBIAR
 4. No confirmes pagos. Eso lo hace una persona.
 5. Si no sabes algo o el cliente lo pide, usa pasar_a_asesor.
 6. Solo vendes portátiles del inventario; no inventes equipos."""
+
+SIN_AVANCE = 3  # RAG-04
 
 PROTOCOLO = """FORMATO DE CADA RESPUESTA (obligatorio): un único objeto JSON, sin texto fuera de él.
 - Para usar una herramienta: {"herramienta": "nombre", "args": {...}}
@@ -90,6 +95,7 @@ def sistema(config, lead, st):
             ficha.append(f"{k}: {campos[k]}")
     if (lead or {}).get("etiquetas"):
         ficha.append("Etiquetas: " + ", ".join(lead["etiquetas"]))
+    resumen = ((lead or {}).get("resumen_agente") or "").strip()
     herramientas = "\n".join(f"- {n}: {d}" for n, d in HERRAMIENTAS.items() if n not in (config.get("herramientas_apagadas") or []))
     dueno = (config.get("prompt") or "").strip()
     return "\n\n".join(filter(None, [
@@ -100,6 +106,7 @@ def sistema(config, lead, st):
         f"INSTRUCCIONES DEL DUEÑO\n{dueno}" if dueno else "",
         f"HORARIO DE LOS ASESORES\n{flujo.texto_horario()}",
         "EL CLIENTE\n" + "\n".join(ficha),
+        f"LO QUE PASÓ EN CONVERSACIONES ANTERIORES\n{resumen}" if resumen else "",
         f"HERRAMIENTAS\n{herramientas}",
         PROTOCOLO,
     ]))
@@ -112,7 +119,7 @@ def historial(lead, entrada, cuantos, previo=None):
     else:
         crudo = [{"role": "user" if m["lado"] == "cliente" else "assistant", "content": m["texto"]}
                  for m in db.mensajes_recientes(lead["id"], cuantos) if (m.get("texto") or "").strip()]
-        if not crudo or crudo[-1]["role"] != "user" or crudo[-1]["content"] != entrada:
+        if not crudo or crudo[-1]["role"] != "user":  # el receptor ya guardó lo que escribió el cliente (también los juntados por el buffer)
             crudo.append({"role": "user", "content": entrada})
     mezclado = []
     for m in crudo:
@@ -185,6 +192,7 @@ def usar(nombre, args, ctx):
         r = (r or interprete.cercanos(todos, f))[:5]
         for p in r:
             ctx["permitido"].add(p["precio"])
+        ctx["avance"] = ctx["avance"] or exactos
         return {"coincide_exacto": exactos, "equipos": [_resumen(p) for p in r],
                 "nota": "" if r else "No hay equipos con stock que se parezcan."}, False
     if nombre == "ficha_producto":
@@ -193,6 +201,7 @@ def usar(nombre, args, ctx):
             return {"error": "Ese código no existe o ya no tiene stock."}, False
         ctx["permitido"].add(p["precio"])
         ctx["extra"] += flujo.r11(st, p)
+        ctx["avance"] = True
         return {"enviada": True, **_resumen(p)}, False
     if nombre == "buscar_conocimiento":
         trozos = db.buscar_conocimiento(str(args.get("pregunta", ""))[:300])
@@ -203,6 +212,38 @@ def usar(nombre, args, ctx):
         ctx["trozos"] += [{"fuente": t.get("fuente"), "id": t.get("id"), "titulo": t.get("titulo")} for t in trozos]
         return {"resultados": [{"fuente": t.get("fuente"), "titulo": t.get("titulo"), "texto": t["texto"][:900]} for t in trozos]
                 or "No hay información del negocio sobre eso: pásalo a un asesor."}, False
+    if nombre == "enviar_catalogo":
+        campos = st.get("campos") or {}
+        salida = flujo.mensajes_catalogo(campos.get("Categoría interés") or "Portátiles", str(args.get("marca") or campos.get("Marca interés") or ""))
+        if not salida:
+            return {"error": "No hay catálogos cargados."}, False
+        ctx["extra"] += salida
+        ctx["avance"] = True
+        return {"enviado": True}, False
+    if nombre == "mover_etapa":
+        nueva = str(args.get("etapa", "")).strip()
+        if nueva not in flujo.ETAPAS:
+            return {"error": f"Solo puedes avanzar a: {', '.join(flujo.ETAPAS[1:])}."}, False
+        antes = st.get("etapa")
+        flujo.etapa(st, nueva)  # solo avanza (decisión 0006)
+        ctx["avance"] = ctx["avance"] or st.get("etapa") != antes
+        return {"etapa": st.get("etapa"), "cambio": st.get("etapa") != antes}, False
+    if nombre == "crear_seguimiento":
+        que = str(args.get("que", "")).strip()[:200]
+        try:
+            horas = max(1, min(int(args.get("horas") or 24), 168))
+        except (TypeError, ValueError):
+            horas = 24
+        if not que:
+            return {"error": "Falta qué debe hacer el asesor."}, False
+        asesor = (lead or {}).get("asignado_a") or ctx["config"].get("actualizado_por")
+        if sim or not lead or not lead.get("id"):
+            return {"creado": True, "simulado": True}, False
+        if not asesor:
+            ctx["nota"].append(f"Seguimiento pedido por Avi: {que} (en {horas} h)")
+            return {"creado": False, "nota": "No hay asesor a quien asignarlo: quedó en la nota del cliente."}, False
+        db.crear_seguimiento(lead["id"], que, horas, asesor, ctx["config"].get("actualizado_por") or asesor)
+        return {"creado": True}, False
     if nombre == "capturar_datos":
         campos = st.setdefault("campos", {})
         for arg, campo in (("uso", "Uso equipo"), ("presupuesto", "Presupuesto"), ("marca", "Marca interés")):
@@ -214,6 +255,7 @@ def usar(nombre, args, ctx):
             lead["nombre"] = nombre_cliente
         if str(args.get("ciudad", "")).strip():
             ctx["nota"].append(f"Ciudad: {str(args['ciudad']).strip()[:60]}")
+        ctx["avance"] = True
         return {"guardado": True}, False
     if nombre in ("iniciar_compra", "iniciar_cotizacion"):
         modulo = compra if nombre == "iniciar_compra" else cotizacion
@@ -269,7 +311,7 @@ def responder(st, entrada, lead, config=None, simulador=False, previo=None):
     if st["bot"] is None:
         st["bot"] = db.principal()
     ctx = {"st": st, "lead": lead, "config": config, "simulador": simulador, "permitido": set(), "texto_permitido": "",
-           "extra": [], "nota": [], "trozos": [], "asesor": False, "flujo": None}
+           "extra": [], "nota": [], "trozos": [], "asesor": False, "flujo": None, "avance": False}
     traza, costo, tokens = [], 0.0, 0
     lead_id = (lead or {}).get("id")
     flujo._hilo.bot, flujo._hilo.saltos = st["bot"], 0  # el paso a asesor usa los cuadros del bot del cliente
@@ -326,6 +368,11 @@ def responder(st, entrada, lead, config=None, simulador=False, previo=None):
                 _asesor_por(ctx, "Avi no pudo responder sin inventar un dato: " + "; ".join(problemas), "Revisar-Agente")
                 return _salida(ctx, [], traza, costo, tokens)
             traza.append({"tipo": "respuesta", "texto": texto})
+            memoria = st.setdefault("agente", {})
+            memoria["sin_avance"] = 0 if ctx["avance"] else int(memoria.get("sin_avance") or 0) + 1
+            if memoria["sin_avance"] >= SIN_AVANCE:  # RAG-04: tres respuestas sin avance → asesor, después de la respuesta
+                memoria["sin_avance"] = 0
+                _asesor_por(ctx, f"Avi respondió {SIN_AVANCE} veces seguidas sin avanzar la venta.", "Escalado-Asesor")
             return _salida(ctx, partir(texto, int(config.get("max_mensajes") or 3)), traza, costo, tokens)
         _asesor_por(ctx, "Avi usó todos sus pasos sin llegar a una respuesta.", "Revisar-Agente")
         return _salida(ctx, [], traza, costo, tokens)
@@ -334,7 +381,51 @@ def responder(st, entrada, lead, config=None, simulador=False, previo=None):
 
 
 def _salida(ctx, textos, traza, costo, tokens):
+    lead_id = (ctx["lead"] or {}).get("id")
+    if ctx["asesor"] and not ctx["simulador"] and lead_id:  # para las métricas: conversaciones que Avi pasó a asesor
+        cerebro.registrar(lead_id, {"proveedor": ctx["config"].get("proveedor") or "", "modelo": ctx["config"].get("modelo") or ""},
+                          "asesor", detalle={"nota": " · ".join(ctx["nota"])})
     mensajes = [flujo.m_texto(t) for t in textos] + ctx["extra"]
-    return {"mensajes": mensajes, "st": ctx["st"], "nota": " · ".join(ctx["nota"]), "etiquetas": [],
+    return {"mensajes": mensajes, "st": ctx["st"], "nota": " · ".join(ctx["nota"]), "etiquetas": ["Agente"],
             "asesor": ctx["asesor"], "flujo": ctx["flujo"], "traza": traza, "trozos": ctx["trozos"],
             "costo_usd": round(costo, 6), "tokens": tokens}
+
+
+# --------------------------------------------------------------------------- #
+# Resumen de conversaciones anteriores (memoria larga)
+# --------------------------------------------------------------------------- #
+
+RESUMEN_CADA = 20  # mensajes nuevos fuera de la memoria corta antes de volver a resumir
+
+
+def falta_resumen(total, memoria, ya_resumidos):
+    """True si quedaron por fuera de la memoria corta al menos RESUMEN_CADA mensajes que el resumen aún no cubre."""
+    return total - memoria - ya_resumidos >= RESUMEN_CADA
+
+
+def resumir(st, lead, config=None):
+    """Actualiza leads.resumen_agente con lo que ya no cabe en la memoria corta. Una llamada barata al modelo, solo cuando hace falta.
+    Devuelve el resumen nuevo o None. Nunca lanza: el resumen no puede tumbar una respuesta."""
+    try:
+        config = config or db.agente_config()
+        memoria = int(config.get("memoria_mensajes") or 20)
+        todos = [m for m in db.mensajes_del_cliente(lead["id"]) if (m.get("texto") or "").strip()]
+        estado = st.setdefault("agente", {})
+        ya = int(estado.get("resumidos") or 0)
+        if not falta_resumen(len(todos), memoria, ya):
+            return None
+        viejos = todos[:len(todos) - memoria]
+        charla = "\n".join(f"{'Cliente' if m['lado'] == 'cliente' else 'Nosotros'}: {m['texto'][:300]}" for m in viejos[-120:])
+        previo = (lead.get("resumen_agente") or "").strip()
+        pedido = ("Resume en español, en máximo 6 viñetas cortas, lo útil para seguir vendiéndole a este cliente: qué busca, presupuesto, "
+                  "equipos que vio, datos que dio, objeciones y en qué quedó. Sin precios ni números de cuenta.\n\n"
+                  + (f"Resumen anterior:\n{previo}\n\n" if previo else "") + f"Conversación:\n{charla}")
+        r = cerebro.completar([{"role": "user", "content": pedido}], "Eres un asistente que resume conversaciones de ventas.",
+                              lead_id=lead["id"], detalle={"paso": 0, "resumen": True})
+        texto = re.sub(r"\d{9,}", "…", r["texto"])[:1500]
+        db.actualizar_lead(lead["id"], {"resumen_agente": texto})
+        lead["resumen_agente"] = texto
+        estado["resumidos"] = len(viejos)
+        return texto
+    except Exception:
+        return None
