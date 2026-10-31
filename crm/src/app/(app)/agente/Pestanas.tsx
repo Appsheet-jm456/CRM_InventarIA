@@ -3,8 +3,9 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
-// Pestañas del módulo Agente (docs/AGENTE.md). Se suman a medida que se construyen: Cerebro (F4·27), Personalidad, Probar y Registro (F4·28).
+// Pestañas del módulo Agente (docs/AGENTE.md). Se suman a medida que se construyen: Personalidad, Probar y Registro (F4·28).
 const PESTANAS = [
+  { ruta: '/agente/cerebro', texto: 'Cerebro' },
   { ruta: '/agente/conocimiento', texto: 'Conocimiento' },
   { ruta: '/agente/acciones', texto: 'Acciones' },
   { ruta: '/agente/compra', texto: 'Compra' },

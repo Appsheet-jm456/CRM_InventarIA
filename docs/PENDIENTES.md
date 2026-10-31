@@ -6,6 +6,11 @@ de las Fases 1 y 2 abajo. **Código nuevo:** el bot de prueba sobre Supabase (`h
 
 ## Dónde retomar (en este orden)
 
+0. **31 oct 2026 · F4·27 Cerebro construida 🔵** (migración 0030, `/agente/cerebro`, `cerebro.py`; AGENTE.md, RAG-34): cualquier proveedor de IA o local, llave en Vault,
+   Probar conexión, respaldo y presupuesto. **Falta del dueño:** conseguir la llave de DeepSeek (con saldo), pegarla en Configuración → Agente → Cerebro, poner el
+   presupuesto (propuesta US$ 5 al mes) y pulsar Probar conexión. Todavía no responde a clientes: sigue F4·28 (agente Avi). Las pruebas 4 y 6 de `0024` dependen de lo
+   que el dueño ya activó (Devoluciones y fichas): hay que aislarlas como las de 0014/0015.
+
 0. **31 oct 2026 · F4·30 Módulo Leads y F4·31 Capacidad (documentados, por construir):** lista de leads, ficha como Kommo con atributos
    personalizados, tareas y chat, archivar y papelera ([LEADS.md](LEADS.md), decisión 0033 propuesta). Capacidad: el servidor aguanta
    1.000 clientes/día; hay que ajustar Bandeja, Embudo, tiempo real y búsqueda, y **confirmar el costo de Meta (F1·6)**, que es el

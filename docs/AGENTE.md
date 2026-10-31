@@ -182,6 +182,10 @@ Pedido del dueño: capturar los datos y enviar una cotización con las reglas de
   dos fallan, el mensaje lo atiende el modo **Híbrido** y queda anotado.
 - RAG-11. Las **llaves de API** se guardan cifradas en Vault, igual que las de Meta (decisión 0029): se pegan en la pantalla y nunca se vuelven a mostrar.
 - Ajustes: temperatura (por defecto baja, 0,3), largo máximo de respuesta y botón **Probar conexión**.
+- RAG-34. **Cualquier proveedor** (pedido del dueño, 31 oct 2026): además de los cinco de la tabla, existe **Otro proveedor**: se escribe la dirección del
+  servicio y se elige si habla como OpenAI o como Anthropic. Cada modelo (principal y respaldo) guarda su dirección, su tipo de API y sus
+  **precios por millón de tokens** (valores de partida editables: cambian y hay que confirmarlos con el proveedor); con ellos se estima el costo de cada turno.
+  El modelo local no necesita llave ni cuesta, y nunca se detiene por el presupuesto.
 
 ### 2. Memoria
 
@@ -341,7 +345,7 @@ Cada tarea se construye, la prueba el dueño y se aprueba antes de pasar a la si
 | **F4·25** 🔵 | **Flujo de compra** (construida 31 oct 2026, falta la prueba del dueño) | «Quiero comprar <código>» → confirmar equipo y total → cuentas con texto aprobado → datos de envío → *Esperando pago* → comprobante (foto/PDF/«ya pagué») → *Pago por confirmar* → Bandeja con resumen; 20 min, 12 h y cancelación | No |
 | **F4·26** 🔵 | **Flujo de cotización** (construida 31 oct 2026, falta la prueba del dueño) | Captura nombre, cédula, celular, producto y cantidad → PDF con reglas del negocio y logo → etapa Cotización; reenviar y descargar desde la Bandeja | No |
 | **F4·32** 🔵 | **Documentos de conocimiento** (construida 31 oct 2026, falta la prueba del dueño) | Subir texto, PDF, Excel o CSV; extraer texto, partir en trozos con índice en español; reemplazar, apagar, eliminar, ver texto extraído y probar búsqueda. Lo usa el agente (F4·28) | No |
-| **F4·27** | **Cerebro (DeepSeek)** | Pantalla Cerebro: proveedor, llave cifrada, modelo de respaldo, Probar conexión, presupuesto mensual y contador de costo | Conexión |
+| **F4·27** 🔵 | **Cerebro (cualquier proveedor)** | Pantalla Cerebro: proveedor, llave cifrada, modelo de respaldo, Probar conexión, presupuesto mensual y contador de costo | Conexión |
 | **F4·28** | **Agente Avi** | Motor del agente en el tramo de compra: memoria, herramientas, verificación RAG-02, personalidad parametrizable, tope → «¿Quieres un asesor?»; pestañas Personalidad, Probar y Registro; etiqueta *Agente* en la Bandeja | Sí |
 | **F4·29** | **Piloto Distribuidores** | Bot de Distribuidores en modo Agente con números de prueba (lista blanca), juego fijo de conversaciones, métricas de costo y conversión; requisito: **webhook fijo** (F2·17) | Sí |
 
@@ -439,3 +443,11 @@ porque es su material de consulta; F4·27 a F4·29 suman a Avi encima. (F4·32 t
   hallazgos, ya corregidos: (1) la regla «contiene» exigía la palabra entera y no reconocía plurales (ahora busca al inicio de la palabra);
   (2) una lista de más de 1.024 caracteres la rechazaba Meta (la lista de equipos ahora se corta y avisa cuántos más hay); (3) una ficha activa
   no responde si su acción está apagada: Conocimiento ya lo avisa. Falta probar por WhatsApp Compra (F4·25) y Cotización (F4·26).
+- **F4·27 (31 oct 2026), migración 0030:** `agente_config` guarda por modelo `url_base`, `protocolo` (openai/anthropic) y precios por millón de tokens
+  (más `tokens_max` y `espera_segundos`); proveedor `otro`; el respaldo debe venir completo; no se enciende para clientes sin llave y presupuesto,
+  salvo con modelo local; `agente_tope()` da gasto, porcentaje y si está agotado (el simulador no cuenta). Pantalla **Configuración → Agente → Cerebro**
+  (`/agente/cerebro`): contador de gasto con barra, modelo principal y de respaldo (proveedor, modelo, dirección, tipo de API, precios, llave a Vault que
+  no se vuelve a mostrar, **Probar conexión** leyendo la llave solo en el servidor), presupuesto, temperatura, largo y espera, y las últimas respuestas.
+  `cerebro.py` en el receptor: principal → respaldo → `CerebroError` (atiende el Híbrido), `TopeAgotado` (asesor), cada intento anotado en
+  `agente_turnos`. Pruebas: 12 SQL (`0030_cerebro.sql`) y 16 de `prueba_cerebro.py` con un proveedor falso. **Aún no responde a clientes**: eso es F4·28.
+  Falta que el dueño consiga la llave de DeepSeek (con saldo), la pegue en Cerebro, ponga el presupuesto (propuesta: US$ 5 al mes) y pruebe la conexión.
