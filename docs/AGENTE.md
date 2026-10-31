@@ -1,6 +1,6 @@
 # Módulo Agente: menú, acciones, compra, cotización y el agente Avi (F4·22 a F4·29)
 
-**Estado:** 🔵 En construcción · F4·22 (base) hecha el 31 oct 2026; sigue F4·23 · Dividido en F4·22 a F4·29 · 31 oct 2026 · con las respuestas del dueño, Acciones y flujo de cotización · Decisión [0032](decisiones/0032-modulo-agente.md) (modifica la 0016)
+**Estado:** 🔵 En construcción · F4·22 (base) hecha y F4·23 (conocimiento) construida el 31 oct 2026 · Dividido en F4·22 a F4·29 · 31 oct 2026 · con las respuestas del dueño, Acciones y flujo de cotización · Decisión [0032](decisiones/0032-modulo-agente.md) (modifica la 0016)
 Referencias que trajo el dueño: diagramas de agentes de otros CRM (canales → buffer → agente → respuesta, con modelo, memoria,
 conocimiento y herramientas alrededor).
 
@@ -293,7 +293,7 @@ Cada tarea se construye, la prueba el dueño y se aprueba antes de pasar a la si
 | # | Tarea | Qué entrega | Usa IA |
 |---|---|---|---|
 | **F4·22** ✅ | **Base del agente** (migración 0024, 15 pruebas SQL, 31 oct 2026) | Migración: `acciones`, `conocimiento`, `cotizaciones` (con consecutivo), `agente_config`, `agente_turnos`; `bots.modo`; `leads.resumen_agente`; etapas *Esperando pago* y *Pago por confirmar*; etiquetas de compra; permiso `administrar_agente`; llaves del proveedor en Vault; pruebas SQL | No |
-| **F4·23** | **Conocimiento** | Pantalla de preguntas frecuentes y políticas (texto o imagen) por categoría: ubicación, garantía, devoluciones, envíos, pagos, distribuidores | No |
+| **F4·23** 🔵 | **Conocimiento** (construida 31 oct 2026, falta la prueba del dueño) | Pantalla de preguntas frecuentes y políticas (texto o imagen) por categoría: ubicación, garantía, devoluciones, envíos, pagos, distribuidores | No |
 | **F4·24** | **Acciones «Cuando → Hacer»** | Motor en el receptor + pantalla con prioridad, prueba con una frase y contador. Acciones iniciales: ubicación, cuentas, garantía, devoluciones, horario, asesor | No |
 | **F4·25** | **Flujo de compra** | «Quiero comprar <código>» → confirmar equipo y total → cuentas con texto aprobado → datos de envío → *Esperando pago* → comprobante (foto/PDF/«ya pagué») → *Pago por confirmar* → Bandeja con resumen; 20 min, 12 h y cancelación | No |
 | **F4·26** | **Flujo de cotización** | Captura nombre, cédula, celular, producto y cantidad → PDF con reglas del negocio y logo → etapa Cotización; reenviar y descargar desde la Bandeja | No |
@@ -347,3 +347,7 @@ Al terminar F4·26 el CRM ya cierra ventas con **menú + acciones + compra + cot
   enciende para clientes sin llave y presupuesto), `agente_turnos` y `agente_gasto_mes()`; llaves en Vault (`agente_guardar_llave`,
   `agente_llaves` solo para el servidor); buckets privados `conocimiento` y `cotizaciones`. **El texto de cuentas no va en el repositorio:**
   se pega en la pantalla (F4·25). Nada de esto cambia todavía cómo responde el bot.
+- **F4·23 (31 oct 2026):** módulo **Configuración → Agente** (permiso `administrar_agente`) con su primera pestaña, **Conocimiento**:
+  fichas por categoría con título, respuesta (contador hasta 4.096 caracteres, el límite de WhatsApp), imagen o PDF opcional (bucket
+  `conocimiento`, servido por `/archivos/conocimiento/…`), interruptor Activa (no se activa sin contenido), borrar y crear con categoría
+  nueva. Cada categoría muestra qué acción la usa y avisa si una acción quedaría sin fichas activas.

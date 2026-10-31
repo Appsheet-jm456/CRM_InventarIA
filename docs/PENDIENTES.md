@@ -14,7 +14,8 @@ de las Fases 1 y 2 abajo. **Código nuevo:** el bot de prueba sobre Supabase (`h
 0. **31 oct 2026 · Módulo Agente documentado y dividido en F4·22 a F4·29** ([AGENTE.md](AGENTE.md), decisión 0032 aceptada):
    F4·22 base · F4·23 conocimiento · F4·24 acciones «Cuando → Hacer» · F4·25 flujo de compra · F4·26 cotización con PDF (todas sin IA) →
    F4·27 cerebro DeepSeek · F4·28 agente Avi · F4·29 piloto en Distribuidores. El dueño eligió el Agente primero.
-   ✅ **F4·22 hecha** (migración 0024, 15 pruebas). **Sigue F4·23 Conocimiento.**
+   ✅ **F4·22 hecha** (migración 0024, 15 pruebas). 🔵 **F4·23 Conocimiento construida** (Configuración → Agente):
+   falta que el dueño la pruebe y llene las fichas (ubicación, garantía, devoluciones, envíos, pagos). Sigue F4·24 Acciones.
    **Pruebas del bot frágiles:** `0012_borrador`, `0014_publicar` y `0015_varios_bots` dependen de los borradores y versiones vivos (fallan
    cuando el dueño tiene un borrador abierto); hay que aislarlas con datos propios dentro de cada prueba.
    Pendiente del dueño: textos de ubicación, garantía, devoluciones, envíos y pagos, y confirmar el texto de cuentas del Salesbot «Compra».

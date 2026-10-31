@@ -717,3 +717,17 @@ label.btn:has(+ .apariencia-archivo:focus-visible) { outline: 2px solid var(--ac
 @media (max-width: 760px) { .apariencia-aviso { margin-left: 12px } .apariencia-fuente { flex-wrap: wrap } .apariencia-fuente small { margin-left: 0; text-align: left } }
 .login-box .logo::after { border-color: var(--surface) }
 @media (max-width: 760px) { .app.plegado .nav a span.contador { position: static; margin-left: auto; min-width: 20px; height: 20px; font-size: 11px; padding: 0 6px } }
+
+/* ---------- agente (F4·22 a F4·29) ---------- */
+.pastillas { display: flex; gap: 8px; flex-wrap: wrap }
+a.pastilla { text-decoration: none }
+.pastilla.activa { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600 }
+.ficha-conocimiento-lista { display: grid; gap: 12px; padding: 14px 16px 16px }
+.ficha-conocimiento { display: grid; gap: 10px; padding: 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface) }
+.ficha-conocimiento.activa { border-color: color-mix(in srgb, var(--ok) 45%, var(--line)) }
+.ficha-conocimiento-h { display: flex; align-items: center; gap: 12px; flex-wrap: wrap }
+.ficha-conocimiento-titulo { flex: 1; min-width: 200px; border: 1px solid transparent; background: none; border-radius: 6px; padding: 5px 8px; font-weight: 600; font-size: 15px; color: var(--ink) }
+.ficha-conocimiento-titulo:hover, .ficha-conocimiento-titulo:focus { border-color: var(--line); background: var(--bg) }
+.ficha-conocimiento textarea { border: 1px solid var(--line); background: var(--bg); border-radius: 6px; padding: 8px 10px; font: inherit; font-size: 13.5px; color: var(--ink); resize: vertical; width: 100% }
+.ficha-conocimiento-archivo { display: flex; align-items: center; gap: 10px; flex-wrap: wrap }
+.ficha-conocimiento-archivo img { display: block; max-height: 96px; max-width: 180px; border-radius: 8px; border: 1px solid var(--line); object-fit: contain; background: var(--bg) }
