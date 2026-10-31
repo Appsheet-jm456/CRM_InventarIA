@@ -139,7 +139,7 @@ function TarjetaAccion({ a, posicion, total, usos, ctx, ocupado, correr }: {
                 onChange={(e) => setFrase(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); agregarFrase() } }} />
               <button type="button" className="btn chico" disabled={ocupado || !frase.trim()} onClick={agregarFrase}>Agregar frase</button>
             </div>
-            <small className="muted">No importan mayúsculas, tildes ni signos. «contiene» busca palabras enteras: «cambio» no se activa con «intercambio».</small>
+            <small className="muted">No importan mayúsculas, tildes ni signos. «contiene» busca al inicio de una palabra: «devolución» también encuentra «devoluciones», pero «cambio» no se activa con «intercambio».</small>
           </div>
 
           <div>

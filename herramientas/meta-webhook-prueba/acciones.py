@@ -26,7 +26,8 @@ def normalizar(s):
 
 
 def cumple(condicion, n):
-    """RAG-23. «contiene» busca la frase como palabras enteras: «cambio» no se dispara con «intercambio»."""
+    """RAG-23. «contiene» busca la frase al inicio de una palabra: «devolucion» también encuentra «devoluciones», pero
+    «cambio» no se dispara con «intercambio»."""
     texto = normalizar(condicion.get("texto", ""))
     if not texto:
         return False
@@ -35,7 +36,7 @@ def cumple(condicion, n):
         return n == texto
     if forma == "empieza":
         return n == texto or n.startswith(texto + " ")
-    return re.search(rf"(?:^|\s){re.escape(texto)}(?:\s|$)", n) is not None
+    return re.search(rf"(?:^|\s){re.escape(texto)}\w*(?:\s|$)", n) is not None
 
 
 def lista(accion):
