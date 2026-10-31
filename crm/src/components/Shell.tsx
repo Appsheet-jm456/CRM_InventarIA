@@ -3,14 +3,18 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
+import { guardarModoOscuro } from '@/app/(app)/apariencia/acciones'
 import { cerrarSesion } from '@/app/login/acciones'
 import { useAvisosBandeja } from '@/components/avisos'
 import { Icono } from '@/components/Iconos'
+import { Logo } from '@/components/Logo'
 import type { Modulo } from '@/lib/modulos'
 
 type Props = {
   modulos: Modulo[]
   usuario: { nombre: string; rol: string }
+  // Ruta del logo de Apariencia; null = monograma «VV» (RA-13).
+  logo: string | null
   // Con atender_bandeja: número de clientes esperando respuesta y avisos (RS-05).
   alertas?: boolean
   children: React.ReactNode
@@ -24,7 +28,7 @@ const iniciales = (nombre: string) =>
     .map((p) => p[0])
     .join('')
 
-export function Shell({ modulos, usuario, alertas = false, children }: Props) {
+export function Shell({ modulos, usuario, logo, alertas = false, children }: Props) {
   const espera = useAvisosBandeja(alertas)
   const ruta = usePathname()
   const [plegado, setPlegado] = useState(false)
@@ -45,6 +49,29 @@ export function Shell({ modulos, usuario, alertas = false, children }: Props) {
     } catch {}
   }
 
+  // Atajo del modo oscuro (RA-08): se ve al instante y se guarda en el usuario (RA-09).
+  const [oscuro, setOscuro] = useState(false)
+  useEffect(() => {
+    const ver = () => {
+      const modo = document.documentElement.dataset.modo
+      setOscuro(modo ? modo === 'oscuro' : matchMedia('(prefers-color-scheme: dark)').matches)
+    }
+    ver()
+    const mm = matchMedia('(prefers-color-scheme: dark)')
+    mm.addEventListener('change', ver)
+    const obs = new MutationObserver(ver)
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ['data-modo'] })
+    return () => {
+      mm.removeEventListener('change', ver)
+      obs.disconnect()
+    }
+  }, [])
+  const alternarModo = () => {
+    const nuevo = !oscuro
+    document.documentElement.dataset.modo = nuevo ? 'oscuro' : 'claro'
+    void guardarModoOscuro(nuevo)
+  }
+
   const esActivo = (m: Modulo) => m.ruta === ruta || (m.ruta !== '/' && ruta.startsWith(m.ruta + '/'))
   const activo = modulos.find(esActivo)
   const grupos: { grupo: string | null; items: Modulo[] }[] = []
@@ -58,9 +85,7 @@ export function Shell({ modulos, usuario, alertas = false, children }: Props) {
     <div className={`app${plegado ? ' plegado' : ''}${cajon ? ' cajon' : ''}`}>
       <aside className="side" aria-label="Módulos">
         <div className="brand">
-          <div className="logo" aria-hidden="true">
-            VV
-          </div>
+          <Logo ruta={logo} />
           <div className="brand-txt">
             <div className="brand-name">CRM InventarIA</div>
             <div className="brand-sub">Ventas Virtuales Colombia</div>
@@ -104,6 +129,10 @@ export function Shell({ modulos, usuario, alertas = false, children }: Props) {
             <b>{usuario.nombre}</b>
             <small>{usuario.rol}</small>
           </div>
+          <button type="button" className="pie-modo" onClick={alternarModo}
+            title={oscuro ? 'Modo claro' : 'Modo oscuro'} aria-label={oscuro ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}>
+            <Icono nombre={oscuro ? 'sol' : 'luna'} />
+          </button>
           <form action={cerrarSesion}>
             <button className="salir" title="Salir" aria-label="Salir">
               <Icono nombre="salir" />

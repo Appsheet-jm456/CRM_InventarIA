@@ -1,5 +1,11 @@
 # Changelog del brief
 
+## v1.2 · 31 oct 2026 (F4·19)
+
+- Apariencia configurable (0031, `docs/APARIENCIA.md`): Configuración → Apariencia con logo propio, tres colores de marca
+  con paletas y Restaurar, fuente y modo oscuro por usuario (atajo en el panel). Nueva marca Azul Ventas Virtuales: se quita
+  el verde. Fuente Figtree en lugar de Archivo + IBM Plex Sans, servida por la app. Migración 0023.
+
 ## v1.0 · 30 sep 2026 (F4·8)
 
 - Simulador del bot en el lienzo: chat de prueba sobre cualquier versión, con el cuadro resaltado y lo que el bot

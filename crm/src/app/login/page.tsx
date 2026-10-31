@@ -1,4 +1,7 @@
 import { redirect } from 'next/navigation'
+import { Logo } from '@/components/Logo'
+import { leerApariencia } from '@/lib/apariencia'
+import { urlLogo } from '@/lib/marca'
 import { obtenerSesion } from '@/lib/sesion'
 import { crearCliente } from '@/lib/supabase/server'
 import { FormLogin } from './FormLogin'
@@ -16,9 +19,7 @@ export default async function PaginaLogin() {
     <main className="login">
       <div className="login-box">
         <div className="brand">
-          <div className="logo" aria-hidden="true">
-            VV
-          </div>
+          <Logo ruta={urlLogo((await leerApariencia()).logo)} />
           <div className="brand-txt">
             <div className="brand-name">CRM InventarIA</div>
             <div className="brand-sub">Ventas Virtuales Colombia</div>

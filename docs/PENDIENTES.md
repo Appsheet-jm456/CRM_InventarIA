@@ -6,6 +6,15 @@ de las Fases 1 y 2 abajo. **Código nuevo:** el bot de prueba sobre Supabase (`h
 
 ## Dónde retomar (en este orden)
 
+0. **31 oct 2026 · F4·19 Apariencia (construida, falta probar con sesión):** quitar el verde, módulo Configuración → Apariencia con tres
+   colores y paletas, modo oscuro por usuario y fuente más amigable ([APARIENCIA.md](APARIENCIA.md), decisión 0031, migración 0023).
+   Incluye **logo personalizable** (bucket `marca`). Siguiente paso: entrar con un usuario administrador a Configuración → Apariencia y
+   probar vista previa, guardar, Restaurar, subir y quitar logo y el modo oscuro (también el atajo del panel). El login ya se ve con la marca nueva.
+   **Ojo:** `supabase/migrar.sh --probar` tiene en rojo pruebas de `0014_publicar` y `0015_varios_bots` (versión publicada del bot con
+   problemas); no son de F4·19, hay que revisarlas aparte.
+   El mismo día se validó el **número de prueba**: estaba en PENDING en Meta; se activó enviando el mensaje de prueba desde
+   Tests de la API (token temporal de 60 min) y el bot respondió de ida y vuelta.
+
 1. **F3·1 a F3·10 hechas** (30 sep 2026): la construcción de la Fase 3 está completa. Para cerrarla falta revisar su
    criterio (RLS en todo, `next build` sin errores) y pasar a la Fase 4 (pruebas con el dueño).
 2. **Mejoras (F4·4 en adelante), módulo por módulo.** Primero **Bot y horario** (decisión 0026,
