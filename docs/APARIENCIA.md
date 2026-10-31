@@ -140,3 +140,19 @@ cambiar la estructura** (mismos módulos, mismo plegado y mismo cajón en celula
 
 **Terminado cuando:** abierto y plegado, en claro y en oscuro, no se ve ninguna barra blanca; el plegado queda centrado con rayas
 entre grupos; `next build` sin errores y el dueño lo aprueba.
+
+## Lienzo del bot con los colores de la app (F4·21)
+
+**Estado:** 🔵 Construida el 31 oct 2026, falta que el dueño la apruebe · pedido del dueño.
+
+En Bot y horario → lienzo (por ejemplo el bot «Bienvenida»), el fondo salía **negro** aunque la app estuviera en modo claro: el
+lienzo (React Flow) seguía el modo del computador (`colorMode="system"`) y no el que el usuario eligió en Apariencia, y usaba sus
+propios grises fijos (`#141414`).
+
+- RL-01. El lienzo sigue el **modo de la app** (F4·19, `data-modo` del usuario); si el usuario no eligió, sigue al equipo como el resto.
+- RL-02. Fondo, puntos de la cuadrícula, minimapa, botones de zoom y flechas salen de los **colores de la app** (fondo claro con puntos
+  suaves en modo claro; el fondo oscuro de la app en modo oscuro), así combina con los cuadros blancos y con cualquier paleta.
+- RL-03. No cambia nada del lienzo en sí: cuadros, conexiones, simulador y guardado quedan igual.
+
+**Terminado cuando:** con la app en claro el lienzo es claro aunque el computador esté en oscuro (y al revés); el minimapa y los botones
+de zoom no muestran bloques negros; `next build` sin errores y el dueño lo aprueba.

@@ -7,6 +7,8 @@
   el verde. Fuente Figtree en lugar de Archivo + IBM Plex Sans, servida por la app. Migración 0023.
 - Panel lateral con el estilo de Futur Green (F4·20): sin barras blancas, plegado centrado con rayas entre grupos, logo en
   ficha blanca y raya del acento en el módulo activo.
+- Lienzo del bot con los colores de la app (F4·21): sigue el modo elegido en Apariencia y no el del computador; fondo,
+  cuadrícula, minimapa y zoom con los colores de la app.
 
 ## v1.0 · 30 sep 2026 (F4·8)
 

@@ -8,6 +8,7 @@ import {
 import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { MenuAcciones } from '@/components/MenuAcciones'
+import { useModoApp } from '@/components/modo'
 import { medir, revisarMarcas, type Formato, type Opcion } from '@/lib/bot'
 import {
   borrarCuadro, conectar, crearBorrador, crearCuadro, descartarBorrador, guardarAjustes, guardarCuadro, moverCuadro, publicar, volverAVersion,
@@ -497,6 +498,7 @@ type Props = {
 
 function LienzoInterno({ bot, bots, catalogos, puedeSubirCatalogo, publicada, borrador, archivada, contexto, choques = [], hayBorrador = false }: Props) {
   const router = useRouter()
+  const modo = useModoApp() // RL-01: el modo de la app, no el del computador
   const flujo = useReactFlow()
   const editable = !!borrador
   const cuadros = useMemo(() => (archivada ?? borrador ?? publicada).cuadros, [archivada, borrador, publicada])
@@ -677,7 +679,7 @@ function LienzoInterno({ bot, bots, catalogos, puedeSubirCatalogo, publicada, bo
             })}
             connectionRadius={70} // la flecha se puede soltar sobre el cuadro, no solo en su punto de entrada
             nodesConnectable={editable} elementsSelectable deleteKeyCode={editable ? ['Backspace', 'Delete'] : null}
-            fitView fitViewOptions={{ padding: 0.12 }} minZoom={0.2} colorMode="system" proOptions={{ hideAttribution: true }}
+            fitView fitViewOptions={{ padding: 0.12 }} minZoom={0.2} colorMode={modo} proOptions={{ hideAttribution: true }}
           >
             <Background gap={24} />
             <Controls showInteractive={false} />

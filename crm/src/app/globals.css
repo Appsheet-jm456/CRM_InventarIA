@@ -484,6 +484,26 @@ button.chip:disabled { cursor: default }
 .nodo-bot > .react-flow__handle-left { width: 14px; height: 14px; left: -8px }
 .nodo-bot > .react-flow__handle.handle-cuadro { inset: 0; width: auto; height: auto; transform: none; border-radius: 10px; opacity: 0; z-index: 1 }
 .nodo-bot > .react-flow__handle.handle-cuadro.connectingto { opacity: .15; background: var(--accent) }
+/* F4·21 (RL-02): el lienzo toma los colores de la app en claro y en oscuro, no los grises fijos de React Flow.
+   html + doble clase le gana a .react-flow.dark de la librería sin depender del orden de las hojas. */
+html .react-flow.react-flow {
+  --xy-background-color-default: var(--bg);
+  --xy-background-pattern-dots-color-default: color-mix(in srgb, var(--muted) 45%, transparent);
+  --xy-edge-stroke-default: var(--muted);
+  --xy-edge-stroke-selected-default: var(--bad);
+  --xy-connectionline-stroke-default: var(--accent);
+  --xy-minimap-background-color-default: var(--surface);
+  --xy-minimap-mask-background-color-default: color-mix(in srgb, var(--ink) 10%, transparent);
+  --xy-minimap-node-background-color-default: var(--line);
+  --xy-controls-button-background-color-default: var(--surface);
+  --xy-controls-button-background-color-hover-default: var(--surface-2);
+  --xy-controls-button-color-default: var(--ink);
+  --xy-controls-button-color-hover-default: var(--ink);
+  --xy-controls-button-border-color-default: var(--line);
+  --xy-controls-box-shadow-default: var(--shadow);
+  --xy-handle-border-color-default: var(--surface);
+}
+html .react-flow.react-flow .react-flow__minimap { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; box-shadow: var(--shadow) }
 .react-flow__edge.flecha-mensaje .react-flow__edge-path { stroke: var(--accent); stroke-width: 1.8 }
 .react-flow__edge.flecha-sistema .react-flow__edge-path { stroke: var(--muted); stroke-dasharray: 5 4 }
 .react-flow__edge.selected .react-flow__edge-path { stroke: var(--bad) }
