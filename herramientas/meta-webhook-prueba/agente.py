@@ -84,6 +84,8 @@ def atiende(st, lead, tipo, entrada, config=None):
         return False
     if re.fullmatch(r"\s*\d{1,2}\s*", entrada or "") or not (entrada or "").strip():
         return False
+    if flujo.normalizar(entrada) in flujo.SALUDOS + ("reiniciar",):  # «hola», «menú» y «reiniciar» siempre muestran el menú guiado
+        return False
     return db.bot_modo(st.get("bot") or db.principal()) == "agente"
 
 

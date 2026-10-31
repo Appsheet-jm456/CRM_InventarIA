@@ -90,8 +90,8 @@ prueba(3, "no atiende botones, números sueltos del menú ni chats con asesor", 
 db.bot_modo = lambda bot: "hibrido"
 prueba(4, "no atiende si el bot no está en modo Agente", not agente.atiende(st0, lead_b, "text", "hola", CONFIG))
 db.bot_modo = lambda bot: "agente"
-prueba(5, "apagado no atiende; para todos sí", not agente.atiende(st0, lead_b, "text", "hola", dict(CONFIG, estado="apagado"))
-        and agente.atiende(st0, {"id": 9, "telefono": "573009998877"}, "text", "hola", dict(CONFIG, estado="todos")))
+prueba(5, "apagado no atiende; para todos sí", not agente.atiende(st0, lead_b, "text", "busco un portátil", dict(CONFIG, estado="apagado"))
+        and agente.atiende(st0, {"id": 9, "telefono": "573009998877"}, "text", "busco un portátil", dict(CONFIG, estado="todos")))
 
 # --- Herramientas y precios reales (6-9)
 r = turno([{"herramienta": "buscar_productos", "args": {"marca": "Dell", "procesador": "i5"}},
@@ -222,5 +222,11 @@ r = turno([{"responder": "Consulta buscar_conocimiento para eso"}, {"herramienta
 prueba(43, "una respuesta que nombra una herramienta no sale: el modelo la corrige", not r["asesor"]
         and textos(r) == ["No tenemos descuentos publicados; un asesor te puede orientar"] and r["traza"][0]["tipo"] == "bloqueado")
 
-print(f"\n{43 - fallos}/43 pruebas bien")
+flujo.SALUDOS = ("hola", "menu", "inicio", "buenas")
+flujo.normalizar = lambda t: t.strip().lower().replace("ú", "u")
+prueba(44, "«hola», «menú» y «reiniciar» van al menú guiado; el texto libre, a Avi", not agente.atiende(st0, lead_b, "text", "Hola", CONFIG)
+        and not agente.atiende(st0, lead_b, "text", "menú", CONFIG) and not agente.atiende(st0, lead_b, "text", "reiniciar", CONFIG)
+        and agente.atiende(st0, lead_b, "text", "hola, busco un dell", CONFIG))
+
+print(f"\n{44 - fallos}/44 pruebas bien")
 sys.exit(1 if fallos else 0)
