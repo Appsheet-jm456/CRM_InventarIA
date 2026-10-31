@@ -1,6 +1,6 @@
 # 0032 · Módulo Agente: un tercer modo de atención donde la IA conversa, con datos solo por herramientas
 
-**Estado:** Propuesta · 31 oct 2026 · Modifica la 0016 (no la reemplaza) · Diseño de F4·22 · Detalle en [AGENTE.md](../AGENTE.md)
+**Estado:** Aceptada · 31 oct 2026 (respuestas del dueño el mismo día) · Modifica la 0016 (no la reemplaza) · Diseño de F4·22 · Detalle en [AGENTE.md](../AGENTE.md)
 
 ## Contexto
 
@@ -12,7 +12,7 @@ El dueño pide un módulo **Agente** como el de otros CRM (cerebro, memoria, con
 responda y lleve a la venta. El 30 oct se apagó el Agente IA de Kommo por costo, errores en pasos exactos y por enviar cuentas de banco
 a clientes reales.
 
-## Decisión (por confirmar con el dueño)
+## Decisión (dueño, 31 oct 2026)
 
 - El CRM tiene **tres modos** de atención, elegidos **por bot**: Menú guiado, Híbrido (0016, sigue siendo el de por defecto) y **Agente**.
 - En modo Agente **la IA redacta la respuesta**. Es la excepción a la 0016, y va con reglas fijas:
@@ -27,7 +27,11 @@ a clientes reales.
   (detectado por reglas, sin IA) → agente de compra (total, dudas, cuentas, datos de envío) → comprobante → asesor cierra la venta. La IA
   solo trabaja en las conversaciones que llegaron a comprar, y así el costo queda bajo.
 - **Proveedor elegible** (DeepSeek, OpenAI, Gemini, Anthropic o el modelo local), con modelo de respaldo; llaves cifradas en Vault (como la 0029).
-- **Costo visible y con tope** mensual; al tope vuelve a Híbrido.
+- **Costo visible y con tope** mensual que fija la empresa; al tope el agente ofrece asesor y el asesor cierra (RAG-17).
+- **Acciones «Cuando → Hacer»** y flujos de **compra** y **cotización** sin IA, que se construyen primero (F4·22 a F4·26); el agente **Avi**
+  (DeepSeek, personalidad amigable parametrizable) va encima (F4·27 a F4·29).
+- **Canales:** Kommo sigue con el cliente final; el CRM propio atiende Distribuidores y el agente arranca ahí. Si el CRM propio se
+  perfecciona, se cierra Kommo y se unifica.
 - **Encendido por etapas:** simulador → números de prueba → todos; interruptor general para apagarlo.
 
 ## Alternativas descartadas

@@ -6,14 +6,11 @@ de las Fases 1 y 2 abajo. **Código nuevo:** el bot de prueba sobre Supabase (`h
 
 ## Dónde retomar (en este orden)
 
-0. **31 oct 2026 · F4·22 Módulo Agente (documentado, por construir):** tercer modo de atención junto al Menú guiado y al Híbrido:
-   la IA conversa con cerebro (DeepSeek/OpenAI/…), memoria, conocimiento (FAQ y políticas), personalidad y prompt; precios solo por
-   herramientas y verificados (RAG-01/02). Uso pedido por el dueño: **Menú guiado → "quiero comprar <código>" → Agente de compra
-   (cuentas con texto aprobado, datos de envío) → comprobante → asesor cierra** (RAG-19 a RAG-22). [AGENTE.md](AGENTE.md), decisión 0032 (modifica la 0016).
-   **Antes de construir:** el dueño responde las 6 preguntas de AGENTE.md (proveedor, presupuesto, bot donde arranca, nombre, FAQ, pagos).
-   **Webhook fijo (F2·17 / F2·10):** puede esperar mientras no haya clientes reales en el CRM propio, pero es **requisito antes de la
-   Fase 5** y antes del piloto del agente con personas reales.
-
+0. **31 oct 2026 · Módulo Agente documentado y dividido en F4·22 a F4·29** ([AGENTE.md](AGENTE.md), decisión 0032 aceptada):
+   F4·22 base · F4·23 conocimiento · F4·24 acciones «Cuando → Hacer» · F4·25 flujo de compra · F4·26 cotización con PDF (todas sin IA) →
+   F4·27 cerebro DeepSeek · F4·28 agente Avi · F4·29 piloto en Distribuidores. **Esperando la orden del dueño para empezar F4·22.**
+   Pendiente del dueño: textos de ubicación, garantía, devoluciones, envíos y pagos, y confirmar el texto de cuentas del Salesbot «Compra».
+   **Webhook fijo (F2·17 / F2·10):** puede esperar, pero es requisito del piloto F4·29 y de la Fase 5.
 0. **31 oct 2026 · F4·19 Apariencia (✅ probada por el dueño) y F4·20 panel lateral como Futur Green (✅ aprobado, [APARIENCIA.md](APARIENCIA.md#panel-lateral-como-futur-green-f420)):** quitar el verde, módulo Configuración → Apariencia con tres
    colores y paletas, modo oscuro por usuario y fuente más amigable ([APARIENCIA.md](APARIENCIA.md), decisión 0031, migración 0023).
    Incluye **logo personalizable** (bucket `marca`). El dueño probó todo con sesión y quedó OK. F4·20 y F4·21 (lienzo del bot con los colores de la app) aprobados el mismo día. Lo que sigue en la lista: F4·14

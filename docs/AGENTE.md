@@ -1,6 +1,6 @@
-# Módulo Agente: un bot con IA que entiende, decide, responde y lleva a la venta (F4·22)
+# Módulo Agente: menú, acciones, compra, cotización y el agente Avi (F4·22 a F4·29)
 
-**Estado:** 📝 Documentado, por construir · 31 oct 2026 · ajustado el mismo día con el flujo Menú guiado + Agente de compra + Asesor · Decisión [0032](decisiones/0032-modulo-agente.md) (modifica la 0016)
+**Estado:** 📝 Documentado y dividido en F4·22 a F4·29, por construir · 31 oct 2026 · con las respuestas del dueño, Acciones y flujo de cotización · Decisión [0032](decisiones/0032-modulo-agente.md) (modifica la 0016)
 Referencias que trajo el dueño: diagramas de agentes de otros CRM (canales → buffer → agente → respuesta, con modelo, memoria,
 conocimiento y herramientas alrededor).
 
@@ -45,6 +45,9 @@ técnica del equipo                 envía las cuentas (texto aprobado) →  Des
   "Ya pagué" o "ya transferí" **no** cuentan como intención de compra (error que tuvo el agente de Kommo).
 
 ### Tramo 2 · Agente de compra
+
+> Por orden de construcción, primero este tramo lo hace el **flujo de compra fijo** (F4·25, sin IA). Cuando llegue **Avi** (F4·28), el
+> mismo tramo se vuelve conversación: los pasos exactos siguen siendo los del flujo fijo y Avi conversa alrededor.
 
 Entra con el equipo ya elegido y la memoria del cliente. Hace, en este orden flexible (conversando, no con menú):
 
@@ -112,6 +115,56 @@ Cliente (WhatsApp) → Buffer → Agente ─────────────
    devuelve datos reales.
 4. **Verificación.** Antes de enviar, el sistema revisa la respuesta (RAG-02): ningún precio que no haya salido de una herramienta en ese turno.
 5. **Respuesta.** Máximo 3 mensajes por turno, 1 s entre uno y otro. Fichas y catálogos salen con fotos y PDF como hoy.
+
+## Acciones: «Cuando… → Hacer…» (como Kommo, sin IA)
+
+Al dueño le gustaron las **Acciones** de Kommo. En el CRM propio son reglas que el administrador arma en la pantalla: **cuando** el cliente
+escribe algo, **hacer** algo. Se revisan **antes** que el menú y que el agente, cuestan cero y responden al instante. Funcionan en los tres
+modos (Menú guiado, Híbrido y Agente).
+
+| Cuando el cliente escribe… | Hacer… |
+|---|---|
+| «ubicación», «dirección del local», «dónde quedan» | Responder el texto de la ubicación (y el enlace de Google Maps o una foto) |
+| «cuentas», «mándame las cuentas», «cómo pago», «número de cuenta» | **Enviar las cuentas** (texto aprobado) y mover a *Esperando pago* |
+| «quiero comprar», «deseo comprar», «lo quiero» (+ código) | **Iniciar el flujo de compra** (tramo 2) |
+| «cotización», «cotízame», «necesito una cotización» | **Iniciar el flujo de cotización** |
+| «devolución», «devolver», «cambio» | Responder la **política de devoluciones** (texto o imagen) |
+| «garantía» | Responder la **política de garantía** (texto o imagen) |
+| «horario», «a qué hora abren» | Responder el horario (sale de Bot y horario) |
+| «asesor», «hablar con alguien», «humano» | **Pasar a asesor**: *«Te paso con un asesor, en breve te escribe 🙌»* + cola de la Bandeja |
+
+- RAG-23. **Cuándo:** una o varias frases por acción, con las mismas formas del cuadro Condiciones del lienzo (contiene, es igual a, empieza por).
+  Opcional para frases que no coinciden: la IA solo **clasifica** a cuál acción se parece (no responde); se puede apagar para no gastar.
+- RAG-24. **Hacer** es una lista de pasos, en orden: *responder texto*, *responder imagen o PDF*, *enviar cuentas*, *iniciar flujo* (compra,
+  cotización u otro bot del lienzo), *mover etapa* (solo adelante), *poner etiqueta*, *crear seguimiento*, *pasar a asesor*.
+- RAG-25. **Prioridad:** las acciones se revisan de arriba abajo y gana la primera que coincide. «Asesor» va siempre primero y no se puede
+  borrar. Una acción **no corre** si el chat está con un asesor (RAG-05), salvo «Pasar a asesor».
+- RAG-26. Cada acción guarda cuántas veces corrió (30 días) y se puede **probar** desde la pantalla escribiendo una frase.
+- Esto **absorbe la parte de palabras clave de F4·14** (arrancar un bot por palabra clave = acción «iniciar flujo»). La parte de arrancar por
+  etapa del embudo sigue en F4·14.
+
+## Flujo de cotización (sin IA)
+
+Pedido del dueño: capturar los datos y enviar una cotización con las reglas del negocio.
+
+1. **Disparo:** acción «cotización», botón *Cotizar* en la ficha, o el agente lo propone en el tramo de compra.
+2. **Captura**, una pregunta por mensaje y validando cada dato: **nombre completo**, **cédula** (solo números, 6 a 10 dígitos), **celular**
+   (10 dígitos, empieza por 3; por defecto el mismo número de WhatsApp: «¿Es este? 1 Sí / 2 Otro»), **producto** (código; si viene de una
+   ficha, ya lo sabe) y **cantidad**.
+3. **Reglas del negocio** (editables en la pantalla Compra/Cotización):
+   - Precio = el de la base al momento de cotizar (la IA no lo toca).
+   - **Distribuidor** (el CRM propio atiende esta línea): precio de distribución, sin cargo de configuración.
+   - **Cliente final:** + **$80.000** de configuración por equipo.
+   - Pago con tarjeta: + **6 %** (se muestra como opción, no se suma por defecto).
+   - **Validez** de la cotización (ej. 24 horas o hasta agotar existencias) y nota de disponibilidad.
+4. **Envío:** un **PDF de cotización** con logo (el de Apariencia), número consecutivo, fecha, datos del cliente, equipo con código y
+   especificaciones, cantidad, subtotal, cargos y total, validez y cómo pagar. Lo acompaña un mensaje corto: *«Te envío tu cotización 📄.
+   Si quieres comprar, escribe **quiero comprar**»*.
+5. **En el CRM:** guarda la cotización (consecutivo, cliente, ítems, total, PDF), llena los datos del lead, mueve a la etapa **Cotización** y
+   deja un seguimiento al asesor.
+
+- RAG-27. La cotización es un documento del sistema: se puede **reenviar** y **descargar** desde la ficha del cliente en la Bandeja.
+- RAG-28. Si el equipo ya no tiene stock al cotizar, no se cotiza: se ofrece pasar a asesor o ver equipos parecidos.
 
 ## Las piezas del agente
 
@@ -206,9 +259,12 @@ Cliente (WhatsApp) → Buffer → Agente ─────────────
 
 ## Costos y control
 
-- RAG-17. **Presupuesto mensual** en dólares (ej. US$10). Al 80 % avisa en Inicio y Métricas; al 100 % el agente se apaga solo y atiende el Híbrido.
+- RAG-17. **Presupuesto mensual** en dólares, lo fija la empresa en la pantalla Cerebro. Al 80 % avisa en Inicio y Métricas. Al 100 % (o si
+  el modelo no responde) el agente **no se queda callado**: responde *«¿Quieres que te atienda un asesor? 🙌»* y pasa el chat a la Bandeja
+  para que **un asesor cierre la venta de inmediato** (decisión del dueño, 31 oct 2026). Las Acciones, el menú y los flujos de compra y
+  cotización siguen funcionando porque no usan IA.
 - RAG-18. Cada turno guarda **tokens de entrada y salida, costo estimado, modelo, herramientas usadas, tiempo y resultado** (tabla `agente_turnos`).
-- Métricas nuevas: conversaciones atendidas por el agente, pasadas a asesor, cotizaciones, oportunidades llevadas a *Lista para pagar*, costo por
+- Métricas nuevas: conversaciones atendidas por el agente, pasadas a asesor, cotizaciones, oportunidades llevadas a *Esperando pago* y *Pago por confirmar*, costo por
   conversación y costo por venta.
 
 ## Pantalla: Configuración → Agente
@@ -218,7 +274,8 @@ Cliente (WhatsApp) → Buffer → Agente ─────────────
 | **Resumen** | El diagrama del agente (canal → buffer → agente → respuesta, con cerebro, memoria, conocimiento y herramientas), cada pieza con su estado y su actividad de los últimos 30 días; interruptor **Agente encendido / apagado** |
 | **Cerebro** | Proveedor, modelo principal y de respaldo, llave (cifrada), temperatura, Probar conexión |
 | **Personalidad** | Nombre, tono, emojis, trato, largo y el prompt del dueño; reglas fijas en gris |
-| **Compra** | Texto de cuentas aprobado, frases que disparan la compra, textos fijos (comprobante recibido, ¿sigues interesado?, cancelación), tiempos (20 min, 12 h) y si el $80.000 aplica |
+| **Acciones** | Lista «Cuando… → Hacer…» con prioridad, interruptor, contador de 30 días y prueba con una frase |
+| **Compra y cotización** | Texto de cuentas aprobado, textos fijos (comprobante recibido, ¿sigues interesado?, cancelación), tiempos (20 min, 12 h), reglas de precio (distribuidor, cliente final + $80.000, tarjeta + 6 %), validez y consecutivo de la cotización |
 | **Conocimiento** | Preguntas frecuentes y políticas por categoría: crear, editar, activar; fuentes conectadas (inventario, catálogos, horario) |
 | **Herramientas** | Lista con interruptor y uso de 30 días |
 | **Memoria** | Mensajes que recuerda, resumen activado o no |
@@ -228,15 +285,23 @@ Cliente (WhatsApp) → Buffer → Agente ─────────────
 Permiso nuevo **`administrar_agente`** (del administrador). En la Bandeja, los mensajes del agente se ven con su propia etiqueta (Agente)
 distinta de Bot y Asesor, y el asesor ve el resumen que dejó el agente al pasarle el chat.
 
-## Qué hay que construir (por bloques)
+## Plan de construcción (en orden)
 
-| Bloque | Qué | Dónde |
-|---|---|---|
-| **A · Base** | Tablas `agente_config`, `conocimiento`, `agente_turnos`; `bots.modo`; `leads.resumen_agente`; llaves en Vault; permiso `administrar_agente`; etapas **Esperando pago** y **Pago por confirmar** en Cliente Final; etiquetas `Compra-Iniciada`, `Compra-Cancelada`, `Pago-Por-Confirmar`; pruebas SQL | Migración nueva (la siguiente libre; la 0022 sigue reservada para F4·14) |
-| **B · Motor** | `agente.py` en el receptor: buffer, armado del prompt, bucle de herramientas, verificación RAG-02, respaldo de modelo, registro de turnos; en `flujo.py`, el disparo de compra (RAG-19) y la detección del comprobante (RAG-20) sin IA | `herramientas/meta-webhook-prueba/` |
-| **C · Pantallas** | Configuración → Agente con sus pestañas; modo por bot en el lienzo; etiqueta Agente en la Bandeja | `crm/src/app/(app)/agente/` |
-| **D · Probar** | Pestaña Probar y un juego fijo de conversaciones (precio, stock, código, catálogo, garantía, "quiero comprar", fuera de horario, cliente grosero) que se corre antes de encender | Simulador + prueba automática |
-| **E · Piloto** | Lista blanca de números, presupuesto, métricas de costo | Producción con el número de prueba |
+El orden pone primero lo que **no usa IA**: da valor desde el primer bloque, sin costo y sin riesgo, y deja la base lista para el agente.
+Cada tarea se construye, la prueba el dueño y se aprueba antes de pasar a la siguiente (como F4·19 a F4·21).
+
+| # | Tarea | Qué entrega | Usa IA |
+|---|---|---|---|
+| **F4·22** | **Base del agente** | Migración: `acciones`, `conocimiento`, `cotizaciones` (con consecutivo), `agente_config`, `agente_turnos`; `bots.modo`; `leads.resumen_agente`; etapas *Esperando pago* y *Pago por confirmar*; etiquetas de compra; permiso `administrar_agente`; llaves del proveedor en Vault; pruebas SQL | No |
+| **F4·23** | **Conocimiento** | Pantalla de preguntas frecuentes y políticas (texto o imagen) por categoría: ubicación, garantía, devoluciones, envíos, pagos, distribuidores | No |
+| **F4·24** | **Acciones «Cuando → Hacer»** | Motor en el receptor + pantalla con prioridad, prueba con una frase y contador. Acciones iniciales: ubicación, cuentas, garantía, devoluciones, horario, asesor | No |
+| **F4·25** | **Flujo de compra** | «Quiero comprar <código>» → confirmar equipo y total → cuentas con texto aprobado → datos de envío → *Esperando pago* → comprobante (foto/PDF/«ya pagué») → *Pago por confirmar* → Bandeja con resumen; 20 min, 12 h y cancelación | No |
+| **F4·26** | **Flujo de cotización** | Captura nombre, cédula, celular, producto y cantidad → PDF con reglas del negocio y logo → etapa Cotización; reenviar y descargar desde la Bandeja | No |
+| **F4·27** | **Cerebro (DeepSeek)** | Pantalla Cerebro: proveedor, llave cifrada, modelo de respaldo, Probar conexión, presupuesto mensual y contador de costo | Conexión |
+| **F4·28** | **Agente Avi** | Motor del agente en el tramo de compra: memoria, herramientas, verificación RAG-02, personalidad parametrizable, tope → «¿Quieres un asesor?»; pestañas Personalidad, Probar y Registro; etiqueta *Agente* en la Bandeja | Sí |
+| **F4·29** | **Piloto Distribuidores** | Bot de Distribuidores en modo Agente con números de prueba (lista blanca), juego fijo de conversaciones, métricas de costo y conversión; requisito: **webhook fijo** (F2·17) | Sí |
+
+Al terminar F4·26 el CRM ya cierra ventas con **menú + acciones + compra + cotización + asesor**, sin IA. F4·27 a F4·29 suman a Avi encima.
 
 ## Fuera de alcance (por ahora)
 
@@ -257,13 +322,17 @@ distinta de Bot y Asesor, y el asesor ve el resumen que dejó el agente al pasar
 - [ ] Un asesor sin permiso no ve el módulo ni las llaves; pruebas SQL de permisos.
 - [ ] Piloto con números de prueba aprobado por el dueño antes de abrirlo a todos.
 
-## Preguntas al dueño
+## Respuestas del dueño (31 oct 2026)
 
-1. **Proveedor para empezar:** ¿DeepSeek (recomendado por costo) con respaldo OpenAI o el modelo local?
-2. **Presupuesto mensual** para el agente (US$).
-3. **¿En qué bot arranca?** El tramo de compra sirve en cualquier bot; la pregunta es qué número atiende el CRM propio (el local va por Kommo
-   y el CRM propio quedó para Distribuidores).
-4. **Nombre y personalidad** del agente.
-5. Las **preguntas frecuentes** y políticas iniciales (envíos, garantía, pagos, configuración, distribuidores).
-6. ~~¿El agente envía las cuentas?~~ **Respondida el 31 oct 2026:** sí, con el texto exacto aprobado (RAG-09). Falta confirmar si el texto de
-   cuentas del Salesbot «Compra» de Kommo (`~/kommo-salesbot/docs/SALESBOT-COMPRA.md`) sirve tal cual.
+1. **Proveedor:** **DeepSeek**, con la llave configurada desde la app (Configuración → Agente → Cerebro), guardada cifrada (RAG-11).
+2. **Presupuesto:** lo pone la empresa y se fija en la pantalla. Al agotarse, el agente ofrece asesor y **el asesor cierra de inmediato** (RAG-17).
+3. **Canales:** **Kommo** sigue con el **cliente final** (ya se pagó). El **CRM propio** atiende a **Distribuidores**. Si el CRM propio se
+   perfecciona, se cierra Kommo y se **unifica** todo aquí. Por eso el agente arranca en el bot de Distribuidores (F4·29) y los precios de la
+   cotización por defecto son de distribución.
+4. **Nombre:** **Avi**. Personalidad **amigable**, parametrizable desde la pantalla.
+5. **Acciones como Kommo** («Cuando… → Hacer…»): ubicación, cuentas, compra, cotización con captura de datos, devoluciones, garantía (texto o
+   imagen) y asesor. Documentadas arriba (RAG-23 a RAG-28).
+6. **Cuentas:** el agente las envía con el texto exacto aprobado (RAG-09). Falta confirmar si el texto del Salesbot «Compra» de Kommo
+   (`~/kommo-salesbot/docs/SALESBOT-COMPRA.md`) sirve tal cual.
+
+**Pendiente del dueño antes de F4·23:** los textos de ubicación (con enlace de Maps), garantía, devoluciones, envíos y pagos (o sus imágenes).
