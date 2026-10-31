@@ -1,6 +1,6 @@
 # Módulo Agente: menú, acciones, compra, cotización y el agente Avi (F4·22 a F4·29)
 
-**Estado:** 🔵 En construcción · F4·22 (base) hecha; F4·23 a F4·26 (conocimiento, acciones, compra y cotización) construidas el 31 oct 2026 · Dividido en F4·22 a F4·29 · 31 oct 2026 · con las respuestas del dueño, Acciones y flujo de cotización · Decisión [0032](decisiones/0032-modulo-agente.md) (modifica la 0016)
+**Estado:** 🔵 En construcción · F4·22 (base) hecha; F4·23 a F4·26 y F4·32 (conocimiento, acciones, compra, cotización y documentos) construidas el 31 oct 2026 · Dividido en F4·22 a F4·29 · 31 oct 2026 · con las respuestas del dueño, Acciones y flujo de cotización · Decisión [0032](decisiones/0032-modulo-agente.md) (modifica la 0016)
 Referencias que trajo el dueño: diagramas de agentes de otros CRM (canales → buffer → agente → respuesta, con modelo, memoria,
 conocimiento y herramientas alrededor).
 
@@ -340,7 +340,7 @@ Cada tarea se construye, la prueba el dueño y se aprueba antes de pasar a la si
 | **F4·24** 🔵 | **Acciones «Cuando → Hacer»** (construida 31 oct 2026, falta la prueba del dueño) | Motor en el receptor + pantalla con prioridad, prueba con una frase y contador. Acciones iniciales: ubicación, cuentas, garantía, devoluciones, horario, asesor | No |
 | **F4·25** 🔵 | **Flujo de compra** (construida 31 oct 2026, falta la prueba del dueño) | «Quiero comprar <código>» → confirmar equipo y total → cuentas con texto aprobado → datos de envío → *Esperando pago* → comprobante (foto/PDF/«ya pagué») → *Pago por confirmar* → Bandeja con resumen; 20 min, 12 h y cancelación | No |
 | **F4·26** 🔵 | **Flujo de cotización** (construida 31 oct 2026, falta la prueba del dueño) | Captura nombre, cédula, celular, producto y cantidad → PDF con reglas del negocio y logo → etapa Cotización; reenviar y descargar desde la Bandeja | No |
-| **F4·32** | **Documentos de conocimiento** | Subir texto, PDF, Excel o CSV; extraer texto, partir en trozos con índice en español; reemplazar, apagar, eliminar, ver texto extraído y probar búsqueda. Lo usa el agente (F4·28) | No |
+| **F4·32** 🔵 | **Documentos de conocimiento** (construida 31 oct 2026, falta la prueba del dueño) | Subir texto, PDF, Excel o CSV; extraer texto, partir en trozos con índice en español; reemplazar, apagar, eliminar, ver texto extraído y probar búsqueda. Lo usa el agente (F4·28) | No |
 | **F4·27** | **Cerebro (DeepSeek)** | Pantalla Cerebro: proveedor, llave cifrada, modelo de respaldo, Probar conexión, presupuesto mensual y contador de costo | Conexión |
 | **F4·28** | **Agente Avi** | Motor del agente en el tramo de compra: memoria, herramientas, verificación RAG-02, personalidad parametrizable, tope → «¿Quieres un asesor?»; pestañas Personalidad, Probar y Registro; etiqueta *Agente* en la Bandeja | Sí |
 | **F4·29** | **Piloto Distribuidores** | Bot de Distribuidores en modo Agente con números de prueba (lista blanca), juego fijo de conversaciones, métricas de costo y conversión; requisito: **webhook fijo** (F2·17) | Sí |
@@ -427,3 +427,11 @@ porque es su material de consulta; F4·27 a F4·29 suman a Avi encima. (F4·32 t
   valor y código (así la compra sigue con ese equipo), etiqueta `Cotizacion-Enviada` y nota para el asesor. Pestaña **Cotización**: estado de la
   acción, validez, recargo y las 50 últimas con su PDF. 22 pruebas en `prueba_cotizacion.py` (generan un PDF real). **Pendiente de RAG-27:**
   reenviar y descargar desde la ficha del cliente en la Bandeja (llega con la ficha de F4·30).
+- **F4·32 (31 oct 2026), migración 0029:** tablas `conocimiento_documentos` y `conocimiento_fragmentos` con índice de búsqueda en español
+  **sin tildes** (configuración `es_sin_tildes` con `unaccent`); las fichas también tienen índice. `buscar_conocimiento(texto, límite)` busca
+  en fichas activas y trozos de documentos activos y listos, une las palabras con «o» (una pregunta natural no trae todas las palabras del
+  documento) y ordena por parecido; ante empate gana la ficha y el documento más reciente. El bucket `conocimiento` acepta texto, Excel y CSV
+  hasta 10 MB. `herramientas/conocimiento/extraer_documento.py` (lo usa la app y sirve en consola): PDF con `pdftotext` (avisa si es escaneado),
+  Excel con el mismo lector de la carga del inventario y CSV fila por fila con encabezados, texto partido en trozos de ~800 caracteres que no
+  cortan frases y repiten la última frase corta. En la pestaña Conocimiento: **Documentos para el agente** (subir, reemplazar, activar o
+  apagar, borrar con sus trozos, ver el texto extraído) y **Probar búsqueda**. 9 pruebas SQL. Lo usará Avi (F4·28) con `buscar_conocimiento`.
