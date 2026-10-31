@@ -19,7 +19,13 @@ a clientes reales.
   - Precios, stock, especificaciones y condiciones salen **solo de herramientas** del sistema (RAG-01), y una **verificación** bloquea
     cualquier precio que no haya salido de una herramienta en ese turno (RAG-02).
   - Los pasos exactos (ficha, catálogo, cotización, mover etapa, pasar a asesor) son **herramientas deterministas**.
-  - **No envía datos de pago ni confirma pagos** (RAG-09): deja la oportunidad en *Lista para pagar* y pasa al asesor.
+  - **Datos de pago solo con el texto exacto aprobado por el dueño**, enviado por la herramienta `enviar_datos_pago`; la IA nunca escribe
+    cuentas, titulares ni llaves (RAG-09).
+  - **Nadie confirma un pago automáticamente:** con el comprobante (foto, PDF o "ya pagué") el sistema mueve a *Pago por confirmar*, apaga
+    el agente y pasa el chat al asesor (RAG-20, RAG-21).
+- **Uso recomendado: el tramo de compra** (idea del dueño, 31 oct 2026). Menú guiado hasta la ficha técnica → "quiero comprar <código>"
+  (detectado por reglas, sin IA) → agente de compra (total, dudas, cuentas, datos de envío) → comprobante → asesor cierra la venta. La IA
+  solo trabaja en las conversaciones que llegaron a comprar, y así el costo queda bajo.
 - **Proveedor elegible** (DeepSeek, OpenAI, Gemini, Anthropic o el modelo local), con modelo de respaldo; llaves cifradas en Vault (como la 0029).
 - **Costo visible y con tope** mensual; al tope vuelve a Híbrido.
 - **Encendido por etapas:** simulador → números de prueba → todos; interruptor general para apagarlo.
@@ -29,11 +35,14 @@ a clientes reales.
 - **Reemplazar el híbrido por el agente en todo:** más costo y riesgo para todos los clientes; el dueño quiere los tres modos.
 - **Agente sin herramientas, con el inventario pegado en el prompt:** se desactualiza, gasta tokens y deja a la IA "recordar" precios.
 - **Usar otra vez el agente de Kommo:** ya se probó y se descartó (costo por créditos y fallas en pasos exactos).
-- **Dejar que el agente envíe cuentas y confirme pagos:** es justo lo que salió mal en Kommo; queda en manos de un asesor.
+- **Dejar que la IA escriba las cuentas o confirme pagos:** en Kommo el agente reenvió cuentas al leer "ya pagué" y cortó el texto; aquí las
+  cuentas salen de un texto fijo por herramienta y la confirmación es del asesor.
+- **Agente en toda la conversación:** gasta tokens en el menú y la ficha, que el sistema ya hace gratis.
 
 ## Consecuencias
 
 - El receptor suma un motor nuevo (`agente.py`) al lado de `flujo.py`; el modo Híbrido no cambia.
 - Lo que el cliente escribe viaja al proveedor elegido en los bots en modo Agente (datos personales: avisarlo en la política de privacidad).
-- Migración nueva (la siguiente libre; la 0022 sigue reservada para F4·14), permiso `administrar_agente` y etapa *Lista para pagar*.
+- Migración nueva (la siguiente libre; la 0022 sigue reservada para F4·14), permiso `administrar_agente`, etapas *Esperando pago* y
+  *Pago por confirmar* y etiquetas de compra (las mismas que se diseñaron para el Salesbot «Compra» de Kommo).
 - Hay un costo mensual por uso del modelo que hoy no existe.

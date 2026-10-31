@@ -8,7 +8,8 @@ de las Fases 1 y 2 abajo. **Código nuevo:** el bot de prueba sobre Supabase (`h
 
 0. **31 oct 2026 · F4·22 Módulo Agente (documentado, por construir):** tercer modo de atención junto al Menú guiado y al Híbrido:
    la IA conversa con cerebro (DeepSeek/OpenAI/…), memoria, conocimiento (FAQ y políticas), personalidad y prompt; precios solo por
-   herramientas y verificados (RAG-01/02), sin datos de pago (RAG-09). [AGENTE.md](AGENTE.md), decisión 0032 (modifica la 0016).
+   herramientas y verificados (RAG-01/02). Uso pedido por el dueño: **Menú guiado → "quiero comprar <código>" → Agente de compra
+   (cuentas con texto aprobado, datos de envío) → comprobante → asesor cierra** (RAG-19 a RAG-22). [AGENTE.md](AGENTE.md), decisión 0032 (modifica la 0016).
    **Antes de construir:** el dueño responde las 6 preguntas de AGENTE.md (proveedor, presupuesto, bot donde arranca, nombre, FAQ, pagos).
    **Webhook fijo (F2·17 / F2·10):** puede esperar mientras no haya clientes reales en el CRM propio, pero es **requisito antes de la
    Fase 5** y antes del piloto del agente con personas reales.
