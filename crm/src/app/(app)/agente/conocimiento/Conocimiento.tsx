@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useRef, useState } from 'react'
 import { borrarFicha, crearFicha, guardarFicha, quitarArchivo, subirArchivo, type Resultado } from './acciones'
 
@@ -86,7 +87,7 @@ function TarjetaFicha({ f, ocupado, correr }: { f: Ficha; ocupado: boolean; corr
   )
 }
 
-export function Conocimiento({ fichas, usos }: { fichas: Ficha[]; usos: Record<string, string[]> }) {
+export function Conocimiento({ fichas, usos }: { fichas: Ficha[]; usos: Record<string, { nombre: string; activa: boolean }[]> }) {
   const [aviso, setAviso] = useState<Resultado>({})
   const [ocupado, setOcupado] = useState(false)
   const [categoria, setCategoria] = useState('')
@@ -134,12 +135,16 @@ export function Conocimiento({ fichas, usos }: { fichas: Ficha[]; usos: Record<s
               <div>
                 <h2>{c}</h2>
                 {usos[c]?.length ? (
-                  <small>La usa la acción {usos[c].map((n) => `«${n}»`).join(', ')}.</small>
+                  <small>
+                    La usa la acción {usos[c].map((u) => `«${u.nombre}»${u.activa ? '' : ' (apagada)'}`).join(', ')}.
+                    {!usos[c].some((u) => u.activa) && <> <Link href="/agente/acciones">Actívala en Acciones</Link> para que el bot responda con esta ficha.</>}
+                  </small>
                 ) : (
                   <small>Ninguna acción la usa todavía.</small>
                 )}
               </div>
               {usos[c]?.length && sinActivas ? <span className="chip warn">Sin fichas activas: la acción no tendrá qué responder</span> : null}
+              {usos[c]?.length && !sinActivas && !usos[c].some((u) => u.activa) ? <span className="chip warn">Ficha activa, pero la acción está apagada: el bot todavía no responde</span> : null}
             </div>
             <div className="ficha-conocimiento-lista">
               {deCategoria.map((f) => (

@@ -15,10 +15,10 @@ export default async function PaginaConocimiento() {
       .order('subido_en', { ascending: false }),
   ])
   // Qué acciones responden con cada categoría: así se ve qué se rompe si una categoría queda sin fichas activas.
-  const usos: Record<string, string[]> = {}
+  const usos: Record<string, { nombre: string; activa: boolean }[]> = {}
   for (const a of acciones ?? []) {
     for (const paso of (a.hacer as { tipo: string; categoria?: string }[]) ?? []) {
-      if (paso.tipo === 'conocimiento' && paso.categoria) (usos[paso.categoria] ??= []).push(a.nombre)
+      if (paso.tipo === 'conocimiento' && paso.categoria) (usos[paso.categoria] ??= []).push({ nombre: a.nombre, activa: a.activa })
     }
   }
   return (
