@@ -6,6 +6,13 @@ de las Fases 1 y 2 abajo. **Código nuevo:** el bot de prueba sobre Supabase (`h
 
 ## Dónde retomar (en este orden)
 
+0. **31 oct 2026 · F4·22 Módulo Agente (documentado, por construir):** tercer modo de atención junto al Menú guiado y al Híbrido:
+   la IA conversa con cerebro (DeepSeek/OpenAI/…), memoria, conocimiento (FAQ y políticas), personalidad y prompt; precios solo por
+   herramientas y verificados (RAG-01/02), sin datos de pago (RAG-09). [AGENTE.md](AGENTE.md), decisión 0032 (modifica la 0016).
+   **Antes de construir:** el dueño responde las 6 preguntas de AGENTE.md (proveedor, presupuesto, bot donde arranca, nombre, FAQ, pagos).
+   **Webhook fijo (F2·17 / F2·10):** puede esperar mientras no haya clientes reales en el CRM propio, pero es **requisito antes de la
+   Fase 5** y antes del piloto del agente con personas reales.
+
 0. **31 oct 2026 · F4·19 Apariencia (✅ probada por el dueño) y F4·20 panel lateral como Futur Green (✅ aprobado, [APARIENCIA.md](APARIENCIA.md#panel-lateral-como-futur-green-f420)):** quitar el verde, módulo Configuración → Apariencia con tres
    colores y paletas, modo oscuro por usuario y fuente más amigable ([APARIENCIA.md](APARIENCIA.md), decisión 0031, migración 0023).
    Incluye **logo personalizable** (bucket `marca`). El dueño probó todo con sesión y quedó OK. F4·20 y F4·21 (lienzo del bot con los colores de la app) aprobados el mismo día. Lo que sigue en la lista: F4·14

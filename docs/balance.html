@@ -1,0 +1,294 @@
+<title>Balance CRM InventarIA</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* Layout: informe de una columna (máx. 1040 px) — resumen arriba, luego avance por fase, módulos, pendientes por responsable, alertas y próximos pasos. Marca Azul Ventas Virtuales (F4·19). */
+:root {
+  --bg: #F4F6F9; --surface: #FFFFFF; --surface-2: #EDF1F6; --ink: #182231; --muted: #5C6B7E; --line: #DCE2EA;
+  --panel: #0F1E33; --accent: #2563C9; --accent-soft: #E3ECFA; --brand: #F2A23A; --brand-soft: #FDF1DF;
+  --ok: #2E7D4F; --ok-soft: #E3F2E8; --warn: #9A6212; --warn-soft: #FBF0DC; --bad: #B3261E; --bad-soft: #FBE4E2;
+  --hero-ink: #FFFFFF; --hero-muted: #A9B6C9;
+  --f-body: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "Courier New", monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #0E141C; --surface: #151D28; --surface-2: #1B2533; --ink: #E3E9F1; --muted: #93A1B3; --line: #273344;
+    --panel: #0A111C; --accent: #6B9BEB; --accent-soft: #1A2A45; --brand: #F4AE52; --brand-soft: #3A2C14;
+    --ok: #6CC592; --ok-soft: #173327; --warn: #E3AE57; --warn-soft: #3A2C14; --bad: #F08A80; --bad-soft: #3D1D1A;
+    --hero-ink: #FFFFFF; --hero-muted: #93A1B3;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0E141C; --surface: #151D28; --surface-2: #1B2533; --ink: #E3E9F1; --muted: #93A1B3; --line: #273344;
+  --panel: #0A111C; --accent: #6B9BEB; --accent-soft: #1A2A45; --brand: #F4AE52; --brand-soft: #3A2C14;
+  --ok: #6CC592; --ok-soft: #173327; --warn: #E3AE57; --warn-soft: #3A2C14; --bad: #F08A80; --bad-soft: #3D1D1A;
+  --hero-ink: #FFFFFF; --hero-muted: #93A1B3;
+}
+* { box-sizing: border-box }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.55 var(--f-body) }
+.mono, .num { font-family: var(--f-mono); font-variant-numeric: tabular-nums }
+h1, h2, h3 { text-wrap: balance; margin: 0 }
+a { color: var(--accent) }
+
+.hero { background: var(--panel); color: var(--hero-ink) }
+.wrap { max-width: 1040px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)) }
+.hero .wrap { padding-block: 32px 28px; display: flex; gap: 18px; align-items: center; flex-wrap: wrap }
+.logo { position: relative; flex: none; width: 52px; height: 52px; border-radius: 13px; background: #FFFFFF; color: #2563C9; display: grid; place-items: center; font: 800 19px var(--f-body); box-shadow: 0 2px 10px rgba(0,0,0,.3) }
+.logo::after { content: ""; position: absolute; right: -4px; bottom: -4px; width: 14px; height: 14px; border-radius: 50%; background: #F2A23A; border: 3px solid var(--panel) }
+.hero-txt { flex: 1; min-width: 240px }
+.eyebrow { font-size: 12px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: var(--hero-muted) }
+.hero h1 { font-size: clamp(26px, 4vw, 34px); font-weight: 800; line-height: 1.15; margin-top: 2px }
+.hero p { margin: 6px 0 0; color: var(--hero-muted); max-width: 62ch }
+.fase-chip { flex: none; padding: 8px 14px; border-radius: 999px; background: rgba(255,255,255,.1); font-size: 13px; font-weight: 600 }
+.fase-chip b { color: #F2A23A }
+
+main .wrap { padding-block: 24px 56px; display: flex; flex-direction: column; gap: 28px }
+section > h2 { font-size: 19px; font-weight: 700; margin-bottom: 4px }
+section > .lead { margin: 0 0 14px; color: var(--muted); max-width: 70ch }
+
+.kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px }
+.kpi { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; min-width: 0 }
+.kpi small { display: block; font-size: 12.5px; color: var(--muted) }
+.kpi b { display: block; font: 600 28px/1.2 var(--f-mono); font-variant-numeric: tabular-nums; margin-top: 2px }
+.kpi span { font-size: 12.5px; color: var(--muted) }
+.kpi.destacado { border-color: var(--accent); background: var(--accent-soft) }
+.barra { height: 8px; border-radius: 999px; background: var(--surface-2); overflow: hidden; margin-top: 8px; display: flex }
+.barra i { display: block; height: 100% }
+.barra .h { background: var(--ok) } .barra .c { background: var(--brand) } .barra .p { background: transparent }
+@media (max-width: 760px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)) } }
+
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; min-width: 0 }
+.fases { padding: 6px 0 }
+.fase { display: grid; grid-template-columns: 170px minmax(0, 1fr) 150px; gap: 16px; align-items: center; padding: 12px 18px }
+.fase + .fase { border-top: 1px solid var(--line) }
+.fase-n { font-weight: 600 }
+.fase-n small { display: block; font-weight: 400; color: var(--muted); font-size: 12.5px }
+.fase .barra { margin: 0; height: 10px }
+.fase-cuenta { font-size: 13px; color: var(--muted); text-align: right }
+.fase-cuenta b { font-family: var(--f-mono); color: var(--ink) }
+.leyenda { display: flex; gap: 16px; flex-wrap: wrap; padding: 10px 18px 14px; border-top: 1px solid var(--line); font-size: 12.5px; color: var(--muted) }
+.leyenda i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px }
+@media (max-width: 640px) { .fase { grid-template-columns: minmax(0, 1fr); gap: 6px } .fase-cuenta { text-align: left } }
+
+.tabla { overflow-x: auto }
+table { width: 100%; border-collapse: collapse; font-size: 14px }
+th { text-align: left; font-size: 11.5px; font-weight: 600; letter-spacing: .6px; text-transform: uppercase; color: var(--muted); padding: 10px 16px; border-bottom: 1px solid var(--line); background: var(--surface-2); white-space: nowrap }
+td { padding: 11px 16px; border-bottom: 1px solid var(--line); vertical-align: top }
+tr:last-child td { border-bottom: 0 }
+td:first-child { font-weight: 600; white-space: nowrap }
+td small { color: var(--muted) }
+.pill { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; padding: 2px 9px; border-radius: 999px; white-space: nowrap }
+.pill.ok { background: var(--ok-soft); color: var(--ok) }
+.pill.warn { background: var(--warn-soft); color: var(--warn) }
+.pill.bad { background: var(--bad-soft); color: var(--bad) }
+.pill.neu { background: var(--surface-2); color: var(--muted) }
+
+.hoy { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px }
+.hito { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; display: flex; gap: 12px; min-width: 0 }
+.hito .cod { flex: none; font: 600 12px var(--f-mono); color: var(--accent); background: var(--accent-soft); padding: 3px 8px; border-radius: 6px; height: fit-content }
+.hito b { display: block }
+.hito p { margin: 2px 0 0; font-size: 13.5px; color: var(--muted) }
+@media (max-width: 760px) { .hoy { grid-template-columns: minmax(0, 1fr) } }
+
+.cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px }
+@media (max-width: 900px) { .cols { grid-template-columns: minmax(0, 1fr) } }
+.col { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; min-width: 0 }
+.col h3 { font-size: 15px; padding: 14px 16px 10px; display: flex; justify-content: space-between; align-items: baseline; gap: 8px }
+.col h3 span { font: 500 12.5px var(--f-mono); color: var(--muted) }
+.col ul { list-style: none; margin: 0; padding: 0 }
+.col li { padding: 10px 16px; border-top: 1px solid var(--line); font-size: 13.5px }
+.col li .cod { font: 600 11.5px var(--f-mono); color: var(--muted); margin-right: 6px }
+.col li small { display: block; color: var(--muted); font-size: 12.5px; margin-top: 2px }
+
+.alertas { display: flex; flex-direction: column; gap: 10px }
+.alerta { display: flex; gap: 14px; padding: 14px 16px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface) }
+.alerta .nivel { flex: none; width: 4px; border-radius: 4px }
+.alerta.bad .nivel { background: var(--bad) } .alerta.warn .nivel { background: var(--brand) } .alerta.neu .nivel { background: var(--muted) }
+.alerta b { display: block }
+.alerta p { margin: 2px 0 0; font-size: 13.5px; color: var(--muted); max-width: 80ch }
+
+.pasos { counter-reset: paso; display: flex; flex-direction: column; gap: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 12px }
+.paso { display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; gap: 14px; align-items: start; padding: 14px 16px }
+.paso + .paso { border-top: 1px solid var(--line) }
+.paso::before { counter-increment: paso; content: counter(paso); width: 28px; height: 28px; border-radius: 50%; background: var(--accent); color: #fff; display: grid; place-items: center; font: 600 13px var(--f-mono) }
+.paso b { display: block }
+.paso p { margin: 2px 0 0; font-size: 13.5px; color: var(--muted) }
+.quien { font-size: 12px; font-weight: 600; color: var(--muted); white-space: nowrap }
+@media (max-width: 560px) { .paso { grid-template-columns: 36px minmax(0, 1fr) } .quien { grid-column: 2 } }
+
+footer { color: var(--muted); font-size: 12.5px }
+</style>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="logo" aria-hidden="true">VV</div>
+    <div class="hero-txt">
+      <div class="eyebrow">Balance del proyecto · 31 oct 2026</div>
+      <h1>CRM InventarIA</h1>
+      <p>CRM de WhatsApp con bot de ventas e inventario para Ventas Virtuales Colombia. Corre en el servidor del local (puerto 8096) sobre Supabase propio y la Cloud API oficial de Meta.</p>
+    </div>
+    <div class="fase-chip">Fase <b>4 de 5</b> · Pruebas y mejoras</div>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+
+    <section aria-labelledby="t-resumen">
+      <h2 id="t-resumen">Resumen</h2>
+      <p class="lead">La construcción está completa: todos los módulos del MVP existen y funcionan. Falta probarlo de punta a punta, dejar fijo el canal de WhatsApp y salir a producción con el número real.</p>
+      <div class="kpis">
+        <div class="kpi destacado">
+          <small>Tareas hechas</small>
+          <b>47 / 64</b>
+          <span>73 % del plan</span>
+          <div class="barra" aria-hidden="true"><i class="h" style="width:73%"></i><i class="c" style="width:2%"></i></div>
+        </div>
+        <div class="kpi"><small>Módulos del MVP construidos</small><b>8 / 9</b><span>Campañas, por definir</span></div>
+        <div class="kpi"><small>Migraciones de la base</small><b>22</b><span>0001 a 0023 (la 0022 reservada)</span></div>
+        <div class="kpi"><small>Decisiones registradas</small><b>31</b><span>la última, 0031 Apariencia</span></div>
+      </div>
+    </section>
+
+    <section aria-labelledby="t-fases">
+      <h2 id="t-fases">Avance por fase</h2>
+      <p class="lead">Conteo de tareas del tablero (espejo de Notion, <span class="mono">docs/notion/tareas.csv</span>).</p>
+      <div class="card">
+        <div class="fases">
+          <div class="fase">
+            <div class="fase-n">1 · Planeación<small>pendientes del dueño</small></div>
+            <div class="barra" role="img" aria-label="9 hechas, 1 en curso, 3 pendientes de 13"><i class="h" style="width:69.2%"></i><i class="c" style="width:7.7%"></i></div>
+            <div class="fase-cuenta"><b>9</b> de 13 · 1 en curso</div>
+          </div>
+          <div class="fase">
+            <div class="fase-n">2 · Diseño<small>webhook fijo y reglas</small></div>
+            <div class="barra" role="img" aria-label="12 hechas, 5 pendientes de 17"><i class="h" style="width:70.6%"></i></div>
+            <div class="fase-cuenta"><b>12</b> de 17</div>
+          </div>
+          <div class="fase">
+            <div class="fase-n">3 · Implementación<small>construida</small></div>
+            <div class="barra" role="img" aria-label="10 hechas de 10"><i class="h" style="width:100%"></i></div>
+            <div class="fase-cuenta"><b>10</b> de 10</div>
+          </div>
+          <div class="fase">
+            <div class="fase-n">4 · Pruebas<small>mejoras módulo por módulo</small></div>
+            <div class="barra" role="img" aria-label="16 hechas, 5 pendientes de 21"><i class="h" style="width:76.2%"></i></div>
+            <div class="fase-cuenta"><b>16</b> de 21</div>
+          </div>
+          <div class="fase">
+            <div class="fase-n">5 · Despliegue<small>sin empezar</small></div>
+            <div class="barra" role="img" aria-label="0 hechas de 3"></div>
+            <div class="fase-cuenta"><b>0</b> de 3</div>
+          </div>
+        </div>
+        <div class="leyenda">
+          <span><i style="background:var(--ok)"></i>Hecha</span>
+          <span><i style="background:var(--brand)"></i>En curso</span>
+          <span><i style="background:var(--surface-2); border:1px solid var(--line)"></i>Pendiente</span>
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="t-modulos">
+      <h2 id="t-modulos">Qué funciona hoy</h2>
+      <p class="lead">Los datos cargados (17 equipos, clientes y mensajes) siguen siendo de prueba hasta el arranque real.</p>
+      <div class="card tabla">
+        <table>
+          <thead><tr><th>Módulo</th><th>Qué hace</th><th>Estado</th></tr></thead>
+          <tbody>
+            <tr><td>Bandeja multiasesor</td><td>Conversaciones en tiempo real: tomar, asignar, cerrar, responder por Meta, adjuntos, respuestas rápidas con <span class="mono">/</span></td><td><span class="pill ok">✓ Construido</span></td></tr>
+            <tr><td>Embudos</td><td>Cliente Final, Pos Venta y Distribuidor; arrastrar entre etapas; Perdido con motivo</td><td><span class="pill ok">✓ Construido</span></td></tr>
+            <tr><td>Bot y horario</td><td>Lienzo con varios bots, condiciones, catálogos, pausa, salidas del mensaje, borrador, versiones y simulador</td><td><span class="pill ok">✓ Construido</span><br><small>arranques (F4·14) pendientes</small></td></tr>
+            <tr><td>Seguimientos y SLA</td><td>Recordatorios al asesor, SLA en minutos hábiles, avisos con sonido</td><td><span class="pill ok">✓ Construido</span></td></tr>
+            <tr><td>Métricas</td><td>Conversión por etapa, primera respuesta, perdidas con motivo, consumo de Meta</td><td><span class="pill ok">✓ Construido</span><br><small>sin pesos hasta F1·6</small></td></tr>
+            <tr><td>Inventario y catálogos</td><td>Fichas con foto, carga por Excel, catálogos PDF o Drive, Chat InventarIA</td><td><span class="pill warn">Faltan fotos y PDF</span></td></tr>
+            <tr><td>Apariencia</td><td>Logo, colores, fuente y modo oscuro por usuario; panel estilo Futur Green</td><td><span class="pill ok">✓ Nuevo hoy</span></td></tr>
+            <tr><td>Canal WhatsApp (Meta)</td><td>Número de prueba +1 555 190 4296 respondiendo de ida y vuelta</td><td><span class="pill warn">Prueba; falta número real</span></td></tr>
+            <tr><td>Campañas de marketing</td><td>Promociones con plantillas aprobadas por Meta</td><td><span class="pill neu">Por definir</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section aria-labelledby="t-hoy">
+      <h2 id="t-hoy">Lo que se hizo hoy</h2>
+      <p class="lead">Cuatro avances, todos probados o aprobados por el dueño y subidos a GitHub.</p>
+      <div class="hoy">
+        <div class="hito"><span class="cod">Meta</span><div><b>Número de prueba reactivado</b><p>Estaba en PENDING. Se activó con el mensaje de prueba de Meta y el bot volvió a responder.</p></div></div>
+        <div class="hito"><span class="cod">F4·19</span><div><b>Apariencia configurable</b><p>Logo, tres colores con paletas, fuente Figtree y modo oscuro por usuario. Se quitó el verde.</p></div></div>
+        <div class="hito"><span class="cod">F4·20</span><div><b>Panel lateral como Futur Green</b><p>Sin barras blancas, plegado centrado con rayas entre grupos y logo en ficha blanca.</p></div></div>
+        <div class="hito"><span class="cod">F4·21</span><div><b>Lienzo del bot en claro</b><p>Sigue el modo de la app y usa sus colores; ya no sale negro.</p></div></div>
+      </div>
+    </section>
+
+    <section aria-labelledby="t-pend">
+      <h2 id="t-pend">Pendientes por responsable</h2>
+      <p class="lead">Las 17 tareas abiertas del tablero, más lo que falta cargar y aprobar. Lo del dueño bloquea el arranque real; lo técnico se puede avanzar ya.</p>
+      <div class="cols">
+        <div class="col">
+          <h3>Del dueño <span>7</span></h3>
+          <ul>
+            <li><span class="cod">F1·5</span>Verificar el negocio en Meta y pasar al número real<small>+57 320 521 1803 · RUT y Cámara de Comercio</small></li>
+            <li><span class="cod">F1·6</span>Confirmar precios de Meta y agregar medio de pago</li>
+            <li><span class="cod">F1·7</span>Definir ramas del bot<small>Torres Tiny, SFF, Partes, Distribuidores, Servicio al cliente</small></li>
+            <li><span class="cod">F1·8</span>Qué equipo es Hogar, Ejecutivo o Diseño</li>
+            <li><span class="cod">F3·9</span>Subir fotos de los equipos, catálogos PDF y enlace de Drive</li>
+            <li><span class="cod">F3·6</span>Aprobar las 3 plantillas del CRM y enviarlas a Meta</li>
+            <li><span class="cod">F2·17</span>Activar HTTPS y Funnel en la consola de Tailscale</li>
+          </ul>
+        </div>
+        <div class="col">
+          <h3>Construcción y pruebas <span>8</span></h3>
+          <ul>
+            <li><span class="cod">0014/15</span>Revisar pruebas del bot en rojo<small>la versión publicada tiene problemas</small></li>
+            <li><span class="cod">F4·14</span>Arranque del bot por palabra clave y por etapa</li>
+            <li><span class="cod">F4·15</span>Simulador y pruebas de bots y cuadros nuevos</li>
+            <li><span class="cod">F4·1</span>Pruebas de reglas y permisos</li>
+            <li><span class="cod">F4·2</span>Pruebas del motor del bot por nodo</li>
+            <li><span class="cod">F4·3</span>Flujo completo: cliente → bot → asesor → venta<small>hoy se probó cliente → bot</small></li>
+            <li><span class="cod">F2·1</span>Reunir las reglas del negocio en un documento</li>
+            <li><span class="cod">F2·12</span>Perfeccionar la simulación del chat</li>
+          </ul>
+        </div>
+        <div class="col">
+          <h3>Salida a producción <span>4</span></h3>
+          <ul>
+            <li><span class="cod">F2·10</span>Webhook con dominio propio en Cloudflare</li>
+            <li><span class="cod">F5·1</span>Corte: webhook a la app nueva y apagar la v0</li>
+            <li><span class="cod">F5·2</span>Respaldos con restauración probada<small>incluye la llave VAULT_ENC_KEY</small></li>
+            <li><span class="cod">F5·3</span>Número real en Meta y apagar Evolution</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="t-alertas">
+      <h2 id="t-alertas">Alertas</h2>
+      <div class="alertas">
+        <div class="alerta bad"><span class="nivel" aria-hidden="true"></span><div><b>El canal depende de un túnel temporal</b><p>La dirección del webhook cambia cada vez que se reinicia el túnel gratuito de Cloudflare. Ya dejó al bot sin responder una vez. Se resuelve con F2·17 (Tailscale Funnel, ya) o F2·10 (dominio propio).</p></div></div>
+        <div class="alerta warn"><span class="nivel" aria-hidden="true"></span><div><b>Pruebas del bot en rojo</b><p><span class="mono">0014_publicar</span> y <span class="mono">0015_varios_bots</span> fallan: la versión publicada del bot tiene problemas. Conviene revisarlas antes de F4·14, que toca lo mismo.</p></div></div>
+        <div class="alerta warn"><span class="nivel" aria-hidden="true"></span><div><b>Dos canales a la vez: Kommo y el CRM propio</b><p>Desde el 28 oct el WhatsApp del local se atiende en Kommo; el CRM propio quedó para la línea de distribuidores. Con el Agente IA de Kommo descartado (30 oct), está pendiente decidir el alcance del CRM propio.</p></div></div>
+        <div class="alerta neu"><span class="nivel" aria-hidden="true"></span><div><b>El receptor falla al arrancar el servidor</b><p>Tras un reinicio se cae unas 10 veces antes de leer la conexión de Meta (la base aún no estaba lista). Se levanta solo, pero conviene que espere a la base.</p></div></div>
+      </div>
+    </section>
+
+    <section aria-labelledby="t-pasos">
+      <h2 id="t-pasos">Próximos pasos recomendados</h2>
+      <p class="lead">En este orden: primero lo que quita riesgo, después lo que suma funciones.</p>
+      <div class="pasos">
+        <div class="paso"><div><b>Dejar fijo el webhook</b><p>Activar Tailscale Funnel (F2·17) para que el bot no se caiga al reiniciar.</p></div><span class="quien">Dueño + Claude</span></div>
+        <div class="paso"><div><b>Arreglar las pruebas en rojo del bot</b><p>Revisar qué cambió en la versión publicada y dejar <span class="mono">migrar.sh --probar</span> en verde.</p></div><span class="quien">Claude</span></div>
+        <div class="paso"><div><b>Decidir el alcance del CRM propio frente a Kommo</b><p>Qué atiende cada uno: local, distribuidores, ficha por código.</p></div><span class="quien">Dueño</span></div>
+        <div class="paso"><div><b>F4·14 arranques del bot</b><p>Palabra clave y cambio de etapa, con plantilla de Meta fuera de las 24 h.</p></div><span class="quien">Claude</span></div>
+        <div class="paso"><div><b>Cargar lo real</b><p>Fotos, catálogos, plantillas aprobadas y borrar los datos de prueba.</p></div><span class="quien">Dueño</span></div>
+        <div class="paso"><div><b>Probar el flujo completo y salir con el número real</b><p>F4·3 de punta a punta, verificación del negocio y corte (Fase 5).</p></div><span class="quien">Ambos</span></div>
+      </div>
+    </section>
+
+    <footer>Fuentes: <span class="mono">docs/00-BRIEF.md</span>, <span class="mono">docs/PENDIENTES.md</span>, <span class="mono">docs/notion/tareas.csv</span> y el repositorio <span class="mono">Appsheet-jm456/CRM_InventarIA</span> al 31 oct 2026. El <span class="mono">docs/brief.html</span> anterior describe la v0 de julio.</footer>
+  </div>
+</main>
