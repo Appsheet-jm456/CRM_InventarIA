@@ -32,7 +32,7 @@ type Lead = {
   notas: string
 }
 
-type Mensaje = {
+export type Mensaje = {
   id: number
   lado: 'cliente' | 'bot' | 'asesor'
   tipo: string
@@ -61,18 +61,18 @@ const ESTADOS: Record<Lead['estado_chat'], { texto: string; clase: string }> = {
   cerrada: { texto: 'Cerrada', clase: 'neu' },
 }
 
-const hora = (t: string) => {
+export const hora = (t: string) => {
   const d = new Date(t)
   const hoy = new Date().toDateString() === d.toDateString()
   return d.toLocaleString('es-CO', hoy
     ? { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/Bogota' }
     : { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/Bogota' })
 }
-const iniciales = (s: string) => (s || '?').split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]).join('').toUpperCase()
+export const iniciales = (s: string) => (s || '?').split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]).join('').toUpperCase()
 const pesos = (n: number) => n.toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 })
 
 // El bot guarda las opciones de sus listas y botones al final: "texto\n\n[Ver: A · B]".
-function partirOpciones(texto: string) {
+export function partirOpciones(texto: string) {
   const k = texto.lastIndexOf('\n\n[')
   if (k < 0 || !texto.endsWith(']')) return { cuerpo: texto, opciones: [] as string[] }
   const dentro = texto.slice(k + 3, -1).trim()
@@ -81,7 +81,7 @@ function partirOpciones(texto: string) {
 }
 
 // RM-07: el último estado que informó Meta, como en WhatsApp.
-function Entrega({ m }: { m: Mensaje }) {
+export function Entrega({ m }: { m: Mensaje }) {
   if (m.lado === 'cliente' || !m.estado_entrega) return null
   if (m.estado_entrega === 'fallido')
     return <span className="m-entrega fallido" title={m.error_meta || 'Meta no lo entregó'}>✗ No entregado</span>
@@ -89,7 +89,7 @@ function Entrega({ m }: { m: Mensaje }) {
   return <span className={`m-entrega ${m.estado_entrega}`} title={titulo} aria-label={titulo}>{m.estado_entrega === 'enviado' ? '✓' : '✓✓'}</span>
 }
 
-function Media({ m }: { m: Mensaje }) {
+export function Media({ m }: { m: Mensaje }) {
   const src = `/media/${m.media_ruta.split('/').map(encodeURIComponent).join('/')}`
   if (m.media_mime.startsWith('image/')) return <a href={src} target="_blank" rel="noreferrer"><img className="m-img" src={src} alt={m.media_nombre || 'Imagen del cliente'} /></a>
   if (m.media_mime.startsWith('audio/')) return <audio className="m-audio" controls preload="none" src={src} />
@@ -348,6 +348,7 @@ export function Bandeja({ yo, usuarios, asesores, embudos, etapas, rapidas, inic
                 <small>+{lead.telefono} · {ESTADOS[lead.estado_chat].texto}
                   {lead.asignado_a ? ` · ${nombres.get(lead.asignado_a) ?? 'otro asesor'}` : ''}</small>
               </div>
+              <a className="btn chico" href={`/leads/${lead.id}`} style={{ marginLeft: 'auto' }}>Ficha completa</a>
               <button className="btn chico b-verficha" onClick={() => setVerFicha(true)}>Cliente y acciones</button>
             </div>
             <div className="chat" ref={chat}>

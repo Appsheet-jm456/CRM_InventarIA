@@ -117,7 +117,7 @@ export function Tablero({ etapas, oportunidades, nombres, yo }: {
               <div className="k-tarjetas">
                 {suyas.map((o) => (
                   <article key={o.id} className="k-tarjeta" draggable onDragStart={() => setArrastrada(o.id)} onDragEnd={() => setArrastrada(null)}>
-                    <Link href={`/bandeja?c=${o.lead_id}`} className="k-nombre">{o.leads?.nombre || (o.leads ? `+${o.leads.telefono}` : 'Cliente')}</Link>
+                    <Link href={`/leads/${o.lead_id}`} className="k-nombre">{o.leads?.nombre || (o.leads ? `+${o.leads.telefono}` : 'Cliente')}</Link>
                     {o.producto && <small>Equipo {o.producto}</small>}
                     {o.valor_estimado ? <small className="num">{pesos(Number(o.valor_estimado))}</small> : null}
                     {o.motivo_perdido && <small>Motivo: {o.motivo_perdido}</small>}

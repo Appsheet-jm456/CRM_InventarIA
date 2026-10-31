@@ -148,7 +148,7 @@ export function Leads(props: {
         <div className="panel-h">
           <div>
             <h2>{pagina.total.toLocaleString('es-CO')} leads · {cop(pagina.valor)}</h2>
-            <small>Todos los clientes que puedes ver. Toca un nombre para abrir su conversación en la Bandeja.</small>
+            <small>Todos los clientes que puedes ver. Toca un nombre para abrir su ficha.</small>
           </div>
           <div className="row" style={{ gap: 8 }}>
             <select aria-label="Vista guardada" value={props.vistaActiva ?? ''} disabled={ocupado} onChange={(e) => {
@@ -360,7 +360,7 @@ export function Leads(props: {
                       onChange={(e) => setElegidos(e.target.checked ? [...elegidos, f.id] : elegidos.filter((x) => x !== f.id))} />
                   </td>
                   <td>
-                    <Link href={`/bandeja?c=${f.id}`}>{f.nombre || `+${f.telefono}`}</Link>
+                    <Link href={`/leads/${f.id}`}>{f.nombre || `+${f.telefono}`}</Link>
                     {f.archivado && <span className="chip neu" style={{ marginLeft: 6 }}>Archivado</span>}
                     {f.eliminado && <span className="chip bad" style={{ marginLeft: 6 }}>Papelera</span>}
                     {f.etiquetas.includes('Agente') && <span className="chip acc" style={{ marginLeft: 6 }}>🤖</span>}

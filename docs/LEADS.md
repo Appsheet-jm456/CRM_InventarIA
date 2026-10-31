@@ -153,7 +153,7 @@ Postgres maneja millones de filas con los índices correctos; 400.000 mensajes a
 | **F4·30 A** ✅ | Base (migración 0032, 19 pruebas SQL) | `lead_atributos` (definiciones), `leads.atributos` (jsonb con índice), `leads.archivado_en` y `eliminado_en`, `lead_eventos`, tipo y resultado en `seguimientos`, permisos nuevos, índices de búsqueda; pruebas SQL |
 | **F4·30 B** 🔵 | Atributos (construido, falta la prueba del dueño) | Configuración → Atributos del lead: crear, editar, ordenar, secciones, archivar |
 | **F4·30 C** 🔵 | Lista (construida, falta la prueba del dueño) | Módulo Leads: columnas, búsqueda, filtros, vistas guardadas, paginación en servidor, acciones en grupo, exportar |
-| **F4·30 D** | Ficha | Ficha a pantalla completa: datos y atributos, etapa, responsable, tareas, línea de tiempo con chat, notas y respuesta (reutiliza la Bandeja) |
+| **F4·30 D** 🔵 | Ficha (construida, falta la prueba del dueño) | Ficha a pantalla completa: datos y atributos, etapa, responsable, tareas, línea de tiempo con chat, notas y respuesta (reutiliza la Bandeja) |
 | **F4·30 E** | Archivar y papelera | Archivar, papelera de 30 días, restaurar, borrado por solicitud del cliente |
 | **F4·31** | Capacidad | Arreglos 2 a 4 y 7 (Bandeja, Embudo, tiempo real, búsqueda), prueba de carga; coordina 1, 5, 6 y 9 con sus tareas |
 
@@ -200,3 +200,12 @@ elige cuál va primero.
   poner o quitar etiqueta, crear tarea con tipo, archivar o desarchivar, papelera o restaurar; reutilizan las funciones de Bandeja y Embudo, lo que
   falla en un lead se informa sin frenar a los demás, y todo queda en el historial. **Exportar CSV** de todo lo filtrado (permiso `exportar_leads`,
   abre bien en Excel). Por ahora el nombre abre la conversación en la Bandeja; la ficha propia llega en D. 18 pruebas SQL.
+- **F4·30 D (31 oct 2026), migración 0034:** **ficha del lead** en `/leads/<id>` (se abre desde Leads, desde la Bandeja con «Ficha completa» y desde las
+  tarjetas del Embudo). Izquierda: nombre editable, teléfono y estado del chat, Tomar / Devolver a la cola / Devolver al bot / Cerrar (los de la Bandeja),
+  responsable, valor, etiquetas (poner y quitar) y pestañas **Principal** (atributos por sección, editables según su tipo, y lo que anotó el bot y el
+  resumen de Avi), **Oportunidades** (la de la Bandeja), **Tareas** (con tipo, vencidas y cumplir con resultado), **Cotizaciones** (con su PDF),
+  **Archivos** (fotos, audios y documentos del chat) y **Estadísticas**; pie con Archivar y Eliminar. Derecha: **línea de tiempo** con los mensajes de
+  WhatsApp (con ✓/✓✓) y los eventos del historial (etapas, responsable, atributos, etiquetas, tareas, notas), y la caja con **Chat** (responder igual que
+  la Bandeja, respuestas rápidas con «/», plantilla de Meta fuera de 24 h), **Nota** (solo el equipo) y **Tarea**. Se actualiza cada 10 s. Funciones
+  nuevas: `lead_editar`, `lead_guardar_atributos`, `lead_nota`, `crear_tarea`, `cumplir_tarea`; `mover_oportunidad` ahora pide los **atributos
+  obligatorios** de la etapa (ficha y Embudo; el bot no pasa por ahí). 12 pruebas SQL.
