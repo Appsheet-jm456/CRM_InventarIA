@@ -4,7 +4,7 @@ import { useState } from 'react'
 import {
   activarAccion, borrarAccion, crearAccion, guardarAccion, moverAccion, probarFrase, type Prueba, type Resultado,
 } from './acciones'
-import { FORMAS, PASOS, PASOS_LISTOS, pasoVacio, type Condicion, type Paso } from './tipos'
+import { FORMAS, PASOS, pasoListo, pasoVacio, type Condicion, type Paso } from './tipos'
 
 type Accion = {
   id: number; nombre: string; prioridad: number; activa: boolean; sistema: boolean
@@ -15,9 +15,10 @@ type Correr = (a: () => Promise<Resultado>) => Promise<Resultado>
 
 // Aviso por paso: lo que hace que el paso no envíe nada aunque la acción esté activa.
 function avisoPaso(p: Paso, ctx: Contexto): string | null {
-  if (!PASOS_LISTOS.includes(p.tipo)) return 'Este paso llega en una tarea siguiente: la acción no se puede activar todavía.'
+  if (!pasoListo(p)) return 'Este paso llega en una tarea siguiente: la acción no se puede activar todavía.'
   if (p.tipo === 'conocimiento' && p.categoria && !ctx.categorias[p.categoria]) return `«${p.categoria}» no tiene fichas activas: no se enviará nada.`
-  if (p.tipo === 'cuentas' && !ctx.hayCuentas) return 'Todavía no hay texto de cuentas aprobado (se pega en Compra, F4·25): no se enviará nada.'
+  if ((p.tipo === 'cuentas' || (p.tipo === 'flujo' && p.flujo === 'compra')) && !ctx.hayCuentas)
+    return p.tipo === 'cuentas' ? 'Todavía no hay texto de cuentas (pestaña Compra): no se enviará nada.' : 'Sin texto de cuentas (pestaña Compra), al confirmar la compra el chat pasa a un asesor para que las envíe.'
   return null
 }
 
@@ -78,7 +79,7 @@ function TarjetaAccion({ a, posicion, total, usos, ctx, ocupado, correr }: {
   const [frase, setFrase] = useState('')
   const [forma, setForma] = useState<Condicion['forma']>('contiene')
   const cambio = nombre !== a.nombre || JSON.stringify(cuando) !== JSON.stringify(a.cuando) || JSON.stringify(hacer) !== JSON.stringify(a.hacer)
-  const lista = a.hacer.length > 0 && a.cuando.length > 0 && a.hacer.every((p) => PASOS_LISTOS.includes(p.tipo))
+  const lista = a.hacer.length > 0 && a.cuando.length > 0 && a.hacer.every(pasoListo)
   const agregarFrase = () => {
     if (!frase.trim()) return
     setCuando([...cuando, { forma, texto: frase.trim() }])

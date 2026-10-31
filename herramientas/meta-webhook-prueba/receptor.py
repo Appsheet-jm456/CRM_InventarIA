@@ -32,6 +32,7 @@ from urllib.parse import parse_qs, urlparse
 
 import db
 import acciones
+import compra
 import flujo
 import interprete
 import visor
@@ -231,7 +232,7 @@ _candados = {}
 def cargar_estado(lead):
     guardado = lead.get("estado_bot") or {}
     st = flujo.estado_vacio()
-    st.update({k: v for k, v in guardado.items() if k in ("campos", "rango", "marcas", "valor")})
+    st.update({k: v for k, v in guardado.items() if k in ("campos", "rango", "marcas", "valor", "compra")})
     st.update(nodo=lead["paso_menu"] or None, etapa=lead["etapa"], errores=lead["errores_bot"],
               pausa=lead["pausar_bot"], bot=lead.get("bot_id"))
     if lead.get("espera_vence_en") and lead.get("espera_cuadro") == st["nodo"]:  # en una Pausa (F4·13)
@@ -253,7 +254,7 @@ def guardar_estado(lead, st, visible, nombre, del_cliente=True):
         "presupuesto": campos.get("Presupuesto", lead["presupuesto"]),
         "marca_interes": campos.get("Marca interés", lead["marca_interes"]),
         "cotiz_producto": campos.get("Código producto", lead["cotiz_producto"]),
-        "estado_bot": {k: st[k] for k in ("campos", "rango", "marcas", "valor") if k in st},
+        "estado_bot": {k: st[k] for k in ("campos", "rango", "marcas", "valor", "compra") if k in st},
         "espera_vence_en": st.get("espera_hasta"), "espera_cuadro": st["nodo"] if st.get("espera_hasta") else None,
         # En el principal se guarda null: si el principal cambia, el cliente sigue al nuevo (RF-16).
         "bot_id": None if st.get("bot") in (None, db.principal()) else st["bot"],
@@ -343,7 +344,10 @@ def vencer_espera(numero):
             anotar(f"⏳ {numero}: la Pausa venció fuera de las 24 h de Meta; el recordatorio no se envía")
             return
         st = cargar_estado(lead)
-        mensajes, st = flujo.tiempo_cumplido(st)
+        if lead.get("espera_cuadro") == compra.NODO:  # RAG-22: esperando el pago, «¿Sigues interesado?»
+            mensajes = compra.tiempo_cumplido(st)
+        else:
+            mensajes, st = flujo.tiempo_cumplido(st)
         anotar(f"⏳ {numero}: venció la espera de {lead.get('espera_cuadro')} → {st['nodo']}")
         rechazado = enviar_mensajes(numero, lead, mensajes)
         if rechazado:
@@ -365,6 +369,22 @@ def reloj():
             anotar(f"  ✗ el reloj de la Pausa falló: {e!r}")
 
 
+def extras_de_compra(lead, etiquetas, paso_embudo, nota):
+    """Lo que la compra deja en el cliente además de los mensajes: etiquetas, etapa del embudo y nota para el asesor."""
+    if etiquetas:
+        lead["etiquetas"] = list(dict.fromkeys(list(lead.get("etiquetas") or []) + etiquetas))
+    if paso_embudo:
+        try:
+            db.compra_mover(lead["id"], paso_embudo)
+        except Exception as e:
+            anotar(f"  ✗ no se pudo mover la oportunidad a {paso_embudo}: {e!r}")
+    if nota:
+        try:
+            lead["notas"] = db.agregar_nota(lead["id"], lead.get("notas"), nota)
+        except Exception as e:
+            anotar(f"  ✗ no se pudo anotar la compra: {e!r}")
+
+
 def contestar(numero, entrada, visible, nombre, tipo, meta_id, media=None):
     # Un cliente que escribe rápido manda mensajes casi a la vez: se atienden en orden, uno por uno.
     with _candados.setdefault(numero, threading.Lock()):
@@ -384,9 +404,22 @@ def contestar(numero, entrada, visible, nombre, tipo, meta_id, media=None):
                 if wamid:
                     db.guardar_mensaje(lead["id"], "bot", texto, meta_id=wamid if wamid != "enviado" else None)
 
-            # Acciones «Cuando → Hacer» primero (F4·24, RAG-25): solo con texto escrito, no con botones del menú ni media.
+            mensajes = None
+            # Una compra en curso atiende primero (F4·25): botones del resumen, comprobante (foto o PDF), cancelar.
+            if compra.activa(st) and not st["pausa"]:
+                try:
+                    r = compra.responder(st, entrada, tipo if tipo in ("text", "button", "interactive") else "media", lead)
+                except Exception as e:  # si falla, el mensaje sigue por el menú como siempre
+                    anotar(f"  ✗ el flujo de compra falló: {e!r}")
+                    r = None
+                if r is not None:
+                    mensajes, etiquetas, paso_embudo, nota = r
+                    anotar(f"  🛒 compra · {(st.get('compra') or {}).get('paso') or 'terminó'}"
+                           + (f" · embudo → {paso_embudo}" if paso_embudo else ""))
+                    extras_de_compra(lead, etiquetas, paso_embudo, nota)
+            # Acciones «Cuando → Hacer» (F4·24, RAG-25): solo con texto escrito, no con botones del menú ni media.
             atendida = None
-            if tipo in ("text", "button") and not st["pausa"]:
+            if mensajes is None and tipo in ("text", "button") and not st["pausa"]:
                 try:
                     atendida = acciones.responder(st, entrada, lead)
                 except Exception as e:  # si las acciones fallan, el menú responde como siempre
@@ -400,7 +433,7 @@ def contestar(numero, entrada, visible, nombre, tipo, meta_id, media=None):
                     db.registrar_accion(accion["id"], lead["id"])
                 except Exception as e:
                     anotar(f"  ✗ no se pudo anotar la acción: {e!r}")
-            else:
+            elif mensajes is None:
                 mensajes, st = flujo.responder(st, entrada, avisar)
         except Exception as e:  # una falla del árbol o de la base no debe tumbar el receptor
             anotar(f"  ✗ el árbol falló: {e!r}")

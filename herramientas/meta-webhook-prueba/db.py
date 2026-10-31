@@ -166,6 +166,18 @@ def agente_config(fresco=False):
     return filas[0] if filas else {}
 
 
+def compra_mover(lead_id, paso):
+    """Lleva la oportunidad abierta del cliente al paso de compra (0027): solo hacia adelante, salvo cancelar."""
+    return pedir("rpc/compra_mover", "POST", {"p_lead": lead_id, "p_paso": paso})
+
+
+def agregar_nota(lead_id, notas_actuales, nota):
+    """Suma una línea a las notas del cliente (las ve el asesor en la Bandeja)."""
+    notas = ((notas_actuales or "").rstrip() + "\n" + nota).strip()
+    pedir(f"leads?id=eq.{lead_id}", "PATCH", {"notas": notas[-8000:]}, "return=minimal")
+    return notas
+
+
 def registrar_accion(accion_id, lead_id):
     pedir("acciones_registro", "POST", {"accion_id": accion_id, "lead_id": lead_id}, "return=minimal")
 

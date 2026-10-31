@@ -17,14 +17,16 @@ export const FORMAS: { valor: Condicion['forma']; texto: string }[] = [
   { valor: 'empieza', texto: 'empieza por' },
 ]
 
-// Pasos que el receptor ya ejecuta. Compra y cotización llegan en F4·25 y F4·26.
-export const PASOS_LISTOS: Paso['tipo'][] = ['texto', 'conocimiento', 'cuentas', 'bot', 'etiqueta', 'asesor']
+// Pasos que el receptor ya ejecuta (acciones.py). El flujo de compra existe desde F4·25; la cotización llega en F4·26.
+export const PASOS_LISTOS: Paso['tipo'][] = ['texto', 'conocimiento', 'cuentas', 'bot', 'etiqueta', 'asesor', 'flujo']
+export const FLUJOS_LISTOS = ['compra']
+export const pasoListo = (p: Paso) => PASOS_LISTOS.includes(p.tipo) && (p.tipo !== 'flujo' || FLUJOS_LISTOS.includes(p.flujo))
 
 export const PASOS: { tipo: Paso['tipo']; texto: string; ayuda: string }[] = [
   { tipo: 'texto', texto: 'Responder un texto', ayuda: '{nombre} y {horario} se cambian por el nombre del cliente y el horario' },
   { tipo: 'conocimiento', texto: 'Responder con el conocimiento', ayuda: 'Envía las fichas activas de la categoría (texto e imagen o PDF)' },
   { tipo: 'cuentas', texto: 'Enviar las cuentas', ayuda: 'El texto aprobado de Compra (F4·25); sin texto no se envía nada' },
-  { tipo: 'flujo', texto: 'Iniciar flujo de compra o cotización', ayuda: 'Llega en F4·25 (compra) y F4·26 (cotización)' },
+  { tipo: 'flujo', texto: 'Iniciar flujo de compra o cotización', ayuda: 'Compra: equipo → tipo de cliente → total → cuentas → comprobante → asesor (pestaña Compra). Cotización llega en F4·26' },
   { tipo: 'bot', texto: 'Ir a otro bot', ayuda: 'El cliente pasa al inicio de ese bot del lienzo' },
   { tipo: 'etiqueta', texto: 'Poner etiqueta', ayuda: 'Se agrega a las etiquetas del cliente' },
   { tipo: 'asesor', texto: 'Pasar a asesor', ayuda: 'Pausa el bot y deja el chat en la cola de la Bandeja (con el aviso de horario)' },

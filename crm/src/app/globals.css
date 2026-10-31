@@ -753,3 +753,6 @@ a.pastilla { text-decoration: none }
 .accion-aviso { color: var(--warn); background: var(--warn-soft); padding: 4px 8px; border-radius: 6px }
 .accion-prueba { display: grid; gap: 8px }
 .accion-burbuja { justify-self: start; max-width: 520px; white-space: pre-wrap; background: var(--accent-soft); border-radius: 10px 10px 10px 2px; padding: 8px 12px; font-size: 13.5px }
+.compra-pasos { margin: 0; padding: 14px 16px 14px 40px; display: grid; gap: 8px; font-size: 13.5px }
+.compra-pasos li b { display: block }
+.compra-pasos li span { display: block; font-size: 13px }

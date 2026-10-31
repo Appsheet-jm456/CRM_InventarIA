@@ -6,16 +6,18 @@ Se revisan antes que el menú y que el agente, no usan IA y responden al instant
 coincide (por prioridad); «Pasar a asesor» es siempre la primera.
 
 Pasos que se ejecutan hoy: texto, conocimiento (fichas activas de una categoría), cuentas (texto aprobado), ir a otro
-bot, etiqueta y pasar a asesor. Los flujos de compra (F4·25) y cotización (F4·26) llegan en sus tareas: una acción con
-un paso que todavía no existe no se ejecuta (la pantalla tampoco deja activarla).
+bot, etiqueta, pasar a asesor e iniciar el flujo de compra (F4·25). La cotización (F4·26) llega en su tarea: una acción
+con un paso que todavía no existe no se ejecuta (la pantalla tampoco deja activarla).
 """
 
 import re
 
+import compra
 import db
 import flujo
 
-PASOS_LISTOS = {"texto", "conocimiento", "cuentas", "bot", "etiqueta", "asesor"}
+PASOS_LISTOS = {"texto", "conocimiento", "cuentas", "bot", "etiqueta", "asesor", "flujo"}
+FLUJOS_LISTOS = {"compra"}  # la cotización llega en F4·26
 
 
 def normalizar(s):
@@ -39,7 +41,8 @@ def cumple(condicion, n):
 def lista(accion):
     """Una acción se ejecuta solo si todos sus pasos ya existen."""
     pasos = accion.get("hacer") or []
-    return bool(pasos) and all(p.get("tipo") in PASOS_LISTOS for p in pasos)
+    return bool(pasos) and all(p.get("tipo") in PASOS_LISTOS and (p.get("tipo") != "flujo" or p.get("flujo") in FLUJOS_LISTOS)
+                               for p in pasos)
 
 
 def ganadora(texto, acciones=None):
@@ -58,7 +61,7 @@ def _texto(plantilla, lead):
     return plantilla.replace("{horario}", flujo.texto_horario()).replace("{nombre}", nombre or "").strip()
 
 
-def ejecutar(accion, st, lead=None, fresco=False):
+def ejecutar(accion, st, lead=None, fresco=False, texto=""):
     """Corre los pasos de la acción. Devuelve (mensajes, st, etiquetas) o None si no hubo nada que enviar (por ejemplo,
     la categoría no tiene fichas activas): entonces el mensaje sigue su camino normal por el menú.
 
@@ -69,12 +72,12 @@ def ejecutar(accion, st, lead=None, fresco=False):
     # Los pasos «asesor» e «ir a otro bot» usan los cuadros del bot en el que va el cliente, como flujo.responder.
     flujo._hilo.bot, flujo._hilo.saltos = st["bot"], 0
     try:
-        return _ejecutar(accion, st, lead, fresco)
+        return _ejecutar(accion, st, lead, fresco, texto)
     finally:
         flujo._hilo.bot, flujo._hilo.saltos = None, 0
 
 
-def _ejecutar(accion, st, lead, fresco):
+def _ejecutar(accion, st, lead, fresco, texto):
     mensajes, etiquetas = [], []
     for paso in accion.get("hacer") or []:
         tipo = paso.get("tipo")
@@ -94,6 +97,8 @@ def _ejecutar(accion, st, lead, fresco):
             etiquetas.append(paso["etiqueta"].strip())
         elif tipo == "bot" and paso.get("bot_id"):
             mensajes += flujo.cambiar_de_bot(st, int(paso["bot_id"]))
+        elif tipo == "flujo" and paso.get("flujo") == "compra":  # F4·25: el flujo sigue con los próximos mensajes
+            mensajes += compra.iniciar(st, texto, lead)
         elif tipo == "asesor":
             mensajes += flujo.asesor(st, etiqueta="Escalado-Asesor", motivo=(paso.get("texto") or "").strip() or None)
     if not mensajes and not st.get("pausa"):
@@ -109,7 +114,7 @@ def responder(st, texto, lead=None):
     a = ganadora(texto)
     if not a:
         return None
-    r = ejecutar(a, st, lead)
+    r = ejecutar(a, st, lead, texto=texto)
     if r is None:
         return None
     mensajes, st, etiquetas = r
@@ -126,7 +131,7 @@ def probar(texto, acciones=None):
         apagada = ganadora(texto, [x for x in todas if not x.get("activa")])
         return {"accion": None, "apagada": apagada and {"id": apagada["id"], "nombre": apagada["nombre"]}, "mensajes": []}
     st = flujo.estado_vacio()
-    r = ejecutar(a, st, None, fresco=True)
+    r = ejecutar(a, st, None, fresco=True, texto=texto)
     mensajes = r[0] if r else []
     return {"accion": {"id": a["id"], "nombre": a["nombre"]}, "apagada": None, "vacia": r is None,
             "mensajes": [m if "_conocimiento" not in m else {"type": "archivo", "archivo": m["_conocimiento"]["archivo"],

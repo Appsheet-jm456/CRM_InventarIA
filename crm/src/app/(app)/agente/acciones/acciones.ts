@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { crearCliente } from '@/lib/supabase/server'
-import { PASOS_LISTOS, type Condicion, type Paso } from './tipos'
+import { pasoListo, type Condicion, type Paso } from './tipos'
 
 export type Resultado = { error?: string; ok?: string }
 export type Prueba = {
@@ -46,7 +46,7 @@ export async function guardarAccion(id: number, datos: { nombre: string; cuando:
   const supabase = crearCliente()
   const { data: antes } = await supabase.from('acciones').select('activa').eq('id', id).maybeSingle()
   // Si quedó con un paso que todavía no existe, se apaga en lugar de fallar.
-  const apagar = antes?.activa && !hacer.every((p) => PASOS_LISTOS.includes(p.tipo))
+  const apagar = antes?.activa && !hacer.every(pasoListo)
   const { data, error } = await supabase.from('acciones')
     .update({ nombre: datos.nombre.trim(), cuando, hacer, ...(apagar ? { activa: false } : {}) }).eq('id', id).select('id')
   return listo(error, data, apagar ? 'Guardada y apagada: tiene un paso que llega en una tarea siguiente.' : 'Acción guardada. El bot la usa en menos de 30 s.')
@@ -56,8 +56,8 @@ export async function activarAccion(id: number, activa: boolean): Promise<Result
   const supabase = crearCliente()
   if (activa) {
     const { data: a } = await supabase.from('acciones').select('hacer').eq('id', id).maybeSingle()
-    if (!((a?.hacer as Paso[] | undefined) ?? []).every((p) => PASOS_LISTOS.includes(p.tipo)))
-      return { error: 'Tiene un paso que todavía no existe (el flujo de compra llega en F4·25 y la cotización en F4·26).' }
+    if (!((a?.hacer as Paso[] | undefined) ?? []).every(pasoListo))
+      return { error: 'Tiene un paso que todavía no existe (la cotización llega en F4·26).' }
   }
   const { data, error } = await supabase.from('acciones').update({ activa }).eq('id', id).select('id')
   return listo(error, data, activa ? 'Acción activa: el bot la usa en menos de 30 s.' : 'Acción apagada.')

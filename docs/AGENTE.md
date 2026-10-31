@@ -1,6 +1,6 @@
 # Módulo Agente: menú, acciones, compra, cotización y el agente Avi (F4·22 a F4·29)
 
-**Estado:** 🔵 En construcción · F4·22 (base) hecha; F4·23 (conocimiento) y F4·24 (acciones) construidas el 31 oct 2026 · Dividido en F4·22 a F4·29 · 31 oct 2026 · con las respuestas del dueño, Acciones y flujo de cotización · Decisión [0032](decisiones/0032-modulo-agente.md) (modifica la 0016)
+**Estado:** 🔵 En construcción · F4·22 (base) hecha; F4·23 (conocimiento), F4·24 (acciones) y F4·25 (compra) construidas el 31 oct 2026 · Dividido en F4·22 a F4·29 · 31 oct 2026 · con las respuestas del dueño, Acciones y flujo de cotización · Decisión [0032](decisiones/0032-modulo-agente.md) (modifica la 0016)
 Referencias que trajo el dueño: diagramas de agentes de otros CRM (canales → buffer → agente → respuesta, con modelo, memoria,
 conocimiento y herramientas alrededor).
 
@@ -338,7 +338,7 @@ Cada tarea se construye, la prueba el dueño y se aprueba antes de pasar a la si
 | **F4·22** ✅ | **Base del agente** (migración 0024, 15 pruebas SQL, 31 oct 2026) | Migración: `acciones`, `conocimiento`, `cotizaciones` (con consecutivo), `agente_config`, `agente_turnos`; `bots.modo`; `leads.resumen_agente`; etapas *Esperando pago* y *Pago por confirmar*; etiquetas de compra; permiso `administrar_agente`; llaves del proveedor en Vault; pruebas SQL | No |
 | **F4·23** 🔵 | **Conocimiento** (construida 31 oct 2026, falta la prueba del dueño) | Pantalla de preguntas frecuentes y políticas (texto o imagen) por categoría: ubicación, garantía, devoluciones, envíos, pagos, distribuidores | No |
 | **F4·24** 🔵 | **Acciones «Cuando → Hacer»** (construida 31 oct 2026, falta la prueba del dueño) | Motor en el receptor + pantalla con prioridad, prueba con una frase y contador. Acciones iniciales: ubicación, cuentas, garantía, devoluciones, horario, asesor | No |
-| **F4·25** | **Flujo de compra** | «Quiero comprar <código>» → confirmar equipo y total → cuentas con texto aprobado → datos de envío → *Esperando pago* → comprobante (foto/PDF/«ya pagué») → *Pago por confirmar* → Bandeja con resumen; 20 min, 12 h y cancelación | No |
+| **F4·25** 🔵 | **Flujo de compra** (construida 31 oct 2026, falta la prueba del dueño) | «Quiero comprar <código>» → confirmar equipo y total → cuentas con texto aprobado → datos de envío → *Esperando pago* → comprobante (foto/PDF/«ya pagué») → *Pago por confirmar* → Bandeja con resumen; 20 min, 12 h y cancelación | No |
 | **F4·26** | **Flujo de cotización** | Captura nombre, cédula, celular, producto y cantidad → PDF con reglas del negocio y logo → etapa Cotización; reenviar y descargar desde la Bandeja | No |
 | **F4·32** | **Documentos de conocimiento** | Subir texto, PDF, Excel o CSV; extraer texto, partir en trozos con índice en español; reemplazar, apagar, eliminar, ver texto extraído y probar búsqueda. Lo usa el agente (F4·28) | No |
 | **F4·27** | **Cerebro (DeepSeek)** | Pantalla Cerebro: proveedor, llave cifrada, modelo de respaldo, Probar conexión, presupuesto mensual y contador de costo | Conexión |
@@ -405,3 +405,15 @@ porque es su material de consulta; F4·27 a F4·29 suman a Avi encima. (F4·32 t
   y **Probar con una frase** (ruta interna `/interno/acciones` del receptor, el mismo motor sin enviar nada). 18 pruebas del motor en
   `herramientas/meta-webhook-prueba/prueba_acciones.py`. Migraciones 0025 y 0026 ajustan las frases iniciales (sin «una persona», con
   «dónde queda») y quitan el motivo repetido de «Pasar a asesor».
+- **F4·25 (31 oct 2026):** `compra.py` en el receptor, sin IA. Se inicia con la acción que tiene el paso «Iniciar flujo de compra»
+  («Quiero comprar», apagada hasta que el dueño la active). Equipo: el código escrito, el de la última ficha o lo pide; un código sin stock
+  no inicia la compra. Tipo de cliente: botones Distribuidor / Cliente final (los que traen la etiqueta `Interes-Distribuidor` no la ven).
+  Resumen con el total (precio de la base + configuración si es cliente final) y botones Sí, enviar cuentas · Hablar con asesor · Cancelar.
+  Al confirmar: texto de cuentas tal cual, oportunidad a *Esperando pago* (`compra_mover`, migraciones 0027 y 0028; Distribuidor si tiene
+  oportunidad abierta, si no Cliente Final), etiqueta `Compra-Iniciada` y espera de 12 h. Comprobante (foto, PDF, «ya pagué», «comprobante»):
+  *Pago por confirmar*, texto fijo, bot pausado (cola de la Bandeja) y una nota en el cliente con equipo, tipo, total y hora. Otros mensajes
+  mientras espera (datos de envío) se anotan y se recuerda el comprobante una vez. «asesor» en cualquier paso pasa al asesor con la compra
+  anotada. **Cancelar** manda el texto fijo y la etiqueta `Compra-Cancelada` sin pausar el bot (el asesor lo ve por la etiqueta; no hay
+  etapa de cancelación elegida: `compra_etapas.cancelada_id` vacío). Sin texto de cuentas, al confirmar pasa al asesor para que las envíe.
+  Pestaña **Compra**: los seis pasos, estado de la acción que la inicia, texto de cuentas (solo en la base, no en el repositorio), textos de
+  comprobante, ¿sigues interesado? y cancelación, horas del recordatorio y cargo de configuración. 21 pruebas en `prueba_compra.py` y 5 SQL.
