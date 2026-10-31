@@ -206,6 +206,49 @@ Pedido del dueño: capturar los datos y enviar una cotización con las reglas de
 
 - MVP: búsqueda por texto en Postgres. Búsqueda por significado (embeddings) queda para después si hace falta.
 
+### 3b. Documentos de conocimiento (F4·32)
+
+Pedido del dueño (31 oct 2026): **subir documentos en texto, PDF o Excel** para que el agente los tenga como conocimiento y los use, y poder
+**reemplazarlos, apagarlos o eliminarlos**. Las fichas (F4·23) son respuestas exactas que el bot envía tal cual; los documentos son material
+de consulta que el agente **lee para redactar** su respuesta.
+
+| | Fichas (F4·23) | Documentos (F4·32) |
+|---|---|---|
+| Qué son | Una pregunta y su respuesta exacta | Manuales, políticas largas, listas de preguntas, condiciones de distribuidores |
+| Quién las usa | Acciones (sin IA) y el agente | Solo el agente |
+| Cómo llegan al cliente | Se envían tal cual (texto, imagen o PDF) | El agente busca los trozos que sirven y redacta con ellos |
+
+**Formatos:** texto (`.txt`, `.md`), **PDF con texto** (`.pdf`), **Excel** (`.xlsx`) y **CSV**. Word (`.docx`) después. Hasta **10 MB** por archivo.
+
+**Cómo se procesa al subir:**
+
+1. El archivo se guarda en el bucket privado `conocimiento` (carpeta `documentos/`).
+2. El servidor **extrae el texto**: PDF con `pdftotext` (ya instalado), Excel y CSV fila por fila (cada fila es un trozo con sus
+   encabezados: «Pregunta: … · Respuesta: …»), texto tal cual.
+3. Lo parte en **trozos** de unos 800 caracteres que se solapan un poco, sin cortar a mitad de frase, y los guarda con un índice de
+   búsqueda en español.
+4. El documento queda **Listo** con el número de trozos, o con **Error** y el motivo (por ejemplo, un PDF escaneado sin texto).
+
+**En la pantalla (pestaña Conocimiento → Documentos):**
+
+- Lista con nombre, tipo, tamaño, trozos, estado (Procesando / Listo / Error), activo, quién y cuándo lo subió.
+- **Subir** (uno o varios), **Reemplazar** (sube la versión nueva y vuelve a procesar; la vieja se borra), **Activar / apagar** (el agente
+  deja de consultarlo sin borrarlo), **Eliminar** (borra archivo y trozos, con confirmación).
+- **Ver texto extraído**: los trozos tal como los leerá el agente, para revisar que el PDF se leyó bien.
+- **Probar búsqueda**: escribir una pregunta («¿cuánto tarda un envío a Cali?») y ver qué trozos encuentra.
+
+**Reglas:**
+
+- RAG-29. El agente consulta fichas y documentos **activos** con `buscar_conocimiento` (los 5 trozos más parecidos); nunca el archivo entero.
+- RAG-30. **Precios y stock no salen de documentos**: aunque un documento tenga una lista de precios vieja, para el agente solo cuentan los
+  precios de `buscar_productos` (RAG-01); la verificación RAG-02 no acepta un precio que venga de un documento.
+- RAG-31. Si dos fuentes se contradicen, gana la **ficha** sobre el documento y el documento **más reciente** sobre el viejo.
+- RAG-32. Los trozos que el agente usó quedan en el Registro del turno: se puede ver de qué documento sacó cada respuesta.
+- RAG-33. Lo que el agente envía al proveedor de IA son solo los trozos encontrados, no los documentos completos.
+
+**Fuera de alcance por ahora:** PDF escaneados (necesitan reconocimiento de texto, OCR), imágenes con texto, Word, páginas web y búsqueda
+por significado (embeddings con `pgvector`); se suman si la búsqueda por palabras se queda corta.
+
 ### 4. Personalidad y prompt
 
 - **Nombre del agente** (ej. «Valentina de Ventas Virtuales»), **tono** (cercano / formal), **emojis** (sí / pocos / no), **largo** de las
@@ -297,11 +340,13 @@ Cada tarea se construye, la prueba el dueño y se aprueba antes de pasar a la si
 | **F4·24** | **Acciones «Cuando → Hacer»** | Motor en el receptor + pantalla con prioridad, prueba con una frase y contador. Acciones iniciales: ubicación, cuentas, garantía, devoluciones, horario, asesor | No |
 | **F4·25** | **Flujo de compra** | «Quiero comprar <código>» → confirmar equipo y total → cuentas con texto aprobado → datos de envío → *Esperando pago* → comprobante (foto/PDF/«ya pagué») → *Pago por confirmar* → Bandeja con resumen; 20 min, 12 h y cancelación | No |
 | **F4·26** | **Flujo de cotización** | Captura nombre, cédula, celular, producto y cantidad → PDF con reglas del negocio y logo → etapa Cotización; reenviar y descargar desde la Bandeja | No |
+| **F4·32** | **Documentos de conocimiento** | Subir texto, PDF, Excel o CSV; extraer texto, partir en trozos con índice en español; reemplazar, apagar, eliminar, ver texto extraído y probar búsqueda. Lo usa el agente (F4·28) | No |
 | **F4·27** | **Cerebro (DeepSeek)** | Pantalla Cerebro: proveedor, llave cifrada, modelo de respaldo, Probar conexión, presupuesto mensual y contador de costo | Conexión |
 | **F4·28** | **Agente Avi** | Motor del agente en el tramo de compra: memoria, herramientas, verificación RAG-02, personalidad parametrizable, tope → «¿Quieres un asesor?»; pestañas Personalidad, Probar y Registro; etiqueta *Agente* en la Bandeja | Sí |
 | **F4·29** | **Piloto Distribuidores** | Bot de Distribuidores en modo Agente con números de prueba (lista blanca), juego fijo de conversaciones, métricas de costo y conversión; requisito: **webhook fijo** (F2·17) | Sí |
 
-Al terminar F4·26 el CRM ya cierra ventas con **menú + acciones + compra + cotización + asesor**, sin IA. F4·27 a F4·29 suman a Avi encima.
+Al terminar F4·26 el CRM ya cierra ventas con **menú + acciones + compra + cotización + asesor**, sin IA. F4·32 (documentos) va antes de Avi
+porque es su material de consulta; F4·27 a F4·29 suman a Avi encima. (F4·32 tiene número posterior porque se pidió después de numerar el plan.)
 
 ## Fuera de alcance (por ahora)
 
