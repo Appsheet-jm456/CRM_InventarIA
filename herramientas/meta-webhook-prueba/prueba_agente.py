@@ -217,5 +217,10 @@ SALIDAS[:] = []
 r = turno([{"responder": "Hola"}], lead=dict(lead))
 prueba(42, "el resumen va en el prompt de Avi", "LO QUE PASÓ EN CONVERSACIONES ANTERIORES" in LLAMADAS[0]["sistema"])
 
-print(f"\n{42 - fallos}/42 pruebas bien")
+r = turno([{"responder": "Consulta buscar_conocimiento para eso"}, {"herramienta": "buscar_conocimiento", "args": {"pregunta": "descuentos"}},
+           {"responder": "No tenemos descuentos publicados; un asesor te puede orientar"}])
+prueba(43, "una respuesta que nombra una herramienta no sale: el modelo la corrige", not r["asesor"]
+        and textos(r) == ["No tenemos descuentos publicados; un asesor te puede orientar"] and r["traza"][0]["tipo"] == "bloqueado")
+
+print(f"\n{43 - fallos}/43 pruebas bien")
 sys.exit(1 if fallos else 0)

@@ -160,6 +160,9 @@ def revisar(respuesta, permitido, texto_permitido=""):
     problemas = []
     for c in sorted(cifras(respuesta) - permitido):
         problemas.append(f"el valor {c:,} no salió de ninguna herramienta".replace(",", "."))
+    nombradas = [h for h in HERRAMIENTAS if h in (respuesta or "")]
+    if nombradas:  # el cliente no debe ver los nombres internos (regla 7)
+        problemas.append(f"le nombras al cliente la herramienta {nombradas[0]}: úsala o quítala del texto")
     largos = set(re.findall(r"\d{9,}", re.sub(r"[\s.\-]", "", respuesta or "")))
     for n in largos:
         if n not in re.sub(r"[\s.\-]", "", texto_permitido):
