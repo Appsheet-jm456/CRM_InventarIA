@@ -17,8 +17,10 @@ export const PROVEEDORES: { id: Proveedor; nombre: string; ayuda: string; base: 
     base: { modelo: 'deepseek-chat', url_base: 'https://api.deepseek.com', protocolo: 'openai', precio_entrada_usd: 0.28, precio_salida_usd: 0.42 } },
   { id: 'openai', nombre: 'OpenAI (GPT)', ayuda: 'Alternativa o respaldo.',
     base: { modelo: 'gpt-4o-mini', url_base: 'https://api.openai.com/v1', protocolo: 'openai', precio_entrada_usd: 0.15, precio_salida_usd: 0.6 } },
-  { id: 'gemini', nombre: 'Google Gemini', ayuda: 'Usa la dirección compatible con OpenAI de Google.',
-    base: { modelo: 'gemini-2.5-flash', url_base: 'https://generativelanguage.googleapis.com/v1beta/openai', protocolo: 'openai', precio_entrada_usd: 0.3, precio_salida_usd: 2.5 } },
+  // gemini-2.5-flash ya no se ofrece a usuarios nuevos (31 oct 2026); 3.5-flash-lite responde en ~1 s y sin «pensar», que en los
+  // modelos grandes gasta los tokens y deja la respuesta vacía.
+  { id: 'gemini', nombre: 'Google Gemini', ayuda: 'Usa la dirección compatible con OpenAI de Google. Recomendado: gemini-3.5-flash-lite (rápido).',
+    base: { modelo: 'gemini-3.5-flash-lite', url_base: 'https://generativelanguage.googleapis.com/v1beta/openai', protocolo: 'openai', precio_entrada_usd: 0.3, precio_salida_usd: 2.5 } },
   { id: 'anthropic', nombre: 'Anthropic (Claude)', ayuda: 'API propia de Anthropic.',
     base: { modelo: 'claude-haiku-5-5', url_base: 'https://api.anthropic.com', protocolo: 'anthropic', precio_entrada_usd: 1, precio_salida_usd: 5 } },
   { id: 'local', nombre: 'Local (este servidor)', ayuda: 'Sin costo ni internet; más lento y menos fiable con herramientas.',

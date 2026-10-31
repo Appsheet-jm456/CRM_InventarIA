@@ -14,6 +14,10 @@ import urllib.request
 import db
 
 
+REINTENTABLES = {403, 408, 429, 500, 502, 503, 504}
+PAUSA_REINTENTO = 0.8
+
+
 class CerebroError(Exception):
     """Ningún modelo respondió: el mensaje lo atiende el modo Híbrido (RAG-10)."""
 
@@ -79,13 +83,19 @@ def _llamar(m, mensajes, sistema, temperatura, tokens_max, espera):
                   "messages": ([{"role": "system", "content": sistema}] if sistema else []) + mensajes}
     peticion = urllib.request.Request(url, method="POST", headers=cabeceras, data=json.dumps(cuerpo).encode())
     t0 = time.time()
-    try:
-        with urllib.request.urlopen(peticion, timeout=espera) as r:
-            j = json.loads(r.read().decode())
-    except urllib.error.HTTPError as e:
-        raise CerebroError(f"{m['proveedor']} respondió {e.code}") from e
-    except Exception as e:  # sin red, tiempo agotado, JSON roto
-        raise CerebroError(f"{m['proveedor']} no respondió: {type(e).__name__}") from e
+    for intento in (1, 2):
+        try:
+            with urllib.request.urlopen(peticion, timeout=espera) as r:
+                j = json.loads(r.read().decode())
+            break
+        except urllib.error.HTTPError as e:
+            # Errores pasajeros: un reintento antes de rendirse. Gemini devuelve a veces 403 con una llave que sí sirve (31 oct 2026).
+            if intento == 1 and e.code in REINTENTABLES:
+                time.sleep(PAUSA_REINTENTO)
+                continue
+            raise CerebroError(f"{m['proveedor']} respondió {e.code}") from e
+        except Exception as e:  # sin red, tiempo agotado, JSON roto
+            raise CerebroError(f"{m['proveedor']} no respondió: {type(e).__name__}") from e
     if anthropic:
         texto = "".join(b.get("text", "") for b in j.get("content", []) if b.get("type") == "text")
         ent, sal = j.get("usage", {}).get("input_tokens", 0), j.get("usage", {}).get("output_tokens", 0)

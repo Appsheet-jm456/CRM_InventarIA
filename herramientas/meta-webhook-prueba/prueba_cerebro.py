@@ -25,6 +25,11 @@ class Falso(BaseHTTPRequestHandler):
         cuerpo = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
         PEDIDOS.append((self.path, dict(self.headers), cuerpo))
         modo = MODO.get(self.path.split("/")[1], "ok")
+        if modo == "403-una-vez":  # falla la primera vez y después responde (como Gemini)
+            MODO[self.path.split("/")[1]] = "ok"
+            self.send_response(403); self.end_headers(); self.wfile.write(b"{}"); return
+        if modo == "401":
+            self.send_response(401); self.end_headers(); self.wfile.write(b"{}"); return
         if modo == "500":
             self.send_response(500); self.end_headers(); self.wfile.write(b"{}"); return
         if modo == "lento":
@@ -46,6 +51,7 @@ threading.Thread(target=servidor.serve_forever, daemon=True).start()
 URL = f"http://127.0.0.1:{servidor.server_port}"
 
 TURNOS = []
+cerebro.PAUSA_REINTENTO = 0
 cerebro.registrar = lambda lead, m, resultado, r=None, detalle=None: TURNOS.append((m["proveedor"], resultado, (r or {}).get("costo_usd", 0)))
 TOPE = {"agotado": False}
 cerebro.tope = lambda: TOPE
@@ -134,6 +140,14 @@ except cerebro.CerebroError:
     ok = True
 prueba(16, "una dirección que no es http(s) se rechaza", ok)
 
+# 17-18: reintento de errores pasajeros
+MODO.clear(); MODO["principal"] = "403-una-vez"
+r = pedir()
+prueba(17, "un error pasajero (403 de Gemini) se reintenta una vez y responde el principal", not r["respaldo"] and len([p for p in PEDIDOS if p[0].startswith("/principal")]) == 2)
+MODO.clear(); MODO["principal"] = "401"
+r = pedir()
+prueba(18, "una llave mala (401) no se reintenta: pasa directo al respaldo", r["respaldo"] and len([p for p in PEDIDOS if p[0].startswith("/principal")]) == 1)
+
 servidor.shutdown()
-print(f"\n{16 - fallos}/16 pruebas bien")
+print(f"\n{18 - fallos}/18 pruebas bien")
 sys.exit(1 if fallos else 0)

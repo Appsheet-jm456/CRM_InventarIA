@@ -45,7 +45,12 @@ export async function guardarCerebro(d: DatosCerebro): Promise<Resultado> {
     precio_salida_usd_respaldo: r?.precio_salida_usd ?? null,
     temperatura: d.temperatura, tokens_max: d.tokens_max, espera_segundos: d.espera_segundos, presupuesto_usd: d.presupuesto_usd,
   }).eq('id', 1).select('id')
-  if (error) return { error: error.message }
+  if (error) {
+    // 0030: con Avi encendido para clientes (números de prueba o todos), un modelo de pago necesita llave y presupuesto.
+    if (error.message.includes('agente_config_listo_para_clientes'))
+      return { error: 'Avi está encendido para clientes: con un proveedor de pago hace falta un presupuesto mensual mayor que 0 (y la llave guardada). Pon el presupuesto y guarda de nuevo, o apaga a Avi en la pestaña Avi.' }
+    return { error: error.message }
+  }
   if (!data?.length) return { error: 'No tienes permiso para cambiar el cerebro del agente.' }
   revalidatePath('/agente/cerebro')
   return { ok: 'Guardado. Pega la llave si la cambiaste y usa «Probar conexión».' }

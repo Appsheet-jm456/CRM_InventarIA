@@ -1,5 +1,6 @@
 'use client'
 
+import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { PROVEEDORES, type Modelo, type Proveedor } from '@/lib/cerebroProveedores'
 import { guardarCerebro, guardarLlave, probarConexion, type DatosCerebro, type Prueba, type Resultado } from './acciones'
@@ -9,7 +10,7 @@ type Turno = { en: string; proveedor: string; modelo: string; tokens_entrada: nu
 
 const usd = (n: number) => `US$ ${n.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}`
 
-function BloqueModelo({ titulo, m, onCambio, tieneLlave, guardadaEn, respaldo, ocupado }: {
+function BloqueModelo({ titulo, m, onCambio, tieneLlave, guardadaEn, respaldo, ocupado, guardarAntes }: {
   titulo: string
   m: Modelo
   onCambio: (m: Modelo) => void
@@ -17,6 +18,7 @@ function BloqueModelo({ titulo, m, onCambio, tieneLlave, guardadaEn, respaldo, o
   guardadaEn: string | null
   respaldo: boolean
   ocupado: boolean
+  guardarAntes: (() => Promise<Resultado>) | null // hay cambios sin guardar: se guardan antes de probar
 }) {
   const [llave, setLlave] = useState('')
   const [aviso, setAviso] = useState<Resultado>({})
@@ -105,10 +107,15 @@ function BloqueModelo({ titulo, m, onCambio, tieneLlave, guardadaEn, respaldo, o
 
         <div className="row">
           <button type="button" className="btn" disabled={ocupado || trabajando !== null}
-            onClick={async () => { setTrabajando('prueba'); setPrueba(null); setPrueba(await probarConexion(respaldo)); setTrabajando(null) }}>
-            {trabajando === 'prueba' ? 'Probando…' : 'Probar conexión'}
+            onClick={async () => {
+              setTrabajando('prueba'); setPrueba(null)
+              const g = guardarAntes ? await guardarAntes() : null
+              setPrueba(g?.error ? { error: `No se guardó: ${g.error}` } : await probarConexion(respaldo))
+              setTrabajando(null)
+            }}>
+            {trabajando === 'prueba' ? 'Probando…' : guardarAntes ? 'Guardar y probar conexión' : 'Probar conexión'}
           </button>
-          <small className="muted">Prueba el modelo <b>ya guardado</b> (guarda los cambios primero).</small>
+          {guardarAntes && <small className="muted">Tienes cambios sin guardar: se guardan antes de probar.</small>}
         </div>
         {prueba && (
           <div className={`aviso ${prueba.error ? 'bad' : 'ok'}`} role="alert">
@@ -127,12 +134,18 @@ export function Cerebro({ datos, llaves, tope, turnos }: {
   tope: Tope
   turnos: Turno[]
 }) {
+  const router = useRouter()
   const [d, setD] = useState<DatosCerebro>(datos)
   const [aviso, setAviso] = useState<Resultado>({})
   const [ocupado, setOcupado] = useState(false)
   const cambio = JSON.stringify(d) !== JSON.stringify(datos)
   const pct = Math.min(100, tope.porcentaje ?? 0)
   const local = datos.principal.proveedor === 'local'
+  const guardarAntes = cambio ? async () => {
+    const r = await guardarCerebro(d)
+    if (!r.error) router.refresh()
+    return r
+  } : null
 
   return (
     <>
@@ -161,12 +174,12 @@ export function Cerebro({ datos, llaves, tope, turnos }: {
       </section>
 
       <BloqueModelo titulo="Modelo principal" m={d.principal} onCambio={(m) => setD({ ...d, principal: m })} respaldo={false}
-        tieneLlave={llaves.principal} guardadaEn={llaves.guardada_en} ocupado={ocupado} />
+        tieneLlave={llaves.principal} guardadaEn={llaves.guardada_en} ocupado={ocupado} guardarAntes={guardarAntes} />
 
       {d.respaldo ? (
         <>
           <BloqueModelo titulo="Modelo de respaldo" m={d.respaldo} onCambio={(m) => setD({ ...d, respaldo: m })} respaldo
-            tieneLlave={llaves.respaldo} guardadaEn={null} ocupado={ocupado} />
+            tieneLlave={llaves.respaldo} guardadaEn={null} ocupado={ocupado} guardarAntes={guardarAntes} />
           <div className="row">
             <button type="button" className="btn" disabled={ocupado} onClick={() => setD({ ...d, respaldo: null })}>Quitar el respaldo</button>
           </div>
@@ -229,7 +242,7 @@ export function Cerebro({ datos, llaves, tope, turnos }: {
       </section>
 
       <section className="panel">
-        <div className="panel-h"><div><h2>Últimas respuestas de IA</h2><small>Cada turno guarda tokens, costo y resultado (RAG-18). Aún vacío: el agente se conecta en F4·28.</small></div></div>
+        <div className="panel-h"><div><h2>Últimas respuestas de IA</h2><small>Cada llamada al modelo guarda tokens, costo y resultado (RAG-18). El detalle completo está en la pestaña Registro.</small></div></div>
         {turnos.length > 0 && (
           <div className="panel-b" style={{ overflowX: 'auto' }}>
             <table>
