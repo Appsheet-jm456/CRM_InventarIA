@@ -234,7 +234,7 @@ def m_lista(texto, opciones, boton="Ver opciones"):
     """Lista interactiva: hasta 10 filas; título ≤ 24 caracteres, descripción ≤ 72."""
     filas = [{"id": i, "title": t[:24], **({"description": d[:72]} if d else {})} for i, t, d in opciones[:10]]
     return {"type": "interactive", "interactive": {
-        "type": "list", "body": {"text": texto[:4096]},
+        "type": "list", "body": {"text": texto[:1024]},
         "action": {"button": boton[:20], "sections": [{"title": "Opciones", "rows": filas}]}}}
 
 
@@ -257,9 +257,15 @@ def menu(texto, opciones):
 
 
 def lista_equipos(titulo, equipos, pie="Toca un equipo en la lista o escríbenos su *código*. 0️⃣ Menú principal"):
-    texto = (f"{titulo}\n\n"
-             + "\n".join(f"• {p['cod']} · {p['modelo']} · {p['cpu']} · {p['ram']} · {cop(p['precio'])}" for p in equipos)
-             + f"\n\n{pie}")
+    # Meta rechaza el cuerpo de una lista de más de 1.024 caracteres (#131009): se muestran los que caben y se avisa cuántos más hay.
+    lineas = [f"• {p['cod']} · {p['modelo']} · {p['cpu']} · {p['ram']} · {cop(p['precio'])}" for p in equipos]
+    def armar(n):
+        resto = f"\n… y {len(lineas) - n} más: escribe el *código* o la marca para ver otros." if n < len(lineas) else ""
+        return f"{titulo}\n\n" + "\n".join(lineas[:n]) + resto + f"\n\n{pie}"
+    n = len(lineas)
+    while n > 1 and len(armar(n)) > 1024:
+        n -= 1
+    texto = armar(n)
     filas = [(p["cod"], p["cod"], f"{p['modelo']} · {p['ram']} · {cop(p['precio'])}") for p in equipos[:9]]
     filas.append(("0", "Menú principal", ""))
     return m_lista(texto, filas, "Ver equipos")
