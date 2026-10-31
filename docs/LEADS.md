@@ -1,6 +1,6 @@
 # Módulo Leads: lista, ficha del cliente, atributos y tareas (F4·30) · Capacidad para 1.000 clientes al día (F4·31)
 
-**Estado:** 📝 Documentado, por construir · 31 oct 2026 · Decisión [0033](decisiones/0033-modulo-leads-y-capacidad.md)
+**Estado:** 🔵 En construcción · F4·30 A (base) hecha el 31 oct 2026 · Decisión [0033](decisiones/0033-modulo-leads-y-capacidad.md) aceptada
 Referencia que trajo el dueño: la lista «Todos los leads» y la ficha del lead de Kommo (panel de datos a la izquierda, chat a la derecha).
 
 ## Qué pidió el dueño (31 oct 2026)
@@ -150,7 +150,7 @@ Postgres maneja millones de filas con los índices correctos; 400.000 mensajes a
 
 | # | Tarea | Qué entrega |
 |---|---|---|
-| **F4·30 A** | Base | `lead_atributos` (definiciones), `leads.atributos` (jsonb con índice), `leads.archivado_en` y `eliminado_en`, `lead_eventos`, tipo y resultado en `seguimientos`, permisos nuevos, índices de búsqueda; pruebas SQL |
+| **F4·30 A** ✅ | Base (migración 0032, 19 pruebas SQL) | `lead_atributos` (definiciones), `leads.atributos` (jsonb con índice), `leads.archivado_en` y `eliminado_en`, `lead_eventos`, tipo y resultado en `seguimientos`, permisos nuevos, índices de búsqueda; pruebas SQL |
 | **F4·30 B** | Atributos | Configuración → Atributos del lead: crear, editar, ordenar, secciones, archivar |
 | **F4·30 C** | Lista | Módulo Leads: columnas, búsqueda, filtros, vistas guardadas, paginación en servidor, acciones en grupo, exportar |
 | **F4·30 D** | Ficha | Ficha a pantalla completa: datos y atributos, etapa, responsable, tareas, línea de tiempo con chat, notas y respuesta (reutiliza la Bandeja) |
@@ -175,3 +175,15 @@ elige cuál va primero.
 - [ ] Archivar, eliminar, restaurar y que un lead archivado se desarchive al escribir.
 - [ ] La lista responde en menos de 1 s con 50.000 leads de prueba; la prueba de carga de F4·31 pasa.
 - [ ] Un asesor no ve leads de otros ni puede eliminar sin permiso (pruebas SQL).
+
+## Notas de construcción
+
+- **F4·30 A (31 oct 2026), migración 0032:** permisos `administrar_atributos`, `eliminar_leads` y `exportar_leads` (administrador);
+  `leads.atributos` (jsonb, validado contra `lead_atributos`: llave conocida y valor del tipo correcto), `archivado_en`, `eliminado_en` y `origen`;
+  `lead_atributos` con los 9 de Kommo (la clave y el tipo no cambian; archivar conserva los datos); `lead_atributos_faltantes(lead, etapa)` para los
+  obligatorios por etapa (los consulta la ficha: el bot nunca se bloquea); `lead_eventos` llenado por disparadores en leads (etapa, responsable,
+  nombre, valor, etiquetas, cada atributo, archivar, papelera), oportunidades (etapa del embudo) y seguimientos (tarea creada y cumplida), con quién lo
+  hizo o el sistema; lo que el bot cambia en cada mensaje no deja rastro; `seguimientos.tipo` y `resultado` con `lead_tarea_tipos`; `leads_archivar`
+  (asesor, solo sus leads) y `leads_eliminar` (papelera y restaurar, con permiso); índices de búsqueda con trigramas (nombre, teléfono, mensajes) y
+  GIN en atributos. Falta para E: que un lead archivado se desarchive al escribir, que el bot ignore los de la papelera (el teléfono es único) y que
+  Bandeja y Embudo los oculten.

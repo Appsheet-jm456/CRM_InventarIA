@@ -28,13 +28,17 @@ select case when (select count(*) from compra_etapas c join etapas a on a.id = c
                    where a.nombre = 'Esperando pago' and b.nombre = 'Pago por confirmar' and a.embudo_id = c.embudo_id and b.embudo_id = c.embudo_id) = 2
             then 'ok' else 'not ok' end || ' 3 - compra_etapas apunta a las etapas de cada embudo';
 
--- Todo nace apagado salvo «Pasar a asesor»
-select case when (select string_agg(nombre, ',') from acciones where activa) = 'Pasar a asesor'
-             and (select estado from agente_config) = 'apagado' and (select count(*) from conocimiento where activa) = 0
-             and not exists (select 1 from bots where modo <> 'hibrido')
-            then 'ok' else 'not ok' end || ' 4 - nada cambia el bot de hoy: solo la acción de asesor activa, agente apagado, bots en híbrido';
+-- Lo que trae la migración (no lo que el dueño ya activó): «Pasar a asesor» es del sistema y está activa; el resto son opcionales.
+select case when exists (select 1 from acciones where nombre = 'Pasar a asesor' and sistema and activa)
+             and (select count(*) from acciones where not sistema) >= 7
+             and (select count(*) from conocimiento where categoria in ('Ubicación', 'Garantía', 'Devoluciones', 'Envíos', 'Pagos', 'Distribuidores')) = 6
+             and not exists (select 1 from bots where modo not in ('menu', 'hibrido', 'agente'))
+            then 'ok' else 'not ok' end || ' 4 - la acción de asesor es del sistema y está activa; nacen las 7 acciones y las 6 fichas; los bots tienen un modo válido';
 
--- Reglas de la base
+-- Reglas de la base (con datos propios: proveedor de pago, sin llave y apagado, como recién instalado)
+update agente_config set estado = 'apagado', proveedor = 'deepseek', llave_id = null, presupuesto_usd = 0 where id = 1;
+update conocimiento set activa = false where categoria = 'Garantía';
+update conocimiento set respuesta = '', archivo = null where categoria = 'Garantía';
 select case when pg_temp.falla($q$ update acciones set activa = false where sistema $q$)
              and pg_temp.falla($q$ delete from acciones where sistema $q$)
              and pg_temp.falla($q$ update acciones set prioridad = 99 where sistema $q$)

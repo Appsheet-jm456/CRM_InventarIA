@@ -1,6 +1,6 @@
 # 0033 · Módulo Leads con atributos personalizados, y capacidad para 1.000 clientes al día
 
-**Estado:** Propuesta · 31 oct 2026 · Diseño de F4·30 y F4·31 · Detalle en [LEADS.md](../LEADS.md)
+**Estado:** Aceptada por el dueño el 31 oct 2026 («seguimos con el módulo Leads») · Diseño de F4·30 y F4·31 · Detalle en [LEADS.md](../LEADS.md)
 
 ## Contexto
 
@@ -8,7 +8,7 @@ La app tiene Bandeja (atender ahora) y Embudo (oportunidades por etapa), pero no
 en grupo, archivar o limpiar. El dueño quiere un módulo como «Todos los leads» de Kommo, con ficha del lead, atributos personalizados,
 tareas y chat. Además pregunta si la app aguanta 600–1.000 clientes al día.
 
-## Decisión (por confirmar con el dueño)
+## Decisión
 
 - **Módulo Leads** nuevo, con lista paginada en el servidor y la **misma ficha** del lead para Bandeja, Embudo y Leads.
 - **Atributos personalizados** definidos en una tabla (`lead_atributos`) y guardados en `leads.atributos` (jsonb con índice), en lugar de
