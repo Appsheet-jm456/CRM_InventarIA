@@ -19,7 +19,7 @@ select case when exists (select 1 from rol_permisos rp join roles r on r.id = rp
             then 'ok' else 'not ok' end || ' 1 - administrar_agente es solo del administrador';
 
 select case when (select string_agg(e.nombre, ' > ' order by e.orden) from etapas e join embudos b on b.id = e.embudo_id where b.nombre = 'Cliente Final')
-                 = 'Nuevo > En Conversación > Cotización > Negociación > Esperando pago > Pago por confirmar > Vendido > Perdido'
+                 = 'Nuevo > En Conversación > Cotización > Negociación > Esperando pago > Pago por confirmar > Alistamiento > Despachado > Vendido > Perdido'  -- 0036 suma Alistamiento y Despachado
              and (select string_agg(e.nombre, ' > ' order by e.orden) from etapas e join embudos b on b.id = e.embudo_id where b.nombre = 'Distribuidor')
                  = 'Nuevo > Datos de la empresa > Lista de precios enviada > Negociación > Esperando pago > Pago por confirmar > Primer pedido > Perdido'
             then 'ok' else 'not ok' end || ' 2 - Esperando pago y Pago por confirmar quedan antes del cierre en Cliente Final y Distribuidor';

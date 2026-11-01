@@ -1,9 +1,9 @@
 // Tipos de atributo del lead (0032, docs/LEADS.md §4). La base valida los mismos valores.
 export type TipoAtributo = 'texto' | 'texto_largo' | 'numero' | 'moneda' | 'fecha' | 'lista' | 'multiseleccion' | 'si_no'
-  | 'telefono' | 'correo' | 'direccion' | 'enlace'
+  | 'telefono' | 'correo' | 'direccion' | 'enlace' | 'documento'
 
 export const TIPOS: { id: TipoAtributo; nombre: string; ejemplo: string }[] = [
-  { id: 'texto', nombre: 'Texto', ejemplo: 'Número de serie, cédula' },
+  { id: 'texto', nombre: 'Texto', ejemplo: 'Transportadora' },
   { id: 'texto_largo', nombre: 'Texto largo', ejemplo: 'Observaciones' },
   { id: 'numero', nombre: 'Número', ejemplo: 'Cantidad de equipos' },
   { id: 'moneda', nombre: 'Moneda (COP)', ejemplo: 'Cupo de crédito' },
@@ -15,6 +15,7 @@ export const TIPOS: { id: TipoAtributo; nombre: string; ejemplo: string }[] = [
   { id: 'correo', nombre: 'Correo', ejemplo: 'Correo para la factura' },
   { id: 'direccion', nombre: 'Dirección', ejemplo: 'Dirección de entrega' },
   { id: 'enlace', nombre: 'Enlace', ejemplo: 'Página web del distribuidor' },
+  { id: 'documento', nombre: 'Documento (solo números)', ejemplo: 'Cédula, NIT' },
 ]
 
 export const nombreTipo = (t: string) => TIPOS.find((x) => x.id === t)?.nombre ?? t

@@ -8,7 +8,7 @@ import { asignar, cerrar, liberar, reanudarBot, responder, tomar } from '../../b
 import { Entrega, Media, hora, iniciales, partirOpciones, type Mensaje } from '../../bandeja/Bandeja'
 import { OportunidadesCliente, type Embudo, type Etapa } from '../../bandeja/OportunidadesCliente'
 import { ComponerPlantilla } from '../../bandeja/Plantilla'
-import { archivoLead, borrarYa, crearTarea, cumplirTarea, editarLead, etiquetaLead, guardarAtributos, notaLead, type Resultado } from './acciones'
+import { archivoLead, borrarYa, crearTarea, cumplirTarea, etiquetaLead, guardarFicha, notaLead, type Resultado } from './acciones'
 
 export type LeadFicha = {
   id: number
@@ -36,7 +36,10 @@ export type LeadFicha = {
   notas: string
 }
 type Persona = { id: string; nombre: string }
-type Atributo = { clave: string; nombre: string; tipo: string; seccion: string; opciones: string[]; archivado_en: string | null }
+type Atributo = {
+  clave: string; nombre: string; tipo: string; seccion: string; opciones: string[]; archivado_en: string | null
+  solo_venta_online: boolean; etapas_obligatorio: string[]
+}
 type Evento = { id: number; en: string; usuario_id: string | null; tipo: string; antes: unknown; despues: unknown; detalle: string }
 type Tarea = { id: number; tipo: string; que: string; vence_en: string; estado: string; resultado: string; asignado_a: string; cerrado_en: string | null }
 type Cotizacion = { id: number; consecutivo: number; total: number; tipo_cliente: string; pdf: string | null; creado_en: string; valida_hasta: string | null }
@@ -52,25 +55,39 @@ const hoyMas = (horas: number) => {
   return d.toISOString().slice(0, 16)
 }
 const texto = (v: unknown) => (v === null || v === undefined ? '—' : Array.isArray(v) ? v.join(', ') : typeof v === 'boolean' ? (v ? 'Sí' : 'No') : String(v))
+// Vacío es lo mismo que no tenerlo: así deshacer a mano un cambio quita el aviso de «Cambios sin guardar».
+const vacio = (v: unknown) => v === null || v === undefined || (typeof v === 'string' && v.trim() === '') || (Array.isArray(v) && v.length === 0)
+const igual = (a: unknown, b: unknown) => (vacio(a) && vacio(b)) || JSON.stringify(a) === JSON.stringify(b)
+
+// Lo mismo que valida la base (lead_atributo_error), para marcar el campo antes de guardar.
+function errorDe(a: Atributo, v: unknown): string | null {
+  if (vacio(v) || typeof v !== 'string') return null
+  const t = v.trim()
+  if (a.tipo === 'documento' && !/^[0-9]{5,12}$/.test(t)) return 'Solo números, de 5 a 12.'
+  if (a.tipo === 'correo' && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(t)) return 'Escribe un correo, con @.'
+  if (a.tipo === 'telefono' && !/^\+?[0-9 ()-]{7,20}$/.test(t)) return 'Escribe un teléfono.'
+  if (a.tipo === 'enlace' && !/^https?:\/\/\S+$/.test(t)) return 'Debe empezar por http:// o https://.'
+  return null
+}
 
 // ---------------------------------------------------------------------------------------------------------------------- //
-// Un atributo editable según su tipo; guarda al salir del campo (o al elegir, en listas)
+// Un atributo editable según su tipo; el cambio queda pendiente hasta «Guardar cambios» (RL-25)
 // ---------------------------------------------------------------------------------------------------------------------- //
-function CampoAtributo({ a, valor, guardar, ocupado }: { a: Atributo; valor: unknown; guardar: (v: unknown) => void; ocupado: boolean }) {
-  const comun = { 'aria-label': a.nombre, disabled: ocupado }
+function CampoAtributo({ a, valor, cambiar, ocupado, error }: { a: Atributo; valor: unknown; cambiar: (v: unknown) => void; ocupado: boolean; error: string | null }) {
+  const comun = { 'aria-label': a.nombre, disabled: ocupado, 'aria-invalid': !!error }
   const actual = valor === undefined || valor === null ? '' : valor
   switch (a.tipo) {
     case 'texto_largo':
-      return <textarea {...comun} rows={3} defaultValue={String(actual)} maxLength={4000} onBlur={(e) => e.target.value !== actual && guardar(e.target.value)} />
+      return <textarea {...comun} rows={3} value={String(actual)} maxLength={4000} onChange={(e) => cambiar(e.target.value)} />
     case 'numero':
     case 'moneda':
-      return <input {...comun} type="number" step={a.tipo === 'moneda' ? 1000 : 'any'} defaultValue={actual === '' ? '' : Number(actual)}
-        onBlur={(e) => { const n = e.target.value === '' ? null : Number(e.target.value); if (n !== (actual === '' ? null : actual)) guardar(n) }} />
+      return <input {...comun} type="number" step={a.tipo === 'moneda' ? 1000 : 'any'} value={actual === '' ? '' : Number(actual)}
+        onChange={(e) => cambiar(e.target.value === '' ? null : Number(e.target.value))} />
     case 'fecha':
-      return <input {...comun} type="date" defaultValue={String(actual)} onChange={(e) => guardar(e.target.value || null)} />
+      return <input {...comun} type="date" value={String(actual)} onChange={(e) => cambiar(e.target.value || null)} />
     case 'lista':
       return (
-        <select {...comun} value={String(actual)} onChange={(e) => guardar(e.target.value || null)}>
+        <select {...comun} value={String(actual)} onChange={(e) => cambiar(e.target.value || null)}>
           <option value="">—</option>
           {a.opciones.map((o) => <option key={o}>{o}</option>)}
         </select>
@@ -82,7 +99,7 @@ function CampoAtributo({ a, valor, guardar, ocupado }: { a: Atributo; valor: unk
           {a.opciones.map((o) => (
             <label key={o} style={{ cursor: 'pointer' }}>
               <input type="checkbox" disabled={ocupado} checked={elegidas.includes(o)}
-                onChange={(e) => guardar(e.target.checked ? [...elegidas, o] : elegidas.filter((x) => x !== o))} /> {o}
+                onChange={(e) => cambiar(e.target.checked ? [...elegidas, o] : elegidas.filter((x) => x !== o))} /> {o}
             </label>
           ))}
         </div>
@@ -90,14 +107,14 @@ function CampoAtributo({ a, valor, guardar, ocupado }: { a: Atributo; valor: unk
     }
     case 'si_no':
       return (
-        <select {...comun} value={actual === '' ? '' : actual ? 'si' : 'no'} onChange={(e) => guardar(e.target.value === '' ? null : e.target.value === 'si')}>
+        <select {...comun} value={actual === '' ? '' : actual ? 'si' : 'no'} onChange={(e) => cambiar(e.target.value === '' ? null : e.target.value === 'si')}>
           <option value="">—</option><option value="si">Sí</option><option value="no">No</option>
         </select>
       )
     default:
       return <input {...comun} type={a.tipo === 'correo' ? 'email' : a.tipo === 'enlace' ? 'url' : a.tipo === 'telefono' ? 'tel' : 'text'}
-        defaultValue={String(actual)} maxLength={a.tipo === 'enlace' ? 500 : 300}
-        onBlur={(e) => e.target.value !== actual && guardar(e.target.value)} />
+        inputMode={a.tipo === 'documento' ? 'numeric' : undefined}
+        value={String(actual)} maxLength={a.tipo === 'enlace' ? 500 : 300} onChange={(e) => cambiar(e.target.value)} />
   }
 }
 
@@ -129,11 +146,87 @@ export function Ficha({ lead: inicial, yo, usuarios, asesores, embudos, etapas, 
   const [etiquetaNueva, setEtiquetaNueva] = useState('')
   const [aviso, setAviso] = useState<Resultado>({})
   const [ocupado, setOcupado] = useState(false)
-  const [version, setVersion] = useState(0)
+  const [version] = useState(0)
+  const [nuevaTarea, setNuevaTarea] = useState(false)
+  // RL-25: lo que el asesor cambió y aún no guarda. Claves «nombre», «valor» y las de los atributos.
+  const [cambios, setCambios] = useState<Record<string, unknown>>({})
+  const [conflictos, setConflictos] = useState<Record<string, unknown> | null>(null)
   const linea = useRef<HTMLDivElement>(null)
   const nombres = useMemo(() => new Map(usuarios.map((u) => [u.id, u.nombre])), [usuarios])
   const nombreAtributo = useMemo(() => new Map(atributos.map((a) => [a.clave, a.nombre])), [atributos])
   useEffect(() => setLead(inicial), [inicial])
+
+  const guardado = (k: string): unknown => (k === 'nombre' ? lead.nombre : k === 'valor' ? lead.valor_estimado : lead.atributos?.[k])
+  const valorDe = (k: string): unknown => (k in cambios ? cambios[k] : guardado(k))
+  function cambiar(k: string, v: unknown) {
+    setCambios((c) => {
+      const n = { ...c }
+      if (igual(v, guardado(k))) delete n[k]
+      else n[k] = v
+      return n
+    })
+  }
+  const hayCambios = Object.keys(cambios).length > 0
+  const errores = useMemo(() => {
+    const e: Record<string, string> = {}
+    for (const a of atributos) {
+      const m = a.clave in cambios ? errorDe(a, cambios[a.clave]) : null
+      if (m) e[a.clave] = m
+    }
+    if ('nombre' in cambios && String(cambios.nombre ?? '').trim().length > 80) e.nombre = 'Máximo 80 caracteres.'
+    if ('valor' in cambios && cambios.valor !== null && Number(cambios.valor) < 0) e.valor = 'No puede ser negativo.'
+    return e
+  }, [atributos, cambios])
+  const nombreDe = (k: string) => (k === 'nombre' ? 'Nombre' : k === 'valor' ? 'Valor' : nombreAtributo.get(k) ?? k)
+  const mostrar = (k: string, v: unknown) =>
+    k === 'venta_online' ? (v === true ? 'Venta online' : v === false ? 'Venta tienda' : '—') : k === 'valor' && !vacio(v) ? pesos(Number(v)) : texto(vacio(v) ? null : v)
+
+  async function guardarCambios(forzar = false) {
+    if (!hayCambios || ocupado) return
+    if (Object.keys(errores).length) { setAviso({ error: 'Revisa los campos marcados: no se guardó nada.' }); return }
+    const antes = Object.fromEntries(Object.keys(cambios).map((k) => [k, guardado(k) ?? null]))
+    setOcupado(true)
+    setAviso({})
+    const r = await guardarFicha(lead.id, cambios, antes, forzar)
+    setOcupado(false)
+    if (r.error) { setAviso(r); return }
+    if (r.conflictos) { setConflictos(r.conflictos); return }
+    if (r.lead) setLead({ ...lead, nombre: r.lead.nombre, valor_estimado: r.lead.valor, atributos: r.lead.atributos })
+    setCambios({})
+    setConflictos(null)
+    setAviso({ ok: r.ok })
+    await cargar()
+    router.refresh()
+  }
+  // «Usar lo nuevo»: lo que otro guardó gana y se quita de mis cambios.
+  function usarLoNuevo() {
+    if (!conflictos) return
+    const nuevos = { ...lead, atributos: { ...lead.atributos } }
+    for (const [k, v] of Object.entries(conflictos)) {
+      if (k === 'nombre') nuevos.nombre = String(v ?? '')
+      else if (k === 'valor') nuevos.valor_estimado = v === null ? null : Number(v)
+      else if (vacio(v)) delete nuevos.atributos[k]
+      else nuevos.atributos[k] = v
+    }
+    setLead(nuevos)
+    setCambios((c) => Object.fromEntries(Object.entries(c).filter(([k]) => !(k in conflictos))))
+    setConflictos(null)
+    router.refresh()
+  }
+
+  // Salir con cambios sin guardar pregunta antes: al cerrar o recargar la pestaña y al pulsar un enlace de la app.
+  useEffect(() => {
+    if (!hayCambios) return
+    const alCerrar = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = '' }
+    const alPulsar = (e: MouseEvent) => {
+      const a = (e.target as HTMLElement).closest('a')
+      if (!a || a.target === '_blank' || !a.href || a.href === location.href) return
+      if (!confirm('Tienes cambios sin guardar en la ficha. ¿Salir sin guardarlos?')) { e.preventDefault(); e.stopPropagation() }
+    }
+    window.addEventListener('beforeunload', alCerrar)
+    document.addEventListener('click', alPulsar, true)
+    return () => { window.removeEventListener('beforeunload', alCerrar); document.removeEventListener('click', alPulsar, true) }
+  }, [hayCambios])
 
   const cargar = useCallback(async () => {
     const sb = clienteNavegador()
@@ -192,6 +285,10 @@ export function Ficha({ lead: inicial, yo, usuarios, asesores, embudos, etapas, 
         return { quien, texto: [mas.length ? `+ ${mas.join(', ')}` : '', menos.length ? `− ${menos.join(', ')}` : ''].filter(Boolean).join(' · ') || 'Etiquetas' }
       }
       case 'atributo': return { quien, texto: `${nombreAtributo.get(e.detalle) ?? e.detalle}: ${flecha(e.antes, e.despues)}` }
+      case 'ficha': {
+        const a = (e.antes ?? {}) as Record<string, unknown>, d = (e.despues ?? {}) as Record<string, unknown>
+        return { quien, texto: 'Ficha guardada · ' + Object.keys(d).map((k) => `${nombreDe(k)}: ${mostrar(k, a[k])} → ${mostrar(k, d[k])}`).join(' · ') }
+      }
       case 'tarea': return { quien, texto: `Tarea (${e.detalle}): ${texto(e.despues)}` }
       case 'tarea_cumplida': return { quien, texto: `Tarea cumplida: ${texto(e.antes)}${e.detalle ? ` — ${e.detalle}` : ''}` }
       default: return { quien, texto: { archivado: 'Archivado', desarchivado: 'Desarchivado', eliminado: 'Enviado a la papelera', restaurado: 'Restaurado' }[e.tipo] ?? e.tipo }
@@ -212,7 +309,35 @@ export function Ficha({ lead: inicial, yo, usuarios, asesores, embudos, etapas, 
     if (!bien) setEscrito(t)
   }
 
-  const secciones = [...new Set(atributos.filter((a) => !a.archivado_en).map((a) => a.seccion))]
+  // RL-16 y RL-17: «Venta online» va como interruptor arriba; los de solo venta online se ven si es online o si ya tienen dato.
+  const online = valorDe('venta_online') === true
+  const ventaAtributo = atributos.find((a) => a.clave === 'venta_online' && !a.archivado_en)
+  const visibles = atributos.filter((a) => !a.archivado_en && a.clave !== 'venta_online' && (!a.solo_venta_online || online || !vacio(valorDe(a.clave))))
+  const secciones = [...new Set(visibles.map((a) => a.seccion))].sort((a, b) => Number(a === 'Datos de despacho') - Number(b === 'Datos de despacho'))
+  const faltanDespacho = online
+    ? atributos.filter((a) => !a.archivado_en && a.solo_venta_online && a.etapas_obligatorio.includes('Alistamiento') && vacio(valorDe(a.clave))).map((a) => a.nombre)
+    : []
+
+  const formTarea = (alCrear?: () => void) => (
+    <form className="row" style={{ gap: 6 }} onSubmit={async (e) => {
+      e.preventDefault()
+      if (await hacer(() => crearTarea(lead.id, tarea))) { setTarea({ ...tarea, que: '' }); alCrear?.() }
+    }}>
+      <select aria-label="Tipo" value={tarea.tipo} onChange={(e) => setTarea({ ...tarea, tipo: e.target.value })}>
+        {tiposTarea.map((t) => <option key={t}>{t}</option>)}
+      </select>
+      <input style={{ flex: '1 1 200px' }} placeholder="Qué hay que hacer" maxLength={200} value={tarea.que} onChange={(e) => setTarea({ ...tarea, que: e.target.value })} />
+      <input type="datetime-local" aria-label="Para cuándo" value={tarea.vence} onChange={(e) => setTarea({ ...tarea, vence: e.target.value })} />
+      {yo.verTodas && (
+        <select aria-label="Para quién" value={tarea.asignado} onChange={(e) => setTarea({ ...tarea, asignado: e.target.value })}>
+          <option value="">Para mí</option>
+          {asesores.filter((a) => a.id !== yo.id).map((a) => <option key={a.id} value={a.id}>{a.nombre}</option>)}
+        </select>
+      )}
+      <button className="btn primary" disabled={ocupado || !tarea.que.trim() || !yo.moverEtapas}
+        title={yo.moverEtapas ? undefined : 'Tu rol no agenda tareas'}>Crear tarea</button>
+    </form>
+  )
   const pendientes = tareas.filter((t) => t.estado === 'pendiente')
   const archivos = (mensajes ?? []).filter((m) => m.media_ruta)
   const delCliente = (mensajes ?? []).filter((m) => m.lado === 'cliente').length
@@ -227,8 +352,8 @@ export function Ficha({ lead: inicial, yo, usuarios, asesores, embudos, etapas, 
           <Link href="/leads" className="iconbtn" aria-label="Volver a Leads">←</Link>
           <span className="avatar">{iniciales(lead.nombre || lead.telefono)}</span>
           <div style={{ minWidth: 0, flex: 1 }}>
-            <input className="f-nombre" defaultValue={lead.nombre} placeholder="Sin nombre" aria-label="Nombre" disabled={ocupado} maxLength={80}
-              onBlur={(e) => e.target.value.trim() !== lead.nombre && hacer(() => editarLead(lead.id, { nombre: e.target.value }), 'Nombre guardado.')} />
+            <input className="f-nombre" value={String(valorDe('nombre') ?? '')} placeholder="Sin nombre" aria-label="Nombre" disabled={ocupado} maxLength={80}
+              aria-invalid={!!errores.nombre} onChange={(e) => cambiar('nombre', e.target.value)} />
             <small>+{lead.telefono} · <span className={`chip ${ESTADOS[lead.estado_chat].clase}`}>{ESTADOS[lead.estado_chat].texto}</span>
               {lead.archivado_en && <span className="chip neu" style={{ marginLeft: 4 }}>Archivado</span>}
               {lead.eliminado_en && <span className="chip bad" style={{ marginLeft: 4 }}>Papelera</span>}</small>
@@ -266,8 +391,9 @@ export function Ficha({ lead: inicial, yo, usuarios, asesores, embudos, etapas, 
             </label>
             <label className="field" style={{ flex: '1 1 160px' }}>
               Valor
-              <input type="number" min={0} step={1000} defaultValue={lead.valor_estimado ?? ''} disabled={ocupado}
-                onBlur={(e) => { const n = e.target.value === '' ? null : Number(e.target.value); if (n !== null && n !== Number(lead.valor_estimado)) hacer(() => editarLead(lead.id, { valor: n }), 'Valor guardado.') }} />
+              <input type="number" min={0} step={1000} value={vacio(valorDe('valor')) ? '' : Number(valorDe('valor'))} disabled={ocupado}
+                aria-invalid={!!errores.valor} onChange={(e) => cambiar('valor', e.target.value === '' ? null : Number(e.target.value))} />
+              {errores.valor && <small className="error">{errores.valor}</small>}
             </label>
           </div>
 
@@ -295,20 +421,30 @@ export function Ficha({ lead: inicial, yo, usuarios, asesores, embudos, etapas, 
 
           {pestana === 'principal' && (
             <div style={{ display: 'grid', gap: 14 }}>
+              {ventaAtributo && (
+                <div className="field">
+                  Venta
+                  <div className="row" style={{ gap: 6 }} role="radiogroup" aria-label="Venta">
+                    {([[true, '🚚 Venta online', 'Despacho o envío a domicilio'], [false, '🏬 Venta tienda', 'Cotiza y viene a la tienda']] as const).map(([v, t, ayuda]) => (
+                      <button key={t} type="button" role="radio" aria-checked={valorDe('venta_online') === v} title={ayuda} disabled={ocupado}
+                        className={`btn chico${valorDe('venta_online') === v ? ' primary' : ''}`}
+                        onClick={() => cambiar('venta_online', valorDe('venta_online') === v ? null : v)}>{t}</button>
+                    ))}
+                  </div>
+                </div>
+              )}
               {secciones.map((s) => (
                 <fieldset key={s} className="f-seccion">
                   <legend>{s}</legend>
-                  {atributos.filter((a) => a.seccion === s && !a.archivado_en).map((a) => (
+                  {s === 'Datos de despacho' && faltanDespacho.length > 0 && (
+                    <div className="aviso warn" role="status">Faltan datos de despacho: {faltanDespacho.join(', ')}.</div>
+                  )}
+                  {visibles.filter((a) => a.seccion === s).map((a) => (
                     <label key={`${a.clave}-${version}`} className="field">
-                      {a.nombre}
-                      <CampoAtributo a={a} valor={lead.atributos?.[a.clave]} ocupado={ocupado}
-                        guardar={async (v) => {
-                          setOcupado(true)
-                          const r = await guardarAtributos(lead.id, { [a.clave]: v })
-                          setOcupado(false)
-                          if (r.error) { setAviso(r); setVersion((n) => n + 1) }
-                          else { setAviso({}); setLead({ ...lead, atributos: r.atributos ?? lead.atributos }); cargar() }
-                        }} />
+                      {a.nombre}{a.clave in cambios && <span className="muted"> · sin guardar</span>}
+                      <CampoAtributo a={a} valor={valorDe(a.clave)} ocupado={ocupado} error={errores[a.clave] ?? null}
+                        cambiar={(v) => cambiar(a.clave, v)} />
+                      {errores[a.clave] && <small className="error">{errores[a.clave]}</small>}
                     </label>
                   ))}
                 </fieldset>
@@ -332,7 +468,17 @@ export function Ficha({ lead: inicial, yo, usuarios, asesores, embudos, etapas, 
 
           {pestana === 'tareas' && (
             <div style={{ display: 'grid', gap: 8 }}>
-              {tareas.length === 0 && <small className="muted">Sin tareas. Créalas desde la caja de la derecha (pestaña Tarea).</small>}
+              {nuevaTarea ? (
+                <div className="dato">
+                  <div className="row" style={{ justifyContent: 'space-between' }}><small>Nueva tarea</small>
+                    <button className="btn-link" onClick={() => setNuevaTarea(false)}>Cancelar</button></div>
+                  {formTarea(() => setNuevaTarea(false))}
+                </div>
+              ) : (
+                <div className="row"><button className="btn chico" disabled={!yo.moverEtapas} onClick={() => setNuevaTarea(true)}
+                  title={yo.moverEtapas ? 'También desde el chat, en la pestaña Tarea' : 'Tu rol no agenda tareas'}>+ Tarea</button></div>
+              )}
+              {tareas.length === 0 && <small className="muted">Sin tareas.</small>}
               {tareas.map((t) => (
                 <div key={t.id} className="dato" style={{ opacity: t.estado === 'pendiente' ? 1 : 0.6 }}>
                   <small>{t.tipo} · {fechaLarga(t.vence_en)} · {nombres.get(t.asignado_a) ?? 'Asesor'}
@@ -385,6 +531,29 @@ export function Ficha({ lead: inicial, yo, usuarios, asesores, embudos, etapas, 
               {minutosPrimera !== null && <div className="dato"><small>Primera respuesta de un asesor</small><div>{minutosPrimera} min después de entrar a la cola</div></div>}
               <div className="dato"><small>Origen</small><div>{lead.origen}</div></div>
               <div className="dato"><small>Tareas</small><div>{tareas.filter((t) => t.estado === 'hecho').length} cumplidas · {pendientes.length} pendientes</div></div>
+            </div>
+          )}
+
+          {conflictos && (
+            <div className="aviso warn" role="alert">
+              <b>Estos datos cambiaron mientras editabas</b> (otro asesor o el bot):
+              <ul style={{ margin: '6px 0' }}>
+                {Object.entries(conflictos).map(([k, v]) => (
+                  <li key={k}>{nombreDe(k)}: ahora dice «{mostrar(k, v)}»; tú pusiste «{mostrar(k, cambios[k])}»</li>
+                ))}
+              </ul>
+              <div className="row" style={{ gap: 6 }}>
+                <button className="btn chico primary" disabled={ocupado} onClick={() => guardarCambios(true)}>Conservar lo mío</button>
+                <button className="btn chico" disabled={ocupado} onClick={usarLoNuevo}>Usar lo nuevo</button>
+              </div>
+            </div>
+          )}
+
+          {hayCambios && (
+            <div className="f-guardar" role="region" aria-label="Cambios sin guardar">
+              <span>Cambios sin guardar ({Object.keys(cambios).length})</span>
+              <button className="btn chico" disabled={ocupado} onClick={() => { setCambios({}); setConflictos(null); setAviso({}) }}>Descartar</button>
+              <button className="btn chico primary" disabled={ocupado} onClick={() => guardarCambios()}>{ocupado ? 'Guardando…' : 'Guardar cambios'}</button>
             </div>
           )}
 
@@ -452,24 +621,7 @@ export function Ficha({ lead: inicial, yo, usuarios, asesores, embudos, etapas, 
           {caja === 'chat' && mensajes !== null && !enVentana ? (
             <ComponerPlantilla key={lead.id} lead={lead.id} nombreCliente={lead.nombre} alEnviar={() => { cargar(); router.refresh() }} />
           ) : caja === 'tarea' ? (
-            <form className="row" style={{ gap: 6 }} onSubmit={async (e) => {
-              e.preventDefault()
-              if (await hacer(() => crearTarea(lead.id, tarea))) setTarea({ ...tarea, que: '' })
-            }}>
-              <select aria-label="Tipo" value={tarea.tipo} onChange={(e) => setTarea({ ...tarea, tipo: e.target.value })}>
-                {tiposTarea.map((t) => <option key={t}>{t}</option>)}
-              </select>
-              <input style={{ flex: '1 1 200px' }} placeholder="Qué hay que hacer" maxLength={200} value={tarea.que} onChange={(e) => setTarea({ ...tarea, que: e.target.value })} />
-              <input type="datetime-local" aria-label="Para cuándo" value={tarea.vence} onChange={(e) => setTarea({ ...tarea, vence: e.target.value })} />
-              {yo.verTodas && (
-                <select aria-label="Para quién" value={tarea.asignado} onChange={(e) => setTarea({ ...tarea, asignado: e.target.value })}>
-                  <option value="">Para mí</option>
-                  {asesores.filter((a) => a.id !== yo.id).map((a) => <option key={a.id} value={a.id}>{a.nombre}</option>)}
-                </select>
-              )}
-              <button className="btn primary" disabled={ocupado || !tarea.que.trim() || !yo.moverEtapas}
-                title={yo.moverEtapas ? undefined : 'Tu rol no agenda tareas'}>Crear tarea</button>
-            </form>
+            formTarea()
           ) : (
             <>
               {caja === 'chat' && lead.estado_chat !== 'asignada' && <small className="muted">Al responder tomas la conversación y el bot deja de contestarle.</small>}

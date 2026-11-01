@@ -31,7 +31,7 @@ export default async function PaginaFicha({ params }: { params: { id: string } }
     supabase.from('etapas').select('id, nombre, cierre, color, embudo_id, orden').order('orden'),
     supabase.from('embudos').select('id, nombre').eq('activo', true).order('orden'),
     supabase.from('respuestas_rapidas').select('id, atajo, titulo, texto').eq('activo', true).order('atajo'),
-    supabase.from('lead_atributos').select('clave, nombre, tipo, seccion, opciones, archivado_en').order('seccion').order('orden'),
+    supabase.from('lead_atributos').select('clave, nombre, tipo, seccion, opciones, archivado_en, solo_venta_online, etapas_obligatorio').order('seccion').order('orden'),
     supabase.from('lead_tarea_tipos').select('nombre').eq('activo', true).order('orden'),
     supabase.rpc('leads_etiquetas'),
     supabase.from('cotizaciones').select('id, consecutivo, total, tipo_cliente, pdf, creado_en, valida_hasta').eq('lead_id', id).order('creado_en', { ascending: false }),

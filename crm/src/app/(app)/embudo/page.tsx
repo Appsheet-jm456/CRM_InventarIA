@@ -22,7 +22,7 @@ export default async function Embudo({ searchParams }: { searchParams: { e?: str
     supabase.from('etapas').select('id, nombre, color, cierre').eq('embudo_id', actual.id).order('orden'),
     supabase
       .from('oportunidades')
-      .select('id, etapa_id, estado, valor_estimado, producto, motivo_perdido, lead_id, leads!inner(nombre, telefono, estado_chat, asignado_a)')
+      .select('id, etapa_id, estado, valor_estimado, producto, motivo_perdido, lead_id, leads!inner(nombre, telefono, estado_chat, asignado_a, atributos)')
       .eq('embudo_id', actual.id)
       .is('leads.archivado_en', null) // archivados y papelera salen del Embudo (F4·30 E)
       .is('leads.eliminado_en', null)

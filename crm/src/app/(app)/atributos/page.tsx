@@ -12,7 +12,7 @@ export default async function PaginaAtributos() {
   const supabase = crearCliente()
   const [{ data: atributos }, { data: etapas }, { data: leads }] = await Promise.all([
     supabase.from('lead_atributos')
-      .select('id, clave, nombre, tipo, seccion, orden, opciones, obligatorio, etapas_obligatorio, visible_lista, llenable_bot, archivado_en')
+      .select('id, clave, nombre, tipo, seccion, orden, opciones, obligatorio, etapas_obligatorio, visible_lista, llenable_bot, solo_venta_online, archivado_en')
       .order('seccion').order('orden').order('id'),
     supabase.from('etapas').select('nombre, orden').order('orden'),
     supabase.from('leads').select('atributos').is('eliminado_en', null).limit(5000),

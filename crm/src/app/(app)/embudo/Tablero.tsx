@@ -16,7 +16,7 @@ type Oportunidad = {
   producto: string
   motivo_perdido: string | null
   lead_id: number
-  leads: { nombre: string; telefono: string; estado_chat: string; asignado_a: string | null } | null
+  leads: { nombre: string; telefono: string; estado_chat: string; asignado_a: string | null; atributos: Record<string, unknown> | null } | null
 }
 
 const COLORES: Record<string, string> = {
@@ -123,6 +123,8 @@ export function Tablero({ etapas, oportunidades, nombres, yo }: {
                     {o.motivo_perdido && <small>Motivo: {o.motivo_perdido}</small>}
                     <div className="k-pie">
                       <span className="chip neu">{estadoChat(o)}</span>
+                      {o.leads?.atributos?.venta_online === true && <span className="chip acc" title="Venta online">🚚</span>}
+                      {o.leads?.atributos?.venta_online === false && <span className="chip neu" title="Venta tienda">🏬</span>}
                       <select aria-label="Mover a otra etapa" value={o.etapa_id} onChange={(ev) => mover(o.id, Number(ev.target.value))}>
                         {etapas.map((x) => <option key={x.id} value={x.id}>{x.nombre}</option>)}
                       </select>

@@ -1,6 +1,6 @@
 # Módulo Leads: lista, ficha del cliente, atributos y tareas (F4·30) · Capacidad para 1.000 clientes al día (F4·31)
 
-**Estado:** ✅ F4·30 hecha · 📝 F4·33 (Venta online o tienda, ajustes de la ficha) documentada el 1 nov 2026, por construir · F4·31 (capacidad) pendiente · Decisión [0033](decisiones/0033-modulo-leads-y-capacidad.md) aceptada
+**Estado:** ✅ F4·30 hecha · 🔵 F4·33 (Venta online o tienda, ajustes de la ficha) construida el 1 nov 2026 (migración 0036), falta la prueba del dueño · F4·31 (capacidad) pendiente · Decisión [0033](decisiones/0033-modulo-leads-y-capacidad.md) aceptada
 Referencia que trajo el dueño: la lista «Todos los leads» y la ficha del lead de Kommo (panel de datos a la izquierda, chat a la derecha).
 
 ## Qué pidió el dueño (31 oct 2026)
@@ -141,19 +141,31 @@ Se construye en tres bloques: **A** ficha (incluye el botón Guardar), **B** dat
 - RL-21. Cuando el asesor **confirma el pago** de una venta online, se abre el proceso de alistamiento y despacho para la transportadora. El embudo de
   Cliente Final gana dos etapas entre *Pago por confirmar* y *Vendido*: **Alistamiento** y **Despachado** (el embudo solo avanza, RL de CLAUDE.md).
   *Vendido* sigue siendo la venta cerrada que cuentan las Métricas.
-- RL-22. Tipos de tarea nuevos: **Alistar equipo** y **Enviar guía al cliente** (ya existen *Verificar pago* y *Despachar*). Al confirmar el pago online
-  el sistema crea *Alistar equipo*, *Despachar* y *Enviar guía al cliente*; en una venta de tienda crea *Entregar en tienda*.
+- RL-22. Tipos de tarea nuevos: **Alistar equipo**, **Enviar guía al cliente** y **Entregar en tienda** (ya existen *Verificar pago* y *Despachar*). Pasar la
+  oportunidad a **Alistamiento** es confirmar el pago: en una venta online el sistema crea *Alistar equipo*, *Despachar* y *Enviar guía al cliente*; en una venta de tienda crea *Entregar en tienda*.
 - RL-23. Las tareas se crean **desde el panel de la ficha** (botón **+ Tarea** junto a la lista de tareas, con el tipo, la fecha y el responsable)
   **y desde el chat** (la pestaña *Tarea* de la caja de respuesta, que ya existe). Las dos escriben en la misma tabla `seguimientos` y se ven en
   *Seguimientos*.
 - RL-24. Al pasar a **Despachado**, el asesor anota la **transportadora y el número de guía** (dos atributos nuevos, texto) y el sistema puede
   mandarle la guía al cliente por WhatsApp (dentro de las 24 h; fuera, con plantilla de Meta).
 
+### Cómo quedó construida (1 nov 2026, migración 0036, 8 pruebas en `supabase/pruebas/0036_venta_online.sql`)
+
+- Atributo nuevo `venta_online` (sí/no) y columna **`solo_venta_online`** en los atributos (interruptor «Solo venta online» en Configuración → Atributos):
+  esos campos se ven si el lead es venta online **o si ya tienen un dato** (así no se esconde lo que anotó el bot), y solo en venta online son obligatorios.
+- Tipo de atributo nuevo **Documento (solo números)**, que usa la Cédula.
+- **Guardar cambios** usa la función `lead_guardar_ficha`: guarda todo en una transacción, deja un evento `ficha` con lo que cambió y, si otro cambió
+  el dato mientras tanto, devuelve los conflictos y la ficha ofrece **Conservar lo mío** o **Usar lo nuevo**.
+- Las tareas automáticas las crea un disparador al entrar a *Alistamiento* (se asignan al responsable del cliente o a quien movió la oportunidad).
+- Lista de Leads: columna *Venta online* con 🚚 Online / 🏬 Tienda. Embudo: insignia 🚚 o 🏬 en la tarjeta.
+
 ### Puntos por confirmar con el dueño (con lo que se construye si no dice otra cosa)
 
 1. **«Número» = Número de contrato** → Nota del asesor. *Fecha de contrato* se queda; si tampoco la quiere, se archiva igual.
 2. **Dirección de entrega** en los datos de despacho: no estaba en su lista, pero la transportadora la necesita → *se incluye*.
 3. **Etapas Alistamiento y Despachado** en el embudo de Cliente Final → *se crean*.
+
+El paso del bot que pide los datos de despacho se dejó fuera por decisión del dueño (1 nov 2026): se evalúa cuando la ficha esté en uso.
 
 ## Permisos
 

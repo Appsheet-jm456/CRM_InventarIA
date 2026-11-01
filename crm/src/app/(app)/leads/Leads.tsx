@@ -110,6 +110,7 @@ export function Leads(props: {
   const atributoFiltro = atributos.find((a) => a.clave === filtros.atributo)
 
   function celda(f: Fila, c: string) {
+    if (c === 'a:venta_online') return f.atributos?.venta_online === true ? '🚚 Online' : f.atributos?.venta_online === false ? '🏬 Tienda' : ''
     if (c.startsWith('a:')) return valorAtributo(f.atributos?.[c.slice(2)])
     switch (c) {
       case 'telefono': return <span className="num">+{f.telefono}</span>

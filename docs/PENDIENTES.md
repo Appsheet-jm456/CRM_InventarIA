@@ -6,6 +6,10 @@ de las Fases 1 y 2 abajo. **Código nuevo:** el bot de prueba sobre Supabase (`h
 
 ## Dónde retomar (en este orden)
 
+0. **1 nov 2026 · F4·33 construida 🔵** ([LEADS.md](LEADS.md), migración 0036): método de pago Efectivo en tienda / Transferencia, sin Descuento ni
+   Número de serie, Nota del asesor, interruptor **Venta online / Venta tienda**, sección **Datos de despacho**, etapas **Alistamiento** y **Despachado**
+   con tareas automáticas, **+ Tarea** en la ficha y botón **Guardar cambios**. El bot de compra no cambió. **Falta la prueba del dueño** (recargar la página).
+
 0. **1 nov 2026 · Balance y cierre de tareas.** El dueño dio por **hechas** F4·25 (compra), F4·26 (cotización), F4·27 (Cerebro), F4·28 (Avi), F4·30 (Leads) y F4·32 (documentos); quedan así en `tareas.csv` y Notion. **F4·29 (piloto Distribuidores) sigue pendiente:** no está construido y necesita webhook fijo (F2·17). Brief a **v1.3**. Siguen, por prioridad: 1) **respaldos automáticos de la base (F5·2)**, hoy no hay; 2) webhook fijo (F2·17); 3) aislar las pruebas frágiles `0012`, `0014`, `0015` y 4 y 6 de `0024` (hoy 4 en rojo en `migrar.sh --probar`); 4) que el receptor espere a la base al arrancar tras un reinicio (el 31 oct se reinició en bucle ~1 min); 5) F4·31 capacidad y F1·6 costo de Meta; 6) F4·14 arranques del bot. 18 commits sin subir a GitHub (push solo con autorización).
 
 0. **31 oct 2026 · F4·30 Módulo Leads construido 🔵 (A a E, migraciones 0032 a 0035, [LEADS.md](LEADS.md)):** atributos personalizados

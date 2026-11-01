@@ -16,6 +16,7 @@ type Atributo = {
   etapas_obligatorio: string[]
   visible_lista: boolean
   llenable_bot: boolean
+  solo_venta_online: boolean
   archivado_en: string | null
   usos: number
 }
@@ -94,6 +95,7 @@ export function Atributos({ atributos, etapas }: { atributos: Atributo[]; etapas
                     <th>Orden</th><th>Nombre</th><th>Tipo</th><th>Opciones</th><th>Obligatorio</th>
                     <th title="Se ve como columna en la lista de leads">En la lista</th>
                     <th title="El bot o el agente lo pueden llenar">Lo llena el bot</th>
+                    <th title="Se ve y es obligatorio solo cuando el lead es Venta online (F4·33)">Solo venta online</th>
                     <th className="r">Clientes</th><th></th>
                   </tr>
                 </thead>
@@ -129,6 +131,8 @@ export function Atributos({ atributos, etapas }: { atributos: Atributo[]; etapas
                         onClick={() => hacer(() => editarAtributo(a.id, { visible_lista: !a.visible_lista }))} /></td>
                       <td><button className={`toggle${a.llenable_bot ? ' on' : ''}`} disabled={ocupado} aria-label="Lo llena el bot"
                         onClick={() => hacer(() => editarAtributo(a.id, { llenable_bot: !a.llenable_bot }))} /></td>
+                      <td><button className={`toggle${a.solo_venta_online ? ' on' : ''}`} disabled={ocupado} aria-label="Solo venta online"
+                        onClick={() => hacer(() => editarAtributo(a.id, { solo_venta_online: !a.solo_venta_online }))} /></td>
                       <td className="r num">{a.usos}</td>
                       <td className="r">
                         <button className="btn chico peligro" disabled={ocupado}

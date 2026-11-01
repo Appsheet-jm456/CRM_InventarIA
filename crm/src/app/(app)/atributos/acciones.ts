@@ -13,6 +13,7 @@ export type CambiosAtributo = {
   etapas_obligatorio?: string[]
   visible_lista?: boolean
   llenable_bot?: boolean
+  solo_venta_online?: boolean
 }
 
 const CON_OPCIONES: TipoAtributo[] = ['lista', 'multiseleccion']
@@ -89,6 +90,7 @@ export async function editarAtributo(id: number, c: CambiosAtributo): Promise<Re
   }
   if (c.visible_lista !== undefined) cambios.visible_lista = c.visible_lista
   if (c.llenable_bot !== undefined) cambios.llenable_bot = c.llenable_bot
+  if (c.solo_venta_online !== undefined) cambios.solo_venta_online = c.solo_venta_online
   const { data, error } = await supabase.from('lead_atributos').update(cambios).eq('id', id).select('id')
   if (error) return { error: error.message }
   if (!data?.length) return { error: 'No tienes permiso para cambiar atributos.' }

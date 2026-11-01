@@ -23,6 +23,21 @@ export async function guardarAtributos(lead: number, cambios: Record<string, unk
   return r.error ? r : { atributos: r.data as Record<string, unknown> }
 }
 
+// «Guardar cambios» (F4·33, RL-25): nombre, valor y atributos juntos. `antes` es lo que el asesor vio al abrir; si otro lo cambió
+// mientras tanto, la base no guarda y devuelve los conflictos (con `forzar`, guarda igual).
+export type Guardado = Resultado & {
+  conflictos?: Record<string, unknown>
+  lead?: { atributos: Record<string, unknown>; nombre: string; valor: number | null }
+}
+export async function guardarFicha(lead: number, cambios: Record<string, unknown>, antes: Record<string, unknown>, forzar = false): Promise<Guardado> {
+  const r = await llamar('lead_guardar_ficha', { p_lead: lead, p_cambios: cambios, p_antes: antes, p_forzar: forzar }, lead)
+  if (r.error) return r
+  const d = r.data as { conflictos?: Record<string, unknown>; atributos: Record<string, unknown>; nombre: string; valor: number | null }
+  if (d.conflictos) return { conflictos: d.conflictos }
+  revalidatePath('/leads')
+  return { ok: 'Cambios guardados.', lead: { atributos: d.atributos, nombre: d.nombre, valor: d.valor } }
+}
+
 export async function notaLead(lead: number, texto: string): Promise<Resultado> {
   if (!texto.trim()) return { error: 'Escribe la nota.' }
   const r = await llamar('lead_nota', { p_lead: lead, p_texto: texto }, lead)
