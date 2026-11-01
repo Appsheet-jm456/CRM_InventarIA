@@ -62,6 +62,8 @@ Entra con el equipo ya elegido y la memoria del cliente. Hace, en este orden fle
 
 ### El paso al asesor (sin IA)
 
+- RAG-19b. **El botón «Lo quiero» de la ficha abre la compra** (arreglo del 1 nov 2026): cuenta como «quiero comprar» si la acción «Quiero comprar»
+  está activa, con el equipo de la ficha. Antes pasaba el chat al asesor. Con la acción apagada, sigue pasando al asesor.
 - RAG-20. **Detección del comprobante:** con la oportunidad en *Esperando pago*, si el cliente manda una **foto o un PDF**, o escribe "ya pagué",
   "ya transferí", "listo el pago", el **sistema** (no la IA):
   1. mueve la oportunidad a **Pago por confirmar** y pone la etiqueta `Pago-Por-Confirmar`;

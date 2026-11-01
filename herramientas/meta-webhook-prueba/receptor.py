@@ -573,12 +573,18 @@ def _contestar(numero, entrada, visible, nombre, tipo, meta_id, media=None, guar
                     anotar(f"  {icono} {nombre_flujo} · {(st.get(nombre_flujo) or {}).get('paso') or 'terminó'}"
                            + (f" · embudo → {paso_embudo}" if paso_embudo else ""))
                     extras_de_compra(lead, etiquetas, paso_embudo, nota)
-            # Acciones «Cuando → Hacer» (F4·24, RAG-25): solo con texto escrito, no con botones del menú ni media.
+            # Acciones «Cuando → Hacer» (F4·24, RAG-25): solo con texto escrito, no con botones del menú ni media. La excepción es el
+            # botón «Lo quiero» de la ficha: cuenta como «quiero comprar» y abre la compra si esa acción está activa (F4·25).
             atendida = None
             en_pregunta = mensajes is None and flujo.en_pregunta(st)  # F4·34: la respuesta es un dato, no una consulta
-            if mensajes is None and tipo in ("text", "button") and not st["pausa"] and not en_pregunta:
+            entrada_accion = entrada
+            if mensajes is None and tipo == "interactive" and not st["pausa"]:
+                tocada = flujo.elegir(flujo.cuadro_actual(st), flujo.normalizar(entrada))
+                if tocada and tocada.get("reconocer") == "quiere_comprar":
+                    entrada_accion = "quiero comprar"
+            if mensajes is None and (tipo in ("text", "button") or entrada_accion != entrada) and not st["pausa"] and not en_pregunta:
                 try:
-                    atendida = acciones.responder(st, entrada, lead)
+                    atendida = acciones.responder(st, entrada_accion, lead)
                 except Exception as e:  # si las acciones fallan, el menú responde como siempre
                     anotar(f"  ✗ las acciones fallaron: {e!r}")
             if atendida:
@@ -607,9 +613,11 @@ def _contestar(numero, entrada, visible, nombre, tipo, meta_id, media=None, guar
                     anotar(f"  🤖 Avi · {len(avi['traza'])} paso(s) · US$ {avi['costo_usd']}"
                            + (" · pasó a asesor" if avi["asesor"] else "") + (f" · {avi['flujo']}" if avi["flujo"] else ""))
                     extras_de_compra(lead, avi["etiquetas"], None, avi["nota"])
-                elif menu:
+                elif menu or tipo != "text" or flujo.normalizar(entrada) == "reiniciar":
+                    # Con el menú apagado, los botones que ya se enviaron (la ficha que manda Avi, por ejemplo), la media y «reiniciar»
+                    # los sigue atendiendo el motor: si no, el cliente toca un botón y se queda sin respuesta.
                     mensajes, st = flujo.responder(st, entrada, avisar)
-                else:  # menú apagado y Avi no atiende este mensaje: como con el chatbot apagado (RF-31)
+                else:  # menú apagado y Avi no atiende este texto: como con el chatbot apagado (RF-31)
                     mensajes = sin_bot(st, interruptores)
                     anotar("  ⏻ menú apagado y Avi no atiende: el chat queda en la cola")
         except Exception as e:  # una falla del árbol o de la base no debe tumbar el receptor

@@ -436,6 +436,10 @@ los datos guardados. Compra: «Después del comprobante, ir al bot».
 | ✅ | ❌ | ❌ | Igual que apagar el Chatbot (la pantalla lo avisa) |
 | ❌ | — | — | Todo lo atienden los asesores |
 
+**Con el Menú guiado apagado** (arreglo del 1 nov 2026, probado por el dueño): solo deja de atender el **texto** que Avi no toma. Los **botones**
+que ya se enviaron (por ejemplo la ficha que manda Avi), la media y «reiniciar» los sigue atendiendo el motor; antes el cliente tocaba
+«Lo quiero» y su chat se iba a la cola sin respuesta.
+
 **RF-32 · Mensaje con el Chatbot apagado (opcional).** Un texto que escribe el dueño (ej. «Hola 👋 En un momento te atiende un asesor») y que el
 cliente recibe **una vez por conversación** (no en cada mensaje). Vacío = no se envía nada. Se cuenta como mensaje de Meta.
 
