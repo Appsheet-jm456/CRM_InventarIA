@@ -300,7 +300,7 @@ por significado (embeddings con `pgvector`); se suman si la búsqueda por palabr
 
 ## Dónde se usa el agente
 
-- RAG-14. El modo se elige **por bot** (lista de bots del lienzo): Menú guiado, Híbrido o Agente. Así se puede tener, por ejemplo, el bot
+- RAG-14. *(Reemplazada por F4·35, decisión 0034: interruptor «Avi en todo el bot» y cuadro 🤖 Agente en el lienzo.)* El modo se elige **por bot** (lista de bots del lienzo): Menú guiado, Híbrido o Agente. Así se puede tener, por ejemplo, el bot
   principal en Híbrido y el bot de **Distribuidores** en Agente.
 - RAG-15. Un bot en modo Agente puede seguir usando el **menú de bienvenida** del lienzo y entregar al agente cuando el cliente escribe libre
   (opción «Hablar con el agente» o salida «Otra respuesta» hacia el agente).

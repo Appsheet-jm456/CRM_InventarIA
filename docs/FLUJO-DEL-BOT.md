@@ -23,6 +23,7 @@
 | ✅ **F4·17** Lienzo a pantalla completa (3 oct, decisión 0030) | El lienzo de un bot ocupa toda la pantalla, con barra superior: ← Cancelar, Probar, Publicar… y Guardar. Se mantiene el borrador |
 | ✅ **F4·18** Salidas del Mensaje (3 oct, decisión 0030, migración 0021) | «Otra respuesta», «Sin respuesta» (con tiempo) y «Error al enviar el mensaje», como en Kommo |
 | 📝 **F4·34** Cuadro Pregunta, datos en los mensajes y datos de despacho tras el pago (1 nov 2026) | Cuadro ❓ Pregunta que guarda la respuesta en un dato de la ficha y la valida; marcas `{dato}` en los mensajes; efecto «Marcar un dato» en los botones; la compra sigue en un bot del lienzo después del comprobante; bot de ejemplo «Datos de despacho» |
+| 📝 **F4·35** Interruptores del bot y cuadro 🤖 Agente (1 nov 2026, decisión 0034) | Chatbot, Menú guiado y Avi en texto libre en todo el bot, con mensaje fijo opcional; cuadro 🤖 Agente con instrucción, herramientas, límite y salidas; se retira el modo por bot |
 | **F4·15** Simulador y pruebas | Probar los cuadros y bots nuevos en el simulador (la Pausa con "Simular que pasó el tiempo"), pruebas de la base y del motor |
 
 ## Reglas
@@ -402,6 +403,66 @@ de columna (la pantalla lo lee columna por columna). `problemas_del_flujo` revis
 marca `{dato}` exista. Motor: `flujo.py` (Pregunta y marcas) y `compra.py` (RF-28).
 
 **Fuera de esta tarea:** varios equipos en una compra, leer los datos de una foto de la cédula y que el agente Avi llene las preguntas.
+
+## Interruptores del bot y cuadro Agente (F4·35)
+
+**Pedido el 1 nov 2026, decisión [0034](decisiones/0034-interruptores-y-cuadro-agente.md).** Va después de F4·34 (usa sus salidas y datos).
+
+### Interruptores (Configuración → Bot → Interruptores)
+
+**RF-31 · Tres interruptores, de mayor a menor:**
+
+| Interruptor | Encendido | Apagado |
+|---|---|---|
+| **1. Chatbot** (general) | La automatización funciona según los otros dos | **Nada automático contesta**: ni menú, ni Avi, ni acciones, ni recordatorios. Cada mensaje entra a la cola de la Bandeja con aviso |
+| **2. Menú guiado** (el lienzo) | Los bots del lienzo atienden: menús, preguntas, cuadros 🤖 | Sin menús; el texto lo atiende Avi si el 3 está encendido |
+| **3. Avi en texto libre en todo el bot** | Toda pregunta abierta, en cualquier punto, la responde Avi | Avi solo entra en los cuadros 🤖; el texto libre fuera de ellos lo atiende el Híbrido (decisión 0016) |
+
+| Chatbot | Menú | Avi en todo | Resultado |
+|---|---|---|---|
+| ✅ | ✅ | ✅ | Menú + Avi en cualquier pregunta abierta + asesor |
+| ✅ | ✅ | ❌ | Menú + Avi solo en sus cuadros + asesor (guiado + agente + asesor con flechas) |
+| ✅ | ❌ | ✅ | Solo Avi, sin menús; pasa al asesor cuando hace falta |
+| ✅ | ❌ | ❌ | Igual que apagar el Chatbot (la pantalla lo avisa) |
+| ❌ | — | — | Todo lo atienden los asesores |
+
+**RF-32 · Mensaje con el Chatbot apagado (opcional).** Un texto que escribe el dueño (ej. «Hola 👋 En un momento te atiende un asesor») y que el
+cliente recibe **una vez por conversación** (no en cada mensaje). Vacío = no se envía nada. Se cuenta como mensaje de Meta.
+
+**RF-33 · Apagar y encender sin dejar a nadie colgado.** Al **apagar** el Chatbot, los chats que estaban con el bot pasan a la cola (los recordatorios
+y pausas pendientes se cancelan). Al **encender**, los chats que tomó un asesor siguen con él; el bot atiende a los nuevos y a los de la cola sin
+asesor que vuelvan a escribir.
+
+**RF-34 · Quién y cómo.** Solo el administrador (permiso `administrar_bot`). Cada cambio pide confirmar y queda en el historial (quién, cuándo,
+antes → después). Mientras el Chatbot esté apagado, la Bandeja y el panel lateral muestran **«🤖 Chatbot apagado»**. El interruptor del agente
+que ya existe (Apagado · Solo en Probar · Números de prueba · Todos) sigue: decide **a quién** atiende Avi; el 3 decide **dónde**.
+
+**RF-35 · Se retira el modo por bot** (Menú guiado, Híbrido, Agente; RAG-14). El bot que hoy está en Agente («Bienvenida») deja «Avi en todo»
+encendido al migrar, para que el comportamiento no cambie.
+
+### Cuadro 🤖 Agente
+
+**RF-36 · "+ Agregar" → 🤖 Agente.** Desde ese punto Avi conversa con el cliente. En el panel:
+- **Instrucción para este punto** (se suma a la personalidad de Avi): ej. «Resuelve dudas del equipo que vio y llévalo a comprar»;
+- **Herramientas permitidas** (buscar en inventario, conocimiento, ficha, iniciar compra, cotización, pasar a asesor), marcadas por defecto las que
+  no estén apagadas en Avi;
+- **Límite de vueltas** (mensajes del cliente dentro del cuadro; 8 por defecto).
+
+**RF-37 · Salidas:** **Inició compra** (si no se une, sigue el flujo de compra de siempre), **Pidió asesor o no avanza** (pidió asesor, 3 sin avance,
+llegó al límite o al tope de costo; si no se une, va al asesor), **Volvió al menú** (el cliente escribió *menú*, *0* o *hola*; si no se une, va al
+inicio) y **Error del cerebro** (ningún modelo respondió; si no se une, atiende el Híbrido). El cliente nunca se queda sin respuesta.
+
+**RF-38 · Reglas de Avi que no cambian:** precios y datos verificados contra la base (RAG-02), cuentas solo con el texto aprobado (RAG-09), no confirma
+pagos, el asesor tiene la última palabra (un chat tomado no lo atiende Avi). Si el agente está apagado o el número no está en su alcance
+(Solo en Probar / Números de prueba), el cuadro sale por *Error del cerebro*.
+
+**RF-39 · Simulador y Registro.** El simulador del lienzo prueba el cuadro (gasta del presupuesto como Probar, sin contar en Métricas). El Registro de Avi
+anota en qué cuadro y bot respondió.
+
+**Modelo.** `bot_config` (una fila): `chatbot_activo`, `menu_activo`, `agente_en_todo`, `texto_apagado`, `actualizado_por`, `actualizado_en`, con
+historial en `bot_config_historial`. Tipo `agente` en `bot_cuadros` con `ajustes.instruccion`, `ajustes.herramientas`, `ajustes.max_vueltas`, y
+salidas `compra`, `asesor`, `menu`, `error`. `leads.estado_bot` guarda las vueltas dentro del cuadro. Receptor: lee la configuración cada 30 s
+como el resto; `agente.py` recibe la instrucción y las herramientas del cuadro.
 
 ## Arranques y pruebas (F4·14 y F4·15, decisión 0028)
 
