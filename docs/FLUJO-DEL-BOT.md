@@ -22,6 +22,7 @@
 | **F4·14** Arranque por palabra clave y por etapa del embudo | Un bot arranca si el cliente escribe su palabra clave o si su oportunidad entra a cierta etapa |
 | ✅ **F4·17** Lienzo a pantalla completa (3 oct, decisión 0030) | El lienzo de un bot ocupa toda la pantalla, con barra superior: ← Cancelar, Probar, Publicar… y Guardar. Se mantiene el borrador |
 | ✅ **F4·18** Salidas del Mensaje (3 oct, decisión 0030, migración 0021) | «Otra respuesta», «Sin respuesta» (con tiempo) y «Error al enviar el mensaje», como en Kommo |
+| 📝 **F4·34** Cuadro Pregunta, datos en los mensajes y datos de despacho tras el pago (1 nov 2026) | Cuadro ❓ Pregunta que guarda la respuesta en un dato de la ficha y la valida; marcas `{dato}` en los mensajes; efecto «Marcar un dato» en los botones; la compra sigue en un bot del lienzo después del comprobante; bot de ejemplo «Datos de despacho» |
 | **F4·15** Simulador y pruebas | Probar los cuadros y bots nuevos en el simulador (la Pausa con "Simular que pasó el tiempo"), pruebas de la base y del motor |
 
 ## Reglas
@@ -338,6 +339,69 @@ clientes de prueba: dentro de la ventana, fuera de ella y con asesor.
 **Base (0019).** `borrador_crear_cuadro('pausa', …)` crea `P<n>`; `borrador_guardar_pausa(clave, nombre, segundos, respondio,
 tiempo, bot)` valida el rango y que no lleve a la ficha ni a sí misma; `problemas_del_flujo` revisa el rango. Pruebas:
 `supabase/pruebas/0019_pausa.sql` (6). El bot principal responde igual que antes en 70.536 conversaciones.
+
+## Cuadro Pregunta y datos de despacho tras el pago (F4·34)
+
+**Pedido el 1 nov 2026.** Cuando el cliente paga, el bot le pide los datos para el envío y los deja en la ficha, y el dueño arma esa
+conversación en el lienzo (no queda fija en el código). Se apoya en F4·33 (Venta online o tienda y Datos de despacho, [LEADS.md](LEADS.md)).
+Sin IA: la respuesta la escribe el cliente, el bot la valida y la guarda en la base (decisión 0016).
+
+**RF-23 · Cuadro ❓ Pregunta.** "+ Agregar" → Pregunta. En el panel se elige:
+- el **texto** de la pregunta (ej. «¿Tu nombre completo?»), con los mismos límites y la vista de WhatsApp de un Mensaje;
+- **dónde se guarda**: uno de los atributos activos de la ficha (Nombre completo, Cédula, Celular, Correo, Ciudad y departamento, Dirección…);
+- el **mensaje cuando la respuesta no sirve** (ej. «La cédula va solo con números 🙏»).
+El cuadro muestra «Guarda en: Cédula (CC)». Salidas: **Siguiente** (obligatoria), **Sin respuesta** (con tiempo, como el Mensaje, RF de F4·18)
+y **No logró responder** (después de 3 intentos fallidos; si no se une, pasa al asesor).
+
+**RF-24 · La validación sale del tipo del atributo.** Es la misma de la base (`lead_atributo_error`), con una limpieza antes de validar:
+- **Documento** (Cédula): quita puntos, espacios y guiones («1.020.345.678» → 1020345678); de 5 a 12 números.
+- **Teléfono** (Celular): quita espacios y el +57; 10 números que empiezan por 3.
+- **Correo**: debe tener @ y dominio; se guarda en minúsculas.
+- **Lista**: muestra las opciones como botones y solo acepta una de ellas.
+- **Texto, Dirección y Texto largo**: cualquier respuesta no vacía, hasta su largo máximo.
+Si no sirve, manda el mensaje de error y vuelve a preguntar; al tercer intento sale por *No logró responder*.
+
+**RF-25 · El dato queda en la ficha al instante**, con el historial del lead («Sistema · Cédula (CC): — → 1020345678», RL-12). Si el dato ya
+estaba lleno, la pregunta igual se hace y lo reemplaza (el cliente pudo cambiar de dirección). Escribir *asesor*, *menú* o *reiniciar* sigue
+funcionando como en todo el bot.
+
+**RF-26 · Datos de la ficha dentro de los mensajes.** En el texto de cualquier cuadro se puede escribir una marca con la clave del atributo,
+por ejemplo `{nombre_completo}`, `{cedula}`, `{celular}`, `{correo_para_la_factura}`, `{ciudad}`, `{direccion_entrega}`. El bot la cambia por
+el dato del cliente; si está vacío, por «—». El panel ofrece un botón **Insertar dato** con la lista (para no escribir las claves a mano) y
+la vista previa avisa si una marca no existe (como `{horario}`, F4·4). El límite de 1.024 caracteres se cuenta con el texto ya armado.
+
+**RF-27 · Efecto «Marcar un dato» en los botones.** A cada opción de un Mensaje se le puede poner, además de lo que ya anota (etapa, etiqueta),
+**un dato de la ficha con un valor fijo**: por ejemplo el botón «🚚 Envío a domicilio» marca *Venta online = Sí* y «🏬 Recojo en tienda»
+marca *Venta online = No*. Solo atributos de tipo Sí/No o Lista.
+
+**RF-28 · La compra sigue en un bot del lienzo.** En Configuración → Agente → **Compra** se agrega «**Después del comprobante, ir al bot:**
+[ninguno · lista de bots]». Con *ninguno*, todo queda como hoy (texto fijo de recibido y paso al asesor). Con un bot elegido:
+1. la oportunidad pasa a *Pago por confirmar* y se pone la etiqueta `Pago-Por-Confirmar`, como hoy (RAG-20);
+2. el bot **no se pausa todavía**: el cliente entra al inicio del bot elegido;
+3. el bot termina en el cuadro 🔒 **Asesor**, que hace el paso a la cola con la tarea *Verificar pago* (lo de hoy, pero al final).
+Si el cliente no termina (Sin respuesta), el asesor igual recibe el chat: el pago nunca se queda sin revisar.
+
+**RF-29 · Bot de ejemplo «Datos de despacho».** Se crea ya dibujado y publicado, para que el dueño lo ajuste:
+
+```
+✅ Recibimos tu comprobante. ¿Cómo recibes tu equipo?
+  [🚚 Envío a domicilio] (marca Venta online) → ❓Nombre completo → ❓Cédula → ❓Celular → ❓Correo
+                                              → ❓Ciudad y departamento → ❓Dirección
+                                              → «Confirma tus datos: 👤 {nombre_completo} · CC {cedula} · 📱 {celular} ·
+                                                 ✉️ {correo_para_la_factura} · 📍 {direccion_entrega}, {ciudad}»
+                                                 [Sí] → «🙌 Listo. Un asesor valida tu pago y despacha tu pedido.» → 🔒Asesor
+                                                 [Corregir] → ❓Nombre completo
+  [🏬 Recojo en tienda] (marca Venta tienda) → «🙌 Listo. Un asesor valida tu pago y te avisa cuándo recogerlo.» → 🔒Asesor
+```
+
+**RF-30 · Simulador.** Probar el bot muestra en el panel los datos que se van guardando, sin escribir en ningún lead real.
+
+**Modelo.** Tipo `pregunta` en `bot_cuadros` con `ajustes.atributo` y `ajustes.texto_error`; las salidas `siguiente`, `sin_respuesta` y
+`no_logro`. `opciones[].efectos.atributos` para RF-27. `agente_config.compra_bot_despues` (id de bot o null) para RF-28, con su `grant`
+de columna (la pantalla lo lee columna por columna). `problemas_del_flujo` revisa que una Pregunta apunte a un atributo activo y que toda
+marca `{dato}` exista. Motor: `flujo.py` (Pregunta y marcas) y `compra.py` (RF-28).
+
+**Fuera de esta tarea:** varios equipos en una compra, leer los datos de una foto de la cédula y que el agente Avi llene las preguntas.
 
 ## Arranques y pruebas (F4·14 y F4·15, decisión 0028)
 

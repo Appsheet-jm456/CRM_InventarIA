@@ -131,7 +131,7 @@ Se construye en tres bloques: **A** ficha (incluye el botón Guardar), **B** dat
   *Ciudad* pasa a llamarse *Ciudad y departamento*, y *Correo para la Factura* pasa a *Correo*. Se agrega *Nombre completo*.
 - RL-18. **El bot no cambia.** El flujo de compra sigue como está (cuentas → comprobante → asesor). El recorrido *quiero comprar → equipo → cuentas →
   pago → datos de despacho → sigue* es solo un **ejemplo de uso**: el cliente le escribe sus datos al asesor por el chat y **el asesor los anota en la
-  ficha** (sección Datos de despacho). Si más adelante se quiere que el bot los pida, se documenta como mejora aparte.
+  ficha** (sección Datos de despacho). Que el bot los pida después del pago, armado en el lienzo, es **F4·34** ([FLUJO-DEL-BOT.md](FLUJO-DEL-BOT.md#cuadro-pregunta-y-datos-de-despacho-tras-el-pago-f434)).
 - RL-19. El asesor marca **Venta online** o **Venta tienda** en la ficha (RL-16). Al marcar online, la sección Datos de despacho se abre y muestra qué
   campos faltan («Faltan datos de despacho»).
 - RL-20. Los datos de despacho son **obligatorios para pasar a Alistamiento** (obligatorio por etapa, RL, sección 4). La regla vale solo para ventas online.
@@ -167,7 +167,7 @@ Se construye en tres bloques: **A** ficha (incluye el botón Guardar), **B** dat
 2. **Dirección de entrega** en los datos de despacho: no estaba en su lista, pero la transportadora la necesita → *se incluye*.
 3. **Etapas Alistamiento y Despachado** en el embudo de Cliente Final → *se crean*.
 
-El paso del bot que pide los datos de despacho se dejó fuera por decisión del dueño (1 nov 2026): se evalúa cuando la ficha esté en uso.
+El paso del bot que pide los datos de despacho quedó fuera de F4·33; el dueño lo pidió el mismo día como **F4·34**, armable en el lienzo.
 
 ## Permisos
 

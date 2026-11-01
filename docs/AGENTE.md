@@ -74,6 +74,9 @@ Entra con el equipo ya elegido y la memoria del cliente. Hace, en este orden fle
   respuesta, el sistema manda *«👋 ¿Sigues interesado en el equipo?»* (reloj de la Pausa, F4·13) y deja seguimiento al asesor. Más de 24 h solo con
   plantilla de Meta.
 
+> **F4·34 (1 nov 2026):** en la pestaña Compra se podrá elegir un bot del lienzo para **después del comprobante** (por ejemplo «Datos de despacho»):
+> el cliente responde los datos de envío y luego pasa al asesor. Ver [FLUJO-DEL-BOT.md](FLUJO-DEL-BOT.md#cuadro-pregunta-y-datos-de-despacho-tras-el-pago-f434).
+
 ### Tramo 3 · Asesor
 
 El asesor revisa el banco, confirma y mueve **Pago confirmado → Alistamiento → Despachado** (avisos al cliente con plantillas de Meta cuando
