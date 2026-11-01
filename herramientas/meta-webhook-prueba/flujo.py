@@ -305,6 +305,124 @@ def aplicar(st, efectos):
         etapa(st, efectos["etapa"])
 
 
+def con_datos(st, texto):
+    """RF-26: cambia las marcas {clave} de los datos de la ficha por el dato del cliente ("—" si está vacío)."""
+    if "{" not in texto:
+        return texto
+    datos = st.get("atributos") or {}
+    for clave in db.atributos():
+        if "{" + clave + "}" in texto:
+            v = datos.get(clave)
+            v = "—" if v in (None, "", []) else ("Sí" if v is True else "No" if v is False else ", ".join(v) if isinstance(v, list) else str(v))
+            texto = texto.replace("{" + clave + "}", v)
+    return texto
+
+
+def marcar_datos(st, valores):
+    """RF-27: lo que marca una opción (efectos.atributos). Un atributo que ya no existe se ignora."""
+    definidos = db.atributos()
+    datos = st.setdefault("atributos", {})
+    for clave, valor in (valores or {}).items():
+        if clave in definidos:
+            datos[clave] = valor
+
+
+# --------------------------------------------------------------------------- #
+# Cuadro Pregunta (F4·34, RF-23 a RF-25): pregunta, valida con el tipo del dato y lo guarda en la ficha
+# --------------------------------------------------------------------------- #
+
+INTENTOS_PREGUNTA = 3
+
+
+def limpiar_respuesta(a, texto):
+    """(valor, ok) con la respuesta del cliente limpia para el tipo del atributo `a` (RF-24). Lo que pasa aquí lo acepta
+    también la base (lead_atributo_error)."""
+    t = (texto or "").strip()
+    tipo = a["tipo"]
+    if not t:
+        return None, False
+    if tipo == "documento":
+        v = re.sub(r"[\s.\-]", "", t)
+        return v, bool(re.fullmatch(r"\d{5,12}", v))
+    if tipo == "telefono":
+        v = re.sub(r"\D", "", t)
+        if len(v) == 12 and v.startswith("57"):
+            v = v[2:]
+        return v, bool(re.fullmatch(r"3\d{9}", v))
+    if tipo == "correo":
+        v = t.lower()
+        return v, bool(re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", v)) and len(v) <= 200
+    if tipo == "lista":
+        opciones = a.get("opciones") or []
+        if t.isdigit() and 1 <= int(t) <= len(opciones):
+            return opciones[int(t) - 1], True
+        n = normalizar(t)
+        elegida = next((o for o in opciones if normalizar(o) == n), None)
+        return elegida, elegida is not None
+    if tipo in ("numero", "moneda"):
+        valor = interprete.monto(t) if tipo == "moneda" else None
+        if valor is None:
+            limpio = t.replace(".", "").replace(",", ".") if tipo == "moneda" else t.replace(",", ".")
+            try:
+                valor = float(re.sub(r"[^\d.\-]", "", limpio))
+            except ValueError:
+                return None, False
+        return (int(valor) if float(valor).is_integer() else valor), True
+    if tipo == "fecha":
+        m = re.fullmatch(r"(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})", t) or None
+        try:
+            fecha = datetime(int(m[3]), int(m[2]), int(m[1])) if m else datetime.strptime(t, "%Y-%m-%d")
+        except (ValueError, TypeError):
+            return None, False
+        return fecha.strftime("%Y-%m-%d"), True
+    if tipo == "enlace":
+        return t, bool(re.fullmatch(r"https?://\S+", t)) and len(t) <= 500
+    return t, len(t) <= (4000 if tipo == "texto_largo" else 300)
+
+
+def preguntar(st, c):
+    """Envía la pregunta y espera. Si el dato es una lista, sus opciones van como botones o lista (RF-24)."""
+    st["nodo"], st["errores"] = c["clave"], 0
+    st["campos"].pop("Errores bot", None)
+    segundos = int((c.get("ajustes") or {}).get("espera_segundos") or 1800)
+    st["espera_hasta"] = (datetime.now(timezone.utc) + timedelta(seconds=segundos)).isoformat()
+    texto = con_datos(st, c["texto"])
+    a = db.atributos().get((c.get("ajustes") or {}).get("atributo"))
+    if a and a["tipo"] == "lista" and a.get("opciones"):
+        return [menu(texto, [(str(i + 1), o, "") for i, o in enumerate(a["opciones"])])]
+    return [m_texto(texto)]
+
+
+def responder_pregunta(st, c, texto):
+    """El cliente respondió a una Pregunta: guarda y sigue por «Siguiente», o pide de nuevo. Al tercer intento fallido sigue
+    por «No logró responder» (sin unir, al asesor)."""
+    ajustes = c.get("ajustes") or {}
+    a = db.atributos().get(ajustes.get("atributo"))
+    if not a:  # el dato se archivó después de publicar: no se puede guardar, se sigue sin él
+        return ir(st, (c.get("salidas") or {}).get("siguiente"))
+    valor, ok = limpiar_respuesta(a, texto)
+    if ok:
+        st.setdefault("atributos", {})[a["clave"]] = valor
+        st["errores"] = 0
+        return ir(st, (c.get("salidas") or {}).get("siguiente"))
+    st["errores"] += 1
+    if st["errores"] >= INTENTOS_PREGUNTA:
+        destino = (c.get("salidas") or {}).get("no_logro")
+        return ir(st, destino) if destino else asesor(st, motivo="Te paso con un asesor para completar tus datos.")
+    segundos = int(ajustes.get("espera_segundos") or 1800)
+    st["espera_hasta"] = (datetime.now(timezone.utc) + timedelta(seconds=segundos)).isoformat()
+    return [m_texto(con_datos(st, ajustes.get("texto_error") or "Esa respuesta no me sirve 🙏 ¿Me la escribes de nuevo?"))]
+
+
+def en_pregunta(st):
+    """El cliente está respondiendo una Pregunta: las Acciones y Avi no se meten (su respuesta es un dato, no una consulta).
+    Lo llama el receptor antes de correr el motor, así que busca el bot del cliente por su cuenta."""
+    if st.get("pausa"):
+        return False
+    todos = db.flujo(st.get("bot") or db.principal()) or {}
+    return (todos.get(st.get("nodo")) or {}).get("tipo") == "pregunta"
+
+
 def cambiar_de_bot(st, bot):
     """El cliente pasa al inicio de otro bot (RF-17). Si ese bot no tiene versión publicada o se archivó, al principal."""
     st["bot"] = _hilo.bot = bot
@@ -359,13 +477,15 @@ def salida_de_espera(c):
         return salidas.get("tiempo")
     if (c or {}).get("tipo") == "mensaje":
         return salidas.get("sin_respuesta")
+    if (c or {}).get("tipo") == "pregunta":  # RF-23: sin unir, si el cliente no responde pasa al asesor
+        return salidas.get("sin_respuesta") or del_tipo("asesor")
     return None
 
 
 def limpiar_espera(st):
     """La espera solo vale mientras el cliente siga en su Pausa o en un Mensaje con «Sin respuesta»."""
     c = (cuadros() or {}).get(st.get("nodo"))
-    if not c or (c["tipo"] != "pausa" and not salida_de_espera(c)):
+    if not c or (c["tipo"] not in ("pausa", "pregunta") and not salida_de_espera(c)):
         st.pop("espera_hasta", None)
 
 
@@ -385,6 +505,8 @@ def ir(st, clave):
         return enviar_catalogo(st, c)
     if c["tipo"] == "pausa":
         return esperar(st, c)
+    if c["tipo"] == "pregunta":
+        return preguntar(st, c)
     st["nodo"], st["errores"] = c["clave"], 0
     st["campos"].pop("Errores bot", None)
     aplicar(st, c["al_entrar"])
@@ -395,6 +517,7 @@ def seguir(st, op):
     """El cliente eligió la opción `op` de un cuadro: anota sus efectos y va a su destino."""
     efectos = op.get("efectos") or {}
     aplicar(st, {"campos": efectos.get("campos"), "etapa": efectos.get("etapa")})
+    marcar_datos(st, efectos.get("atributos"))
     destino = cuadros().get(op["destino"])
     if destino and destino["tipo"] == "asesor":
         return asesor(st, efectos.get("etiqueta") or "Escalado-Asesor", efectos.get("motivo"))
@@ -436,7 +559,7 @@ def opciones_de(c):
 
 
 def mostrar_mensaje(st, c):
-    texto = texto_cuadro(c["clave"], uso=st["campos"].get("Uso equipo", ""))
+    texto = con_datos(st, texto_cuadro(c["clave"], uso=st["campos"].get("Uso equipo", "")))
     salidas = c.get("salidas") or {}
     if salidas.get("sin_respuesta"):  # RF-21: si el cliente no escribe en ese tiempo, el reloj sigue la flecha
         segundos = int((c.get("ajustes") or {}).get("espera_segundos") or 900)
@@ -601,6 +724,10 @@ def _responder(st, texto, avisar):
         return ir(st, inicio()), st
 
     tipo = c["tipo"] if c else None
+    if tipo == "pregunta":  # RF-23: lo que escriba es la respuesta (una cédula no es un código); 9 o «asesor» siguen valiendo
+        if n == "9" or n == "asesor":
+            return asesor(st), st
+        return responder_pregunta(st, c, texto), st
     p = buscar_codigo(texto) if tipo != "presupuesto" else None
     if p:
         return r11(st, p), st

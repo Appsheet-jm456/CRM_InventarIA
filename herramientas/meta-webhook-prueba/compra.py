@@ -148,8 +148,11 @@ def _responder(st, entrada, tipo, lead):
                     f"{'distribuidor' if c.get('tipo') == 'distribuidor' else 'cliente final'} · total {flujo.cop(c.get('total', 0))} · "
                     f"comprobante recibido {datetime.now(flujo.BOGOTA):%d/%m %H:%M}. Verificar transferencia y datos de envío.")
             _limpiar(st)
-            st["pausa"], st["nodo"] = True, flujo.del_tipo("asesor")
             st["campos"]["Etiqueta"] = "Pago-Por-Confirmar"
+            despues = cfg.get("compra_bot_despues")
+            if despues and db.flujo(despues):  # RF-28 (F4·34): sigue en un bot del lienzo (datos de despacho) y ese termina en el asesor
+                return flujo.cambiar_de_bot(st, despues), ["Pago-Por-Confirmar"], "pago_por_confirmar", nota
+            st["pausa"], st["nodo"] = True, flujo.del_tipo("asesor")
             texto = (cfg.get("texto_comprobante") or "✅ Recibimos tu comprobante. Un asesor valida tu pago y te confirma por aquí.").strip()
             return [flujo.m_texto(texto)], ["Pago-Por-Confirmar"], "pago_por_confirmar", nota
         if CANCELA.search(n):

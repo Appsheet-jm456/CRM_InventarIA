@@ -167,6 +167,13 @@ def agente_config(fresco=False):
     return filas[0] if filas else {}
 
 
+def atributos():
+    """Los datos de la ficha activos (lead_atributos, F4·30/F4·33): {clave: {nombre, tipo, opciones}}. Los usan el cuadro Pregunta,
+    las marcas {dato} de los mensajes y «Marcar un dato» (F4·34)."""
+    filas = _cacheado("atributos", "lead_atributos?archivado_en=is.null&select=clave,nombre,tipo,opciones") or []
+    return {a["clave"]: a for a in filas}
+
+
 def bot_modo(bot):
     """Cómo atiende un bot: menu, hibrido o agente (F4·22, RAG-14). Un cambio se ve en menos de 30 s."""
     filas = _cacheado("bots-modo", "bots?select=id,modo") or []

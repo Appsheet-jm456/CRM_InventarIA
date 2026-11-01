@@ -247,6 +247,7 @@ def cargar_estado(lead):
     st.update({k: v for k, v in guardado.items() if k in ("campos", "rango", "marcas", "valor", "compra", "cotizacion", "agente")})
     st.update(nodo=lead["paso_menu"] or None, etapa=lead["etapa"], errores=lead["errores_bot"],
               pausa=lead["pausar_bot"], bot=lead.get("bot_id"))
+    st["atributos"] = dict(lead.get("atributos") or {})  # datos de la ficha: las Preguntas y las marcas {dato} (F4·34)
     if lead.get("espera_vence_en") and lead.get("espera_cuadro") == st["nodo"]:  # en una Pausa (F4·13)
         st["espera_hasta"] = lead["espera_vence_en"]
     return st
@@ -277,7 +278,19 @@ def guardar_estado(lead, st, visible, nombre, del_cliente=True):
         cambios["valor_estimado"] = st["valor"]
     if nombre and not lead["nombre"]:
         cambios["nombre"] = nombre
-    db.actualizar_lead(lead["id"], cambios)
+    # Datos que guardó una Pregunta o marcó un botón (F4·34): solo los que cambiaron, sobre lo que tiene la ficha.
+    antes = lead.get("atributos") or {}
+    nuevos = {k: v for k, v in (st.get("atributos") or {}).items() if antes.get(k) != v}
+    if nuevos:
+        cambios["atributos"] = {**antes, **nuevos}
+    try:
+        db.actualizar_lead(lead["id"], cambios)
+    except Exception:
+        if "atributos" not in cambios:
+            raise
+        anotar(f"  ✗ la base no aceptó los datos {list(nuevos)}: se guarda la charla sin ellos")
+        cambios.pop("atributos")
+        db.actualizar_lead(lead["id"], cambios)
 
 
 def enviar_mensajes(numero, lead, mensajes, desde_error=False):
@@ -429,7 +442,7 @@ def para_avi(numero, entrada, tipo):
     config = db.agente_config()
     segundos = int(config.get("buffer_segundos") or 0)
     st = cargar_estado(lead)
-    if segundos <= 0 or compra.activa(st) or cotizacion.activa(st) or not agente.atiende(st, lead, tipo, entrada, config):
+    if segundos <= 0 or compra.activa(st) or cotizacion.activa(st) or flujo.en_pregunta(st) or not agente.atiende(st, lead, tipo, entrada, config):
         return None
     if acciones.ganadora(entrada):
         return None
@@ -500,7 +513,8 @@ def _contestar(numero, entrada, visible, nombre, tipo, meta_id, media=None, guar
                     extras_de_compra(lead, etiquetas, paso_embudo, nota)
             # Acciones «Cuando → Hacer» (F4·24, RAG-25): solo con texto escrito, no con botones del menú ni media.
             atendida = None
-            if mensajes is None and tipo in ("text", "button") and not st["pausa"]:
+            en_pregunta = mensajes is None and flujo.en_pregunta(st)  # F4·34: la respuesta es un dato, no una consulta
+            if mensajes is None and tipo in ("text", "button") and not st["pausa"] and not en_pregunta:
                 try:
                     atendida = acciones.responder(st, entrada, lead)
                 except Exception as e:  # si las acciones fallan, el menú responde como siempre
@@ -515,7 +529,7 @@ def _contestar(numero, entrada, visible, nombre, tipo, meta_id, media=None, guar
                 except Exception as e:
                     anotar(f"  ✗ no se pudo anotar la acción: {e!r}")
             elif mensajes is None:
-                if agente.atiende(st, lead, tipo, entrada):  # Avi (F4·28): bot en modo Agente y encendido para este número
+                if not en_pregunta and agente.atiende(st, lead, tipo, entrada):  # Avi (F4·28): bot en modo Agente y encendido para este número
                     try:
                         avi = agente.responder(st, entrada, lead)
                     except Exception as e:  # si Avi falla, atiende el Híbrido como siempre (RAG-10)
