@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useState } from 'react'
 import { guardarAvi, type DatosAvi, type Resultado } from './acciones'
+import { PlantillaEquipos, type EquipoEjemplo } from './PlantillaEquipos'
 
 const HERRAMIENTAS: [string, string][] = [
   ['buscar_productos', 'Buscar equipos en el inventario'],
@@ -31,10 +32,11 @@ const ESTADOS: [DatosAvi['estado'], string, string][] = [
   ['todos', 'Todos los clientes', 'Avi atiende a todos los clientes, donde lo dejen los interruptores y los cuadros 🤖.'],
 ]
 
-export function Personalidad({ datos, listo, agenteEnTodo }: {
+export function Personalidad({ datos, listo, agenteEnTodo, ejemplo }: {
   datos: DatosAvi
   listo: boolean
   agenteEnTodo: boolean
+  ejemplo: EquipoEjemplo | null
 }) {
   const [d, setD] = useState<DatosAvi>(datos)
   const [aviso, setAviso] = useState<Resultado>({})
@@ -173,6 +175,19 @@ export function Personalidad({ datos, listo, agenteEnTodo }: {
               <input type="range" min={0} max={5000} step={500} value={d.pausa_mensajes_ms} disabled={ocupado} onChange={(e) => poner('pausa_mensajes_ms', Number(e.target.value))} />
               <small className="muted">El tiempo que «escribe» entre un mensaje y el siguiente de la misma respuesta.</small>
             </label>
+          </div>
+        </section>
+
+        <section className="panel">
+          <div className="panel-h">
+            <div>
+              <h2>Cómo muestra los equipos</h2>
+              <small>Avi elige qué equipos recomendar; el sistema arma la lista con esta plantilla y los datos del inventario. Así siempre sale igual y con el precio de la base.</small>
+            </div>
+          </div>
+          <div className="panel-b">
+            <PlantillaEquipos plantilla={d.plantilla_equipo} maxEquipos={d.max_equipos} separados={d.equipos_separados} ejemplo={ejemplo} ocupado={ocupado}
+              cambiar={(c) => setD({ ...d, ...c })} />
           </div>
         </section>
 

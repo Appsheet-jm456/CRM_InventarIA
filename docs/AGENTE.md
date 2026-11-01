@@ -280,6 +280,25 @@ mensajes con una pausa entre ellos, como escribe una persona y no como un muro d
   espera. El **máximo de mensajes por respuesta** (1 a 5) de Avi pasa a esta sección (antes estaba en Límites).
 - RAG-38. El simulador y Probar no esperan (son para probar rápido). El indicador no cuesta: no es un mensaje de Meta.
 
+### 4c. Lista de equipos con plantilla (F4·37)
+
+**Pedido el 1 nov 2026.** Que Avi muestre siempre los equipos organizados (lista, especificaciones, precio y emojis) y que el dueño pueda
+**modificar o agregar atributos** de esa lista desde **Configuración → Agente → Avi → Cómo muestra los equipos**.
+
+- RAG-39. **El sistema arma la lista, no la IA.** Avi decide qué equipos recomendar (por código) y escribe una frase antes y una pregunta
+  después; cada equipo se arma con la plantilla y los datos de la tabla `productos`. Así la forma es siempre igual y los precios salen de la base
+  (decisión 0016). Formato de Avi: `{"responder": "frase", "equipos": ["código", …], "despues": "pregunta"}`.
+- RAG-40. **Plantilla por atributos.** Cada renglón es un atributo: un emoji y uno o varios datos del equipo, con texto libre si se quiere
+  (ej. `⚙️ {procesador} · {ram} · {disco}`). Se puede **modificar** un renglón, **agregar** otro (botón «+ Agregar atributo» con la lista de
+  datos), quitarlo y cambiarlo de orden. Datos: `{equipo}` (marca y modelo), `{codigo}`, `{marca}`, `{modelo}`, `{procesador}`, `{generacion}`,
+  `{ram}`, `{disco}`, `{estado}`, `{precio}`, `{stock}`, `{categoria}`, `{descripcion}`. Un renglón cuyo dato está vacío no sale.
+- RAG-41. **Máximo de equipos** (1 a 5, por defecto 3) y **cómo se envían**: todos en un mensaje, o un mensaje por equipo (con la pausa y el
+  «escribiendo…» de F4·36). Vista previa con un equipo real del inventario.
+- RAG-42. Un código que no existe o que no tiene stock no sale (la lista se arma solo con lo que hay). Si no queda ninguno, Avi responde solo su
+  frase. Si en la frase escribe un precio, se revisa como siempre (RAG-02).
+- Un atributo **nuevo del inventario** (por ejemplo pantalla o batería, que hoy no existen en `productos`) es otra mejora: hoy se puede usar
+  `{descripcion}` para eso.
+
 ### 5. Herramientas (lo que el agente puede hacer)
 
 | Herramienta | Qué hace | Escribe en la base |

@@ -6,6 +6,10 @@ de las Fases 1 y 2 abajo. **Código nuevo:** el bot de prueba sobre Supabase (`h
 
 ## Dónde retomar (en este orden)
 
+0. **1 nov 2026 · F4·37 construida 🔵** ([AGENTE.md](AGENTE.md#4c-lista-de-equipos-con-plantilla-f437), migración 0042): Avi elige los equipos y el sistema
+   arma la lista con la plantilla de Agente → Avi → «Cómo muestra los equipos» (renglones por atributo: modificar, agregar, quitar y ordenar; máximo
+   de equipos; uno o varios mensajes). **Falta probarlo por WhatsApp.**
+
 0. **1 nov 2026 · F4·36 construida 🔵** ([AGENTE.md](AGENTE.md), migración 0041): «escribiendo…» en WhatsApp, espera antes de responder (1,5 s) y
    pausa entre mensajes (1 s), en Configuración → Agente → Avi → Respuesta. Marca el mensaje del cliente como leído. **Falta probarlo por WhatsApp.**
 

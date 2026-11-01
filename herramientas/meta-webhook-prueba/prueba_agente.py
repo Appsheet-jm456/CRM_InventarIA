@@ -237,5 +237,27 @@ prueba(45, "aunque una ficha traiga las cuentas, Avi no puede escribir sus núme
         and not any("82547373550" in t.replace(" ", "") for t in textos(r)) and "número de cuenta" in r["nota"])
 CONFIG["texto_cuentas"] = ""
 
-print(f"\n{45 - fallos}/45 pruebas bien")
+# --- Lista de equipos con la plantilla del dueño (F4·37, 46-51)
+r = turno([{"herramienta": "buscar_productos", "args": {}},
+           {"responder": "Te recomiendo estos:", "equipos": ["100-102-1030-1", "pu-23", "NO-EXISTE"], "despues": "¿Te mando la ficha de alguno?"}])
+t = textos(r)
+prueba(46, "arma la lista con la plantilla y los datos de la base, en un solo mensaje", len(t) == 1
+       and t[0] == "Te recomiendo estos:\n\n💻 *Dell Latitude 5420* · Código 100-102-1030-1\n⚙️ i5-1135G7 · 16GB · 512GB\n⭐ Grado A\n💰 *$1.500.000*"
+                   "\n\n💻 *HP ProBook 450* · Código PU-23\n⚙️ i7-8550U · 8GB · 256GB\n⭐ Grado B\n💰 *$1.200.000*\n\n¿Te mando la ficha de alguno?")
+prueba(47, "un código que no existe no sale y el código en minúscula se reconoce", "NO-EXISTE" not in t[0] and "PU-23" in t[0])
+CONFIG.update(equipos_separados=True, max_equipos=1, plantilla_equipo="🖥 {equipo}\n📝 {descripcion}\n💵 {precio}")
+r = turno([{"responder": "Mira este:", "equipos": ["100-102-1030-1", "PU-23"], "despues": "¿Lo quieres?"}])
+t = textos(r)
+prueba(48, "un mensaje por equipo, hasta el máximo, y un renglón sin dato no sale", t == ["Mira este:", "🖥 Dell Latitude 5420\n💵 $1.500.000", "¿Lo quieres?"])
+r = turno([{"responder": "Este cuesta $999.000", "equipos": ["PU-23"]}, {"responder": "Te paso con un asesor"}])
+prueba(49, "un precio inventado en la frase se revisa como siempre (RAG-02)", any(x.get("tipo") == "bloqueado" for x in r["traza"]))
+r = turno([{"responder": "", "equipos": ["NO-EXISTE"]}, {"responder": "No tengo ese equipo"}])
+prueba(50, "si ningún código existe, le pide una respuesta de nuevo", textos(r) == ["No tengo ese equipo"])
+st = flujo.estado_vacio(); st["agente"] = {"sin_avance": 2}
+r = turno([{"responder": "Mira:", "equipos": ["PU-23"]}], st=st)
+prueba(51, "mostrar equipos cuenta como avance (no pasa al asesor por 3 sin avance)", not r["asesor"] and st["agente"]["sin_avance"] == 0)
+for k in ("equipos_separados", "max_equipos", "plantilla_equipo"):
+    CONFIG.pop(k)
+
+print(f"\n{51 - fallos}/51 pruebas bien")
 sys.exit(1 if fallos else 0)

@@ -55,6 +55,8 @@ SIN_AVANCE = 3  # RAG-04
 PROTOCOLO = """FORMATO DE CADA RESPUESTA (obligatorio): un único objeto JSON, sin texto fuera de él.
 - Para usar una herramienta: {"herramienta": "nombre", "args": {...}}
 - Para responderle al cliente: {"responder": "texto para WhatsApp"}
+- Para recomendar equipos: {"responder": "una frase antes de la lista", "equipos": ["código", "código"], "despues": "una pregunta para seguir"}.
+  El sistema arma la lista con el modelo, las especificaciones y el precio de cada código: en tus frases NO escribas precios ni especificaciones.
 Después de una herramienta recibirás su resultado y podrás usar otra o responder."""
 
 
@@ -309,6 +311,56 @@ def interpretar(texto):
     return {"responder": re.sub(r"^```\w*|```$", "", crudo).strip()}
 
 
+# --------------------------------------------------------------------------- #
+# Lista de equipos con la plantilla del dueño (F4·37, RAG-39 a RAG-42)
+# --------------------------------------------------------------------------- #
+
+PLANTILLA_EQUIPO = "💻 *{equipo}* · Código {codigo}\n⚙️ {procesador} · {ram} · {disco}\n⭐ {estado}\n💰 *{precio}*"
+_MARCA = re.compile(r"\{(\w+)\}")
+
+
+def datos_equipo(p):
+    """Los datos que puede usar la plantilla, de un equipo de flujo.inventario()."""
+    gen = p.get("gen")
+    return {"equipo": f"{p.get('marca') or ''} {p.get('modelo') or ''}".strip(), "codigo": p.get("cod") or "", "marca": p.get("marca") or "",
+            "modelo": p.get("modelo") or "", "procesador": p.get("cpu") or "", "generacion": f"{gen}.ª gen" if gen else "",
+            "ram": p.get("ram") or "", "disco": p.get("disco") or "", "estado": p.get("estado") or "",
+            "precio": flujo.cop(p["precio"]) if p.get("precio") is not None else "", "stock": str(p.get("stock") or ""),
+            "categoria": p.get("categoria") or "", "descripcion": (p.get("descripcion") or "").strip()}
+
+
+def armar_equipo(plantilla, p):
+    """Un equipo con la plantilla: cada renglón con sus datos; un renglón cuyos datos están todos vacíos no sale (RAG-40)."""
+    datos = datos_equipo(p)
+    renglones = []
+    for linea in (plantilla or PLANTILLA_EQUIPO).splitlines():
+        marcas = _MARCA.findall(linea)
+        if marcas and all(not datos.get(m) for m in marcas if m in datos):
+            continue
+        renglones.append(_MARCA.sub(lambda m: datos.get(m.group(1), m.group(0)), linea).rstrip())
+    return "\n".join(r for r in renglones if r.strip())
+
+
+def equipos_pedidos(codigos, maximo):
+    """Los equipos con stock de esos códigos, sin repetir y hasta `maximo` (RAG-42: los que no existen no salen)."""
+    por_codigo = {str(p["cod"]).upper(): p for p in flujo.inventario() if p.get("cod")}
+    vistos, r = set(), []
+    for c in codigos if isinstance(codigos, list) else []:
+        p = por_codigo.get(str(c).strip().upper())
+        if p and p["cod"] not in vistos:
+            vistos.add(p["cod"])
+            r.append(p)
+    return r[:maximo]
+
+
+def textos_con_equipos(antes, equipos, despues, config):
+    """Los mensajes de una respuesta con lista: en uno solo, o un mensaje por equipo (RAG-41)."""
+    bloques = [armar_equipo(config.get("plantilla_equipo"), p) for p in equipos]
+    if config.get("equipos_separados"):
+        return [t for t in [antes, *bloques, despues] if t]
+    return ["\n\n".join(t for t in [antes, *bloques, despues] if t)[:4096]]
+
+
 def partir(texto, maximo):
     """Hasta `maximo` mensajes de WhatsApp: se parte por párrafos y lo que sobra se junta en el último."""
     partes = [p.strip() for p in re.split(r"\n\s*\n", texto.strip()) if p.strip()] or [texto.strip()]
@@ -377,11 +429,13 @@ def responder(st, entrada, lead, config=None, simulador=False, previo=None, cuad
                                                          "Usa otra herramienta o responde al cliente en el formato JSON."}]
                 continue
             texto = str(pedido.get("responder") or "").strip()
-            if not texto:
+            despues = str(pedido.get("despues") or "").strip()
+            equipos = equipos_pedidos(pedido.get("equipos"), int(config.get("max_equipos") or 3))  # F4·37: la lista la arma el sistema
+            if not texto and not equipos:
                 mensajes += [{"role": "assistant", "content": r["texto"]},
                              {"role": "user", "content": 'Responde en el formato JSON: {"responder": "..."}'}]
                 continue
-            problemas = revisar(texto, ctx["permitido"], ctx["texto_permitido"], config.get("texto_cuentas") or "")
+            problemas = revisar("\n".join(filter(None, [texto, despues])), ctx["permitido"], ctx["texto_permitido"], config.get("texto_cuentas") or "")
             if problemas and not reintento:  # RAG-02: una oportunidad más
                 reintento = True
                 traza.append({"tipo": "bloqueado", "problemas": problemas, "texto": texto})
@@ -396,13 +450,16 @@ def responder(st, entrada, lead, config=None, simulador=False, previo=None, cuad
                                       detalle={"problemas": problemas, "texto": texto})
                 _asesor_por(ctx, "Avi no pudo responder sin inventar un dato: " + "; ".join(problemas), "Revisar-Agente")
                 return _salida(ctx, [], traza, costo, tokens)
-            traza.append({"tipo": "respuesta", "texto": texto})
+            traza.append({"tipo": "respuesta", "texto": texto, **({"equipos": [p["cod"] for p in equipos], "despues": despues} if equipos else {})})
             memoria = st.setdefault("agente", {})
+            ctx["avance"] = ctx["avance"] or bool(equipos)  # mostrar equipos es avanzar la venta
             memoria["sin_avance"] = 0 if ctx["avance"] else int(memoria.get("sin_avance") or 0) + 1
             if memoria["sin_avance"] >= SIN_AVANCE:  # RAG-04: tres respuestas sin avance → asesor, después de la respuesta
                 memoria["sin_avance"] = 0
                 _asesor_por(ctx, f"Avi respondió {SIN_AVANCE} veces seguidas sin avanzar la venta.", "Escalado-Asesor")
-            return _salida(ctx, partir(texto, int(config.get("max_mensajes") or 3)), traza, costo, tokens)
+            if equipos:
+                return _salida(ctx, textos_con_equipos(texto, equipos, despues, config), traza, costo, tokens)
+            return _salida(ctx, partir("\n\n".join(filter(None, [texto, despues])), int(config.get("max_mensajes") or 3)), traza, costo, tokens)
         _asesor_por(ctx, "Avi usó todos sus pasos sin llegar a una respuesta.", "Revisar-Agente")
         return _salida(ctx, [], traza, costo, tokens)
     finally:

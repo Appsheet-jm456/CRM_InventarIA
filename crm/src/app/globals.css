@@ -812,3 +812,8 @@ details.columnas > .panel { right: 0; top: calc(100% + 4px); min-width: 220px }
 .interruptor-fila .toggle { flex: none; margin-top: 2px }
 .lista-simple { margin: 6px 0 0; padding-left: 18px; display: grid; gap: 4px; font-size: 13px }
 .deslizador input[type=range] { width: 100%; accent-color: var(--accent) }
+/* F4·37: plantilla de equipos por renglones */
+.plantilla-renglones { display: grid; gap: 6px }
+.plantilla-renglon { display: grid; grid-template-columns: minmax(0, 1fr) 130px auto auto auto; gap: 6px; align-items: center }
+.plantilla-renglon input, .plantilla-renglon select { min-width: 0 }
+@media (max-width: 600px) { .plantilla-renglon { grid-template-columns: minmax(0, 1fr) auto auto auto } .plantilla-renglon select { grid-column: 1 / -1 } }

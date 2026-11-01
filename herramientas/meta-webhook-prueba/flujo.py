@@ -177,7 +177,7 @@ def inventario():
         "cod": p["codigo"], "marca": p["marca"], "modelo": p["modelo"], "cpu": p["procesador"],
         "gen": interprete.generacion(p["procesador"], p["generacion"]), "ram": p["ram"],
         "disco": p["almacenamiento"], "estado": p["estado"], "precio": int(float(p["precio"])),
-        "stock": p["stock"], "foto": _foto_de(p),
+        "stock": p["stock"], "foto": _foto_de(p), "categoria": p.get("categoria") or "", "descripcion": p.get("descripcion") or "",
     } for p in db.productos_con_stock() if "portatil" in normalizar(p["categoria"])]
 
 
