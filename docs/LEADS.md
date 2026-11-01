@@ -100,7 +100,7 @@ La **ficha del lead** es la misma desde los tres: se abre desde la Bandeja, desd
 ## Ajustes tras la prueba del dueño: Venta online o en tienda (F4·33)
 
 **Pedido el 1 nov 2026**, al revisar la ficha de F4·30. La ficha es de atributos, así que casi todo son cambios de datos y de un par de pantallas.
-Se construye en tres bloques: **A** ficha (incluye el botón Guardar), **B** datos de despacho en el flujo de compra, **C** alistamiento y tareas.
+Se construye en tres bloques: **A** ficha (incluye el botón Guardar), **B** datos de despacho en la ficha, **C** alistamiento y tareas.
 
 ### A. Ficha del lead
 
@@ -124,17 +124,16 @@ Se construye en tres bloques: **A** ficha (incluye el botón Guardar), **B** dat
   - Si otro asesor o el bot cambió el mismo dato mientras tanto, al guardar avisa «Este dato cambió» y deja elegir cuál conservar.
   - No cambia: notas, tareas, etiquetas, responsable y etapa siguen guardándose al instante porque son acciones y no datos de la ficha.
 
-### B. Venta online: datos para el despacho
+### B. Venta online: datos para el despacho (en la ficha, sin tocar el bot)
 
 - RL-17. Sección nueva **Datos de despacho**, que se muestra **solo si Venta = online**: Nombre completo, Cédula (CC), Celular, Correo,
   Ciudad y departamento, y Dirección de entrega. Reutiliza los atributos que ya existen (Cédula, Ciudad, Correo, Dirección de entrega);
   *Ciudad* pasa a llamarse *Ciudad y departamento*, y *Correo para la Factura* pasa a *Correo*. Se agrega *Nombre completo*.
-- RL-18. **Flujo del bot de compra**, con el paso nuevo en negrita:
-  *Quiero comprar → elige el equipo → resumen y total → envía las cuentas → el cliente paga y manda el comprobante →* **el bot le pide los datos de despacho** *→ Pago por confirmar y pasa al asesor.*
-  El bot pregunta de uno en uno, valida (cédula solo números, celular de 10 dígitos, correo con @), repite lo capturado para que el cliente confirme y lo guarda en la ficha.
-  Si el cliente dice que **viene a la tienda**, el bot marca *Venta tienda*, se salta los datos de despacho y pasa al asesor.
-- RL-19. El bot **marca Venta online** al entrar a los datos de despacho; el asesor puede corregirlo en la ficha. Un asesor que cambia a online a mano
-  ve el aviso «Faltan datos de despacho» con los campos vacíos.
+- RL-18. **El bot no cambia.** El flujo de compra sigue como está (cuentas → comprobante → asesor). El recorrido *quiero comprar → equipo → cuentas →
+  pago → datos de despacho → sigue* es solo un **ejemplo de uso**: el cliente le escribe sus datos al asesor por el chat y **el asesor los anota en la
+  ficha** (sección Datos de despacho). Si más adelante se quiere que el bot los pida, se documenta como mejora aparte.
+- RL-19. El asesor marca **Venta online** o **Venta tienda** en la ficha (RL-16). Al marcar online, la sección Datos de despacho se abre y muestra qué
+  campos faltan («Faltan datos de despacho»).
 - RL-20. Los datos de despacho son **obligatorios para pasar a Alistamiento** (obligatorio por etapa, RL, sección 4). La regla vale solo para ventas online.
 
 ### C. Alistamiento y despacho (cuando el cliente paga)
@@ -154,8 +153,7 @@ Se construye en tres bloques: **A** ficha (incluye el botón Guardar), **B** dat
 
 1. **«Número» = Número de contrato** → Nota del asesor. *Fecha de contrato* se queda; si tampoco la quiere, se archiva igual.
 2. **Dirección de entrega** en los datos de despacho: no estaba en su lista, pero la transportadora la necesita → *se incluye*.
-3. **Varios equipos en una compra** («elige productos»): hoy el bot compra un equipo por vez. → *Se deja uno por compra* en esta mejora; varios equipos es una mejora aparte.
-4. **Etapas Alistamiento y Despachado** en el embudo de Cliente Final → *se crean*.
+3. **Etapas Alistamiento y Despachado** en el embudo de Cliente Final → *se crean*.
 
 ## Permisos
 
