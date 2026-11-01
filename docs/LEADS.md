@@ -1,6 +1,6 @@
 # Módulo Leads: lista, ficha del cliente, atributos y tareas (F4·30) · Capacidad para 1.000 clientes al día (F4·31)
 
-**Estado:** 🔵 Construido (F4·30 A a E, 31 oct 2026); falta la prueba del dueño · F4·31 (capacidad) pendiente · Decisión [0033](decisiones/0033-modulo-leads-y-capacidad.md) aceptada
+**Estado:** ✅ F4·30 hecha · 📝 F4·33 (Venta online o tienda, ajustes de la ficha) documentada el 1 nov 2026, por construir · F4·31 (capacidad) pendiente · Decisión [0033](decisiones/0033-modulo-leads-y-capacidad.md) aceptada
 Referencia que trajo el dueño: la lista «Todos los leads» y la ficha del lead de Kommo (panel de datos a la izquierda, chat a la derecha).
 
 ## Qué pidió el dueño (31 oct 2026)
@@ -96,6 +96,57 @@ La **ficha del lead** es la misma desde los tres: se abre desde la Bandeja, desd
 
 - RL-12. Cada cambio de etapa, responsable, atributo, etiqueta, archivo/eliminación queda en `lead_eventos` (quién, cuándo, antes → después).
   Es lo que alimenta la línea de tiempo de la ficha.
+
+## Ajustes tras la prueba del dueño: Venta online o en tienda (F4·33)
+
+**Pedido el 1 nov 2026**, al revisar la ficha de F4·30. La ficha es de atributos, así que casi todo son cambios de datos y de un par de pantallas.
+Se construye en tres bloques: **A** ficha, **B** datos de despacho en el flujo de compra, **C** alistamiento y tareas.
+
+### A. Ficha del lead
+
+- RL-13. **Método de pago: solo dos opciones**, *Efectivo en tienda* y *Transferencia*. Salen *Tarjeta* y *Contra entrega*. Hoy ningún lead tiene
+  método de pago guardado, así que no se pierde nada.
+- RL-14. **Se quitan** los atributos **Descuento** y **Número de serie** (se archivan, como manda RL-08: se pueden restaurar).
+- RL-15. **«Número de contrato» pasa a ser «Nota del asesor»** (texto largo): un lugar para que el asesor escriba algo importante del cliente o de la venta.
+  *(Se entiende que «Número» era el de contrato; ver puntos por confirmar.)*
+- RL-16. **Interruptor «Venta»** (verdadero o falso) en la ficha, arriba de la sección Compra:
+  - **Venta online** = por despacho o envío a domicilio.
+  - **Venta tienda** = el cliente cotiza y viene a la tienda.
+  Se guarda como atributo `venta_online` (sí/no): *sí* = online, *no* = tienda; sin marcar = todavía no se sabe. Se ve como dos botones, no como una casilla.
+  Aparece en la lista de Leads como columna y filtro, y en el Embudo como insignia (🚚 / 🏬). Cambiarlo queda en la línea de tiempo (RL-12).
+
+### B. Venta online: datos para el despacho
+
+- RL-17. Sección nueva **Datos de despacho**, que se muestra **solo si Venta = online**: Nombre completo, Cédula (CC), Celular, Correo,
+  Ciudad y departamento, y Dirección de entrega. Reutiliza los atributos que ya existen (Cédula, Ciudad, Correo, Dirección de entrega);
+  *Ciudad* pasa a llamarse *Ciudad y departamento*, y *Correo para la Factura* pasa a *Correo*. Se agrega *Nombre completo*.
+- RL-18. **Flujo del bot de compra**, con el paso nuevo en negrita:
+  *Quiero comprar → elige el equipo → resumen y total → envía las cuentas → el cliente paga y manda el comprobante →* **el bot le pide los datos de despacho** *→ Pago por confirmar y pasa al asesor.*
+  El bot pregunta de uno en uno, valida (cédula solo números, celular de 10 dígitos, correo con @), repite lo capturado para que el cliente confirme y lo guarda en la ficha.
+  Si el cliente dice que **viene a la tienda**, el bot marca *Venta tienda*, se salta los datos de despacho y pasa al asesor.
+- RL-19. El bot **marca Venta online** al entrar a los datos de despacho; el asesor puede corregirlo en la ficha. Un asesor que cambia a online a mano
+  ve el aviso «Faltan datos de despacho» con los campos vacíos.
+- RL-20. Los datos de despacho son **obligatorios para pasar a Alistamiento** (obligatorio por etapa, RL, sección 4). La regla vale solo para ventas online.
+
+### C. Alistamiento y despacho (cuando el cliente paga)
+
+- RL-21. Cuando el asesor **confirma el pago** de una venta online, se abre el proceso de alistamiento y despacho para la transportadora. El embudo de
+  Cliente Final gana dos etapas entre *Pago por confirmar* y *Vendido*: **Alistamiento** y **Despachado** (el embudo solo avanza, RL de CLAUDE.md).
+  *Vendido* sigue siendo la venta cerrada que cuentan las Métricas.
+- RL-22. Tipos de tarea nuevos: **Alistar equipo** y **Enviar guía al cliente** (ya existen *Verificar pago* y *Despachar*). Al confirmar el pago online
+  el sistema crea *Alistar equipo*, *Despachar* y *Enviar guía al cliente*; en una venta de tienda crea *Entregar en tienda*.
+- RL-23. Las tareas se crean **desde el panel de la ficha** (botón **+ Tarea** junto a la lista de tareas, con el tipo, la fecha y el responsable)
+  **y desde el chat** (la pestaña *Tarea* de la caja de respuesta, que ya existe). Las dos escriben en la misma tabla `seguimientos` y se ven en
+  *Seguimientos*.
+- RL-24. Al pasar a **Despachado**, el asesor anota la **transportadora y el número de guía** (dos atributos nuevos, texto) y el sistema puede
+  mandarle la guía al cliente por WhatsApp (dentro de las 24 h; fuera, con plantilla de Meta).
+
+### Puntos por confirmar con el dueño (con lo que se construye si no dice otra cosa)
+
+1. **«Número» = Número de contrato** → Nota del asesor. *Fecha de contrato* se queda; si tampoco la quiere, se archiva igual.
+2. **Dirección de entrega** en los datos de despacho: no estaba en su lista, pero la transportadora la necesita → *se incluye*.
+3. **Varios equipos en una compra** («elige productos»): hoy el bot compra un equipo por vez. → *Se deja uno por compra* en esta mejora; varios equipos es una mejora aparte.
+4. **Etapas Alistamiento y Despachado** en el embudo de Cliente Final → *se crean*.
 
 ## Permisos
 
