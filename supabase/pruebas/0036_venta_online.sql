@@ -72,8 +72,8 @@ select case when lead_guardar_ficha(:online, '{"ciudad": "Palmira, Valle"}', '{"
 select mover_oportunidad(:op_online, :alistamiento) \g /dev/null
 select mover_oportunidad(:op_tienda, :alistamiento) \g /dev/null
 select case when (select string_agg(tipo, ', ' order by tipo) from seguimientos where lead_id = :online) = 'Alistar equipo, Despachar, Enviar guía al cliente'
-             and (select string_agg(tipo, ', ') from seguimientos where lead_id = :tienda) = 'Entregar en tienda'
-            then 'ok' else 'not ok' end || ' 7 - Alistamiento crea las tareas de despacho (online) o de entrega en tienda';
+             and (select string_agg(tipo, ', ' order by tipo) from seguimientos where lead_id = :tienda) = 'Alistar equipo, Entregar en tienda'
+            then 'ok' else 'not ok' end || ' 7 - toda venta pasa por la revisión del técnico; la online suma despacho y guía, la de tienda la entrega (0037)';
 
 select case when pg_temp.falla(format($q$select lead_guardar_ficha(%s, '{"descuento": "5 %%"}', '{}')$q$, :online))
             then 'ok' else 'not ok' end || ' 8 - no se guarda un atributo archivado';

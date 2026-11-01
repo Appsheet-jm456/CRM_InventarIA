@@ -138,11 +138,13 @@ Se construye en tres bloques: **A** ficha (incluye el botón Guardar), **B** dat
 
 ### C. Alistamiento y despacho (cuando el cliente paga)
 
-- RL-21. Cuando el asesor **confirma el pago** de una venta online, se abre el proceso de alistamiento y despacho para la transportadora. El embudo de
-  Cliente Final gana dos etapas entre *Pago por confirmar* y *Vendido*: **Alistamiento** y **Despachado** (el embudo solo avanza, RL de CLAUDE.md).
+- RL-21. **Todas las ventas pasan por Alistamiento**, que es la **revisión del técnico** (ajuste del dueño, 1 nov 2026). Cuando el asesor confirma el pago,
+  mueve la oportunidad a **Alistamiento**. El embudo de Cliente Final gana dos etapas entre *Pago por confirmar* y *Vendido*: **Alistamiento** y
+  **Despachado**. La venta online sigue Alistamiento → Despachado → Vendido; la de tienda, Alistamiento → Vendido (el embudo solo avanza).
   *Vendido* sigue siendo la venta cerrada que cuentan las Métricas.
-- RL-22. Tipos de tarea nuevos: **Alistar equipo**, **Enviar guía al cliente** y **Entregar en tienda** (ya existen *Verificar pago* y *Despachar*). Pasar la
-  oportunidad a **Alistamiento** es confirmar el pago: en una venta online el sistema crea *Alistar equipo*, *Despachar* y *Enviar guía al cliente*; en una venta de tienda crea *Entregar en tienda*.
+- RL-22. Tipos de tarea nuevos: **Alistar equipo**, **Enviar guía al cliente** y **Entregar en tienda** (ya existen *Verificar pago* y *Despachar*). Al entrar a
+  **Alistamiento** el sistema crea siempre *Alistar equipo* (revisión del técnico); la venta online suma *Despachar* y *Enviar guía al cliente*, y la de
+  tienda suma *Entregar en tienda* (migración 0037).
 - RL-23. Las tareas se crean **desde el panel de la ficha** (botón **+ Tarea** junto a la lista de tareas, con el tipo, la fecha y el responsable)
   **y desde el chat** (la pestaña *Tarea* de la caja de respuesta, que ya existe). Las dos escriben en la misma tabla `seguimientos` y se ven en
   *Seguimientos*.
