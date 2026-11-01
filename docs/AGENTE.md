@@ -264,6 +264,22 @@ por significado (embeddings con `pgvector`); se suman si la búsqueda por palabr
 - RAG-13. Sobre el prompt del dueño van siempre las **reglas fijas** del sistema (RAG-01 a RAG-09), que no se pueden borrar desde la pantalla.
   Se muestran en gris para que el dueño sepa que existen.
 
+### 4b. Responder como una persona: «escribiendo…» y pausas (F4·36)
+
+**Pedido el 1 nov 2026.** Que el cliente vea **«escribiendo…»** en WhatsApp antes de cada respuesta y que una respuesta larga llegue en varios
+mensajes con una pausa entre ellos, como escribe una persona y no como un muro de texto. Se ajusta en **Configuración → Agente → Avi**, sección
+**Respuesta**.
+
+- RAG-35. **Mostrar «escribiendo…»** (encendido por defecto). Al llegar el mensaje del cliente, el receptor le pide a Meta el indicador de
+  escritura con el id de ese mensaje (`status: read` + `typing_indicator: text`). WhatsApp lo muestra hasta que sale la respuesta o hasta 25 s.
+  **Ojo:** ese mismo pedido marca el mensaje del cliente como **leído** (✓✓ azul). Vale para todo lo que responde el bot (menú, preguntas,
+  compra, Avi), no para los chats que atiende un asesor ni con el Chatbot apagado.
+- RAG-36. **Espera antes de responder** (0 a 5 s, por defecto 1,5 s): el bot no contesta al instante aunque la respuesta esté lista. Si preparar la
+  respuesta tardó más (Avi), no se espera de más.
+- RAG-37. **Pausa entre mensajes** (0 a 5 s, por defecto 1 s): entre los mensajes de una misma respuesta se vuelve a mostrar «escribiendo…» y se
+  espera. El **máximo de mensajes por respuesta** (1 a 5) de Avi pasa a esta sección (antes estaba en Límites).
+- RAG-38. El simulador y Probar no esperan (son para probar rápido). El indicador no cuesta: no es un mensaje de Meta.
+
 ### 5. Herramientas (lo que el agente puede hacer)
 
 | Herramienta | Qué hace | Escribe en la base |

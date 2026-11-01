@@ -140,6 +140,43 @@ export function Personalidad({ datos, listo, agenteEnTodo }: {
         </section>
 
         <section className="panel">
+          <div className="panel-h">
+            <div>
+              <h2>Respuesta</h2>
+              <small>Que el bot escriba como una persona: «escribiendo…» en WhatsApp y las respuestas largas en varios mensajes, con una pausa entre cada uno.</small>
+            </div>
+          </div>
+          <div className="panel-b" style={{ display: 'grid', gap: 16 }}>
+            <div className="interruptor-fila">
+              <button type="button" className={`toggle${d.escribiendo ? ' on' : ''}`} aria-pressed={d.escribiendo} aria-label="Mostrar escribiendo"
+                disabled={ocupado} onClick={() => poner('escribiendo', !d.escribiendo)} />
+              <div>
+                <b>Mostrar «escribiendo…» en WhatsApp</b> <span className={`chip ${d.escribiendo ? 'ok' : 'neu'}`}>{d.escribiendo ? 'Encendido' : 'Apagado'}</span>
+                <small className="muted" style={{ display: 'block' }}>
+                  El cliente ve «escribiendo…» mientras el bot prepara la respuesta (menú, preguntas, compra y Avi). Al hacerlo, WhatsApp marca su
+                  mensaje como leído (✓✓ azul). No aplica a los chats que atiende un asesor. No cuesta.
+                </small>
+              </div>
+            </div>
+            <label className="field deslizador">
+              <span className="row" style={{ justifyContent: 'space-between' }}>Máximo de mensajes por respuesta de Avi <b>{d.max_mensajes}</b></span>
+              <input type="range" min={1} max={5} step={1} value={d.max_mensajes} disabled={ocupado} onChange={(e) => poner('max_mensajes', Number(e.target.value))} />
+              <small className="muted">1 = todo en un solo mensaje · 5 = respuestas bien partidas.</small>
+            </label>
+            <label className="field deslizador">
+              <span className="row" style={{ justifyContent: 'space-between' }}>Espera antes de responder <b>{(d.espera_primera_ms / 1000).toLocaleString('es-CO')} s</b></span>
+              <input type="range" min={0} max={5000} step={500} value={d.espera_primera_ms} disabled={ocupado} onChange={(e) => poner('espera_primera_ms', Number(e.target.value))} />
+              <small className="muted">Lo mínimo que «escribe» antes del primer mensaje. Si la respuesta tarda más en prepararse (Avi), no espera de más.</small>
+            </label>
+            <label className="field deslizador">
+              <span className="row" style={{ justifyContent: 'space-between' }}>Pausa entre mensajes <b>{(d.pausa_mensajes_ms / 1000).toLocaleString('es-CO')} s</b></span>
+              <input type="range" min={0} max={5000} step={500} value={d.pausa_mensajes_ms} disabled={ocupado} onChange={(e) => poner('pausa_mensajes_ms', Number(e.target.value))} />
+              <small className="muted">El tiempo que «escribe» entre un mensaje y el siguiente de la misma respuesta.</small>
+            </label>
+          </div>
+        </section>
+
+        <section className="panel">
           <div className="panel-h"><div><h2>Herramientas y límites</h2><small>Lo que Avi puede hacer y cuánto puede gastar por conversación.</small></div></div>
           <div className="panel-b" style={{ display: 'grid', gap: 14 }}>
             <div className="row">
@@ -153,7 +190,6 @@ export function Personalidad({ datos, listo, agenteEnTodo }: {
             <div className="row">
               {numero('memoria_mensajes', 'Mensajes que recuerda', 4, 60)}
               {numero('max_pasos', 'Pasos por turno', 1, 12)}
-              {numero('max_mensajes', 'Mensajes por turno', 1, 5)}
               {numero('max_turnos_dia', 'Turnos por día y cliente', 1, 200)}
               {numero('buffer_segundos', 'Segundos para juntar mensajes', 0, 60)}
             </div>

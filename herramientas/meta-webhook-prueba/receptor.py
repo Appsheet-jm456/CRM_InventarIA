@@ -119,6 +119,27 @@ def enviar(numero, mensaje):
         return None
 
 
+def escribiendo(meta_id):
+    """«escribiendo…» en el WhatsApp del cliente (F4·36, RAG-35): Meta lo muestra hasta que sale la respuesta o 25 s, y marca su
+    mensaje como leído. No es un mensaje: no cuesta. Si falla, se sigue sin él."""
+    cuerpo = {"messaging_product": "whatsapp", "status": "read", "message_id": meta_id, "typing_indicator": {"type": "text"}}
+    peticion = urllib.request.Request(
+        f"{API}/{ENV['META_PHONE_NUMBER_ID']}/messages", method="POST",
+        headers={"Authorization": f"Bearer {ENV['META_TOKEN']}", "Content-Type": "application/json"},
+        data=json.dumps(cuerpo).encode())
+    try:
+        urllib.request.urlopen(peticion, timeout=10).read()
+    except Exception as e:
+        anotar(f"  ✗ «escribiendo…» no se pudo mostrar: {getattr(e, 'read', lambda: str(e).encode())().decode()[:200]}")
+
+
+def como_persona():
+    """(mostrar «escribiendo…», segundos antes de responder, segundos entre mensajes) de Configuración → Agente → Avi (F4·36)."""
+    c = db.agente_config()
+    return (c.get("escribiendo", True) is not False, int(c.get("espera_primera_ms") or 0) / 1000,
+            int(c.get("pausa_mensajes_ms") or 0) / 1000)
+
+
 EXTENSIONES = {"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "audio/ogg": "ogg",
                "audio/mpeg": "mp3", "audio/mp4": "m4a", "audio/aac": "aac", "audio/amr": "amr", "video/mp4": "mp4",
                "video/3gpp": "3gp", "application/pdf": "pdf"}
@@ -293,11 +314,18 @@ def guardar_estado(lead, st, visible, nombre, del_cliente=True):
         db.actualizar_lead(lead["id"], cambios)
 
 
-def enviar_mensajes(numero, lead, mensajes, desde_error=False):
+def enviar_mensajes(numero, lead, mensajes, desde_error=False, responde_a=None):
     """Envía y guarda los mensajes del bot. Devuelve el cuadro del primero que Meta rechazó y tiene «Error al
-    enviar» (RF-22), o None."""
+    enviar» (RF-22), o None. `responde_a` es el id del mensaje del cliente que se contesta: entre un mensaje y otro se
+    vuelve a mostrar «escribiendo…» y se hace la pausa (F4·36, RAG-37)."""
     rechazado = None
-    for m in mensajes:
+    mostrar, _, pausa = como_persona() if responde_a and len(mensajes) > 1 else (False, 0, 0)
+    for n, m in enumerate(mensajes):
+        if n and responde_a:
+            if mostrar:
+                escribiendo(responde_a)
+            if pausa:
+                time.sleep(pausa)
         cuadro = m.pop("_cuadro", None)
         m = resolver(m)
         if not m:
@@ -482,6 +510,8 @@ def contestar(numero, entrada, visible, nombre, tipo, meta_id, media=None):
         return _contestar(numero, entrada, visible, nombre, tipo, meta_id, media)
     lead, segundos = avi
     db.guardar_mensaje(lead["id"], "cliente", visible, tipo, meta_id)
+    if meta_id and como_persona()[0]:  # F4·36: «escribiendo…» también mientras Avi junta los mensajes seguidos
+        threading.Thread(target=escribiendo, args=(meta_id,), daemon=True).start()
     with _lotes_candado:
         lote = _lotes.get(numero)
         if lote is not None:
@@ -510,6 +540,12 @@ def _contestar(numero, entrada, visible, nombre, tipo, meta_id, media=None, guar
             if not guardado:  # con el buffer, cada mensaje ya se guardó al llegar
                 db.guardar_mensaje(lead["id"], "cliente", visible, tipo, meta_id, guardada)
             st = cargar_estado(lead)
+            # F4·36: «escribiendo…» mientras el bot prepara la respuesta (no si el chat está con un asesor o el chatbot apagado).
+            empezo = time.monotonic()
+            mostrar, espera, _ = como_persona()
+            responde_a = meta_id if meta_id and not st["pausa"] and db.bot_config().get("chatbot_activo", True) else None
+            if responde_a and mostrar:
+                threading.Thread(target=escribiendo, args=(meta_id,), daemon=True).start()
 
             def avisar(texto):
                 wamid = enviar(numero, flujo.m_texto(texto))
@@ -579,7 +615,9 @@ def _contestar(numero, entrada, visible, nombre, tipo, meta_id, media=None, guar
         except Exception as e:  # una falla del árbol o de la base no debe tumbar el receptor
             anotar(f"  ✗ el árbol falló: {e!r}")
             return
-        rechazado = enviar_mensajes(numero, lead, mensajes)
+        if mensajes and responde_a and espera:  # RAG-36: no contesta al instante; si preparar la respuesta tardó, no espera de más
+            time.sleep(max(0, espera - (time.monotonic() - empezo)))
+        rechazado = enviar_mensajes(numero, lead, mensajes, responde_a=responde_a)
         if rechazado:  # RF-22: Meta lo rechazó al instante
             try:
                 st = seguir_error_de_envio(numero, lead, st, rechazado)

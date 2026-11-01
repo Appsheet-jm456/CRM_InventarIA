@@ -6,6 +6,9 @@ de las Fases 1 y 2 abajo. **Código nuevo:** el bot de prueba sobre Supabase (`h
 
 ## Dónde retomar (en este orden)
 
+0. **1 nov 2026 · F4·36 construida 🔵** ([AGENTE.md](AGENTE.md), migración 0041): «escribiendo…» en WhatsApp, espera antes de responder (1,5 s) y
+   pausa entre mensajes (1 s), en Configuración → Agente → Avi → Respuesta. Marca el mensaje del cliente como leído. **Falta probarlo por WhatsApp.**
+
 0. **1 nov 2026 · F4·35 construida 🔵** ([FLUJO-DEL-BOT.md](FLUJO-DEL-BOT.md#interruptores-del-bot-y-cuadro-agente-f435), decisión 0034, migración 0040):
    Bot → **Interruptores** (Chatbot, Menú guiado, Avi en todo el bot, mensaje con el chatbot apagado e historial), aviso «🤖 Chatbot apagado» en toda
    la app y cuadro **🤖 Agente** en el lienzo. Se retiró el modo por bot: «Avi en todo» quedó **encendido** porque «Bienvenida» estaba en modo Agente.

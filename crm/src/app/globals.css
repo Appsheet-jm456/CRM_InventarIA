@@ -811,3 +811,4 @@ details.columnas > .panel { right: 0; top: calc(100% + 4px); min-width: 220px }
 .interruptor-fila { display: flex; gap: 12px; align-items: flex-start }
 .interruptor-fila .toggle { flex: none; margin-top: 2px }
 .lista-simple { margin: 6px 0 0; padding-left: 18px; display: grid; gap: 4px; font-size: 13px }
+.deslizador input[type=range] { width: 100%; accent-color: var(--accent) }
