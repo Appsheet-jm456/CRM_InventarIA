@@ -4,13 +4,15 @@ import { Compra } from './Compra'
 // F4·25: textos y tiempos del flujo de compra. El permiso lo revisa el layout del módulo.
 export default async function PaginaCompra() {
   const supabase = crearCliente()
-  const [{ data: config }, { data: etapas }, { data: accion }] = await Promise.all([
+  const [{ data: config }, { data: etapas }, { data: accion }, { data: bots }, { data: publicados }] = await Promise.all([
     supabase.from('agente_config')
-      .select('texto_cuentas, texto_comprobante, texto_sigue_interesado, texto_cancelacion, horas_sin_respuesta, cargo_configuracion')
+      .select('texto_cuentas, texto_comprobante, texto_sigue_interesado, texto_cancelacion, horas_sin_respuesta, cargo_configuracion, compra_bot_despues')
       .eq('id', 1).maybeSingle(),
     supabase.from('compra_etapas')
       .select('embudos(nombre), esperando:etapas!compra_etapas_esperando_pago_id_fkey(nombre), confirmar:etapas!compra_etapas_pago_por_confirmar_id_fkey(nombre)'),
     supabase.from('acciones').select('nombre, activa, hacer'),
+    supabase.from('bots').select('id, nombre, archivado').order('nombre'),
+    supabase.from('bot_flujos').select('bot_id').eq('estado', 'publicada'),
   ])
   const disparo = (accion ?? []).find((a) => ((a.hacer as { tipo: string; flujo?: string }[]) ?? []).some((p) => p.tipo === 'flujo' && p.flujo === 'compra'))
   return (
@@ -22,7 +24,9 @@ export default async function PaginaCompra() {
         texto_cancelacion: config?.texto_cancelacion ?? '',
         horas_sin_respuesta: config?.horas_sin_respuesta ?? 12,
         cargo_configuracion: Number(config?.cargo_configuracion ?? 80000),
+        compra_bot_despues: config?.compra_bot_despues ?? null,
       }}
+      bots={(bots ?? []).map((b) => ({ id: b.id, nombre: b.nombre, archivado: b.archivado, publicado: !!publicados?.some((f) => f.bot_id === b.id) }))}
       etapas={(etapas ?? []).map((e) => ({
         embudo: (e.embudos as unknown as { nombre: string } | null)?.nombre ?? '',
         esperando: (e.esperando as unknown as { nombre: string } | null)?.nombre ?? '',

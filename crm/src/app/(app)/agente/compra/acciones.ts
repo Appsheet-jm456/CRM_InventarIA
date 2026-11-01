@@ -11,6 +11,7 @@ export type DatosCompra = {
   texto_cancelacion: string
   horas_sin_respuesta: number
   cargo_configuracion: number
+  compra_bot_despues: number | null // F4·34, RF-28: bot del lienzo después del comprobante (null: al asesor como antes)
 }
 
 const MAX_WHATSAPP = 4096
@@ -33,6 +34,7 @@ export async function guardarCompra(d: DatosCompra): Promise<Resultado> {
     texto_cancelacion: d.texto_cancelacion.trim(),
     horas_sin_respuesta: d.horas_sin_respuesta,
     cargo_configuracion: Math.round(d.cargo_configuracion),
+    compra_bot_despues: d.compra_bot_despues,
   }).eq('id', 1).select('id')
   if (error) return { error: error.message }
   if (!data?.length) return { error: 'No tienes permiso para cambiar la configuración de compra.' }

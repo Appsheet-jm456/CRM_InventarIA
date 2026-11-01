@@ -6,6 +6,11 @@ de las Fases 1 y 2 abajo. **Código nuevo:** el bot de prueba sobre Supabase (`h
 
 ## Dónde retomar (en este orden)
 
+0. **1 nov 2026 · F4·34 construida 🔵** ([FLUJO-DEL-BOT.md](FLUJO-DEL-BOT.md#cuadro-pregunta-y-datos-de-despacho-tras-el-pago-f434), migraciones 0038 y 0039):
+   cuadro ❓ Pregunta, «Insertar dato», «🏷 Marca un dato» y bot de ejemplo **«Datos de despacho»** publicado. **Para probarlo (dueño):** abrir el bot
+   en el lienzo y ▶ Probar; luego Configuración → Agente → Compra → «Después del comprobante, ir al bot: Datos de despacho» y hacer una compra
+   de prueba por WhatsApp. Sigue **F4·35** (interruptores y cuadro Agente).
+
 0. **1 nov 2026 · F4·33 construida 🔵** ([LEADS.md](LEADS.md), migración 0036): método de pago Efectivo en tienda / Transferencia, sin Descuento ni
    Número de serie, Nota del asesor, interruptor **Venta online / Venta tienda**, sección **Datos de despacho**, etapas **Alistamiento** y **Despachado**
    con tareas automáticas, **+ Tarea** en la ficha y botón **Guardar cambios**. El bot de compra no cambió. **Falta la prueba del dueño** (recargar la página).

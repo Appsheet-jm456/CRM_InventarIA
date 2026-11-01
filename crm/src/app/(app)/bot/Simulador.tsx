@@ -26,10 +26,11 @@ function Burbuja({ m, alElegir }: { m: Mensaje; alElegir: (o: Opcion) => void })
 }
 
 // RF-07: el mismo motor del bot sobre la versión que se ve en el lienzo, sin escribir en la base ni enviar a WhatsApp.
-export function Simulador({ bot, version, nombres, pausas, mensajesConEspera = new Set(), conError = new Set(), alMoverse, alCerrar }: {
+export function Simulador({ bot, version, nombres, nombresDatos, pausas, mensajesConEspera = new Set(), conError = new Set(), alMoverse, alCerrar }: {
   bot: number
   version: number
   nombres: Map<string, string>
+  nombresDatos?: Map<string, string> // nombre de cada dato de la ficha (F4·34)
   pausas: Map<string, number> // cuadros que esperan y cuánto: Pausas (F4·13) y Mensajes con «Sin respuesta» (RF-21)
   mensajesConEspera?: Set<string>
   conError?: Set<string> // Mensajes con «Error al enviar el mensaje» (RF-22)
@@ -82,6 +83,7 @@ export function Simulador({ bot, version, nombres, pausas, mensajesConEspera = n
   }
 
   const campos = (estado?.campos ?? {}) as Record<string, unknown>
+  const datos = (estado?.atributos ?? {}) as Record<string, unknown> // lo que guardan las Preguntas y los botones (F4·34, RF-30)
   const nodo = estado?.nodo as string | undefined
   const enEsteBot = estado?.bot === undefined || estado?.bot === bot
   const espera = estado?.espera_hasta && enEsteBot && nodo ? pausas.get(nodo) : undefined
@@ -141,6 +143,9 @@ export function Simulador({ bot, version, nombres, pausas, mensajesConEspera = n
               : nodo ? nombres.get(nodo.replace(/-vacio$/, '')) ?? nodo : '—'}</dd></div>
             <div><dt>{ETIQUETAS.etapa}</dt><dd>{String(estado.etapa ?? '—')}</dd></div>
             {Object.entries(campos).map(([k, v]) => <div key={k}><dt>{ETIQUETAS[k] ?? k}</dt><dd>{String(v)}</dd></div>)}
+            {Object.entries(datos).map(([k, v]) => (
+              <div key={`d-${k}`}><dt>{nombresDatos?.get(k) ?? k}</dt><dd>{v === true ? 'Sí' : v === false ? 'No' : String(v)}</dd></div>
+            ))}
             {!!estado.pausa && <div><dt>Asesor</dt><dd>En la cola: el bot se detiene</dd></div>}
           </dl>
         </div>

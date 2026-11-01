@@ -114,6 +114,16 @@ export async function guardarPausa(bot: number, clave: string, nombre: string, s
   return rpc('borrador_guardar_pausa', { p_clave: clave, p_nombre: nombre, p_segundos: segundos, p_respondio: respondio, p_tiempo: tiempo, p_bot: bot },
     'Cuadro guardado en el borrador.')
 }
+// Pregunta (F4·34, RF-23): texto, dato de la ficha donde se guarda, mensaje de error, espera y sus tres salidas.
+export async function guardarPregunta(bot: number, clave: string, c: {
+  nombre: string; texto: string; atributo: string | null; textoError: string; siguiente: string | null; sinRespuesta: string | null
+  noLogro: string | null; espera: number
+}) {
+  return rpc('borrador_guardar_pregunta', {
+    p_clave: clave, p_nombre: c.nombre, p_texto: c.texto, p_atributo: c.atributo, p_texto_error: c.textoError, p_siguiente: c.siguiente,
+    p_sin_respuesta: c.sinRespuesta, p_no_logro: c.noLogro, p_espera: c.espera, p_bot: bot,
+  }, 'Cuadro guardado en el borrador.')
+}
 // "Ir a otro bot" (RF-17): nombre y bot de destino.
 export async function guardarAjustes(bot: number, clave: string, nombre: string, ajustes: Record<string, unknown>) {
   return rpc('borrador_guardar_ajustes', { p_clave: clave, p_nombre: nombre, p_ajustes: ajustes, p_bot: bot }, 'Cuadro guardado en el borrador.')

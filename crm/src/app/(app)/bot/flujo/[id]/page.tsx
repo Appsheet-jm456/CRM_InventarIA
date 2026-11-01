@@ -36,12 +36,15 @@ export default async function BotFlujo({ params, searchParams }: { params: { id:
     }))
     contenido = <Historial bot={id} versiones={filas} hayBorrador={!!abierto} archivado={bot.archivado} />
   } else {
-    const [{ ctx, opcionesMarca }, todos, { data: publicados }, { data: catalogos }] = await Promise.all([
+    const [{ ctx, opcionesMarca }, todos, { data: publicados }, { data: catalogos }, { data: datos }] = await Promise.all([
       contexto(supabase), botsDe(supabase), supabase.from('bot_flujos').select('bot_id').eq('estado', 'publicada'),
       supabase.from('catalogos').select('id, nombre, tipo, activo, categoria, marca').order('nombre'),
+      supabase.from('lead_atributos').select('clave, nombre, tipo, opciones').is('archivado_en', null).order('seccion').order('orden'),
     ])
     // Para el cuadro Catálogos (RF-12, RF-13): los de Inventario, y si este usuario puede subir uno nuevo.
-    const extra = { catalogos: (catalogos ?? []) as CatalogoOpcion[], puedeSubirCatalogo: puede(sesion, ['administrar_inventario']) }
+    // Y los datos de la ficha para la Pregunta, «Marca un dato» e «Insertar dato» (F4·34).
+    const extra = { catalogos: (catalogos ?? []) as CatalogoOpcion[], puedeSubirCatalogo: puede(sesion, ['administrar_inventario']),
+      datos: (datos ?? []).map((d) => ({ ...d, opciones: (d.opciones ?? []) as string[] })) }
     // Para «Ir a otro bot» (RF-17): a qué bots se puede llevar al cliente.
     const bots = todos.filter((b) => b.id !== id)
       .map((b) => ({ id: b.id, nombre: b.nombre, archivado: b.archivado, publicado: !!publicados?.some((f) => f.bot_id === b.id) }))

@@ -19,6 +19,7 @@ import { PanelCatalogo, type CatalogoOpcion } from './PanelCatalogo'
 import { PanelCondiciones } from './PanelCondiciones'
 import { OtrasSalidas } from './OtrasSalidas'
 import { MAX_ESPERA, PanelPausa, textoEspera } from './PanelPausa'
+import { InsertarDato, PanelPregunta, conEjemplos, insertarEn } from './PanelPregunta'
 import { Simulador } from './Simulador'
 import { VistaWhatsApp } from './VistaWhatsApp'
 
@@ -28,7 +29,7 @@ import { VistaWhatsApp } from './VistaWhatsApp'
 export type OpcionFlujo = Opcion & { destino: string | null; palabras?: string[]; reconocer?: string; efectos?: Record<string, unknown> }
 export type Cuadro = {
   clave: string
-  tipo: 'mensaje' | 'presupuesto' | 'marca' | 'equipos' | 'ficha' | 'asesor' | 'aviso' | 'ir_bot' | 'condicion' | 'catalogo' | 'pausa'
+  tipo: 'mensaje' | 'presupuesto' | 'marca' | 'equipos' | 'ficha' | 'asesor' | 'aviso' | 'ir_bot' | 'condicion' | 'catalogo' | 'pausa' | 'pregunta'
   nombre: string
   orden: number
   inicio: boolean
@@ -48,37 +49,41 @@ export type Cuadro = {
 }
 type Version = { cuadros: Cuadro[]; version?: number }
 export type OtroBot = { id: number; nombre: string; archivado: boolean; publicado: boolean }
+// Un dato de la ficha (lead_atributos): lo que guarda una Pregunta, lo que marca un botón y las marcas {clave} (F4·34).
+export type DatoFicha = { clave: string; nombre: string; tipo: string; opciones: string[] }
 
 const TIPOS: Record<Cuadro['tipo'], string> = {
   mensaje: 'Mensaje', presupuesto: 'Sistema · presupuesto', marca: 'Sistema · marcas con stock', equipos: 'Sistema · lista de equipos',
   ficha: 'Sistema · ficha del equipo', asesor: 'Sistema · pasa a asesor', aviso: 'Sistema · aviso',
-  ir_bot: 'Ir a otro bot', condicion: 'Condiciones', catalogo: 'Catálogos', pausa: 'Pausa',
+  ir_bot: 'Ir a otro bot', condicion: 'Condiciones', catalogo: 'Catálogos', pausa: 'Pausa', pregunta: 'Pregunta',
 }
 const SALIDAS: Record<string, string> = {
   siguiente: 'Luego', cambiar_presupuesto: 'Sin equipos → cambiar presupuesto', respuesta: 'Cuando el cliente responda',
   ninguna: 'Ninguna se cumple', respondio: 'El cliente respondió', tiempo: 'Pasó el tiempo',
-  otra: 'Otra respuesta', sin_respuesta: 'Sin respuesta', error: 'Error al enviar el mensaje',
+  otra: 'Otra respuesta', sin_respuesta: 'Sin respuesta', error: 'Error al enviar el mensaje', no_logro: 'No logró responder',
 }
 // Los cuadros que crea el dueño desde "+ Agregar" (RF-08): se editan, se unen y se borran. Los demás son del sistema.
-const DEL_DUENO: Cuadro['tipo'][] = ['mensaje', 'ir_bot', 'condicion', 'catalogo', 'pausa']
+const DEL_DUENO: Cuadro['tipo'][] = ['mensaje', 'ir_bot', 'condicion', 'catalogo', 'pausa', 'pregunta']
 const delDueno = (c: Cuadro) => DEL_DUENO.includes(c.tipo)
 // A la ficha, la lista y los avisos no se llega con una flecha: los abre el bot (migración 0012).
-const DESTINOS: Cuadro['tipo'][] = ['mensaje', 'presupuesto', 'marca', 'asesor', 'ir_bot', 'condicion', 'catalogo', 'pausa']
+const DESTINOS: Cuadro['tipo'][] = ['mensaje', 'presupuesto', 'marca', 'asesor', 'ir_bot', 'condicion', 'catalogo', 'pausa', 'pregunta']
 // Espejo de salidas_del_cuadro (migración 0016).
 function salidasDe(c: Pick<Cuadro, 'tipo' | 'opciones'>): string[] {
   if (c.tipo === 'mensaje') return c.opciones?.length ? [] : ['respuesta']
-  return { condicion: ['ninguna'], catalogo: ['siguiente'], pausa: ['respondio', 'tiempo'] }[c.tipo as string] ?? []
+  return { condicion: ['ninguna'], catalogo: ['siguiente'], pausa: ['respondio', 'tiempo'], pregunta: ['siguiente'] }[c.tipo as string] ?? []
 }
 
-// Salidas opcionales del Mensaje (RF-20 a RF-22, espejo de salidas_opcionales, migración 0021): sin conectar no pasa nada.
+// Salidas opcionales del Mensaje (RF-20 a RF-22, espejo de salidas_opcionales, migraciones 0021 y 0038): sin conectar no pasa nada
+// (las de la Pregunta, sueltas, pasan al asesor).
 function opcionalesDe(c: Pick<Cuadro, 'tipo' | 'opciones'>): string[] {
+  if (c.tipo === 'pregunta') return ['sin_respuesta', 'no_logro']
   if (c.tipo !== 'mensaje') return []
   return c.opciones?.length ? ['otra', 'sin_respuesta', 'error'] : ['sin_respuesta', 'error']
 }
 
 // RF-05 en el navegador (la base lo exige al publicar, F4·7): opciones sin destino, cuadros a los que no se llega
 // y textos que pasan el límite de WhatsApp.
-function revisar(cuadros: Cuadro[], bots: OtroBot[], catalogos: CatalogoOpcion[]) {
+function revisar(cuadros: Cuadro[], bots: OtroBot[], catalogos: CatalogoOpcion[], datos: DatoFicha[]) {
   const porClave = new Map(cuadros.map((c) => [c.clave, c]))
   const problemas = new Map<string, string[]>()
   const anotar = (clave: string, p: string) => problemas.set(clave, [...(problemas.get(clave) ?? []), p])
@@ -115,6 +120,14 @@ function revisar(cuadros: Cuadro[], bots: OtroBot[], catalogos: CatalogoOpcion[]
         else if (!o.destino) anotar(c.clave, `La condición «${o.titulo}» no lleva a ningún cuadro.`)
       }
     }
+    if (c.tipo === 'pregunta') {
+      if (!c.ajustes?.atributo) anotar(c.clave, 'Elige en qué dato de la ficha se guarda la respuesta.')
+      else if (!datos.some((d) => d.clave === c.ajustes.atributo)) anotar(c.clave, 'El dato donde se guarda la respuesta ya no existe o está archivado: elige otro.')
+    }
+    if (delDueno(c)) {
+      const raras = revisarMarcas(c.texto, [...c.marcas, ...datos.map((d) => d.clave)]).desconocidas
+      if (raras.length) anotar(c.clave, `El bot no reemplaza ${raras.map((m) => `{${m}}`).join(', ')}: no es un dato de la ficha.`)
+    }
     if (c.tipo === 'pausa') {
       const s = Number(c.ajustes?.segundos ?? 0)
       if (!(s >= 1 && s <= MAX_ESPERA)) anotar(c.clave, 'La espera va de 1 segundo a 23 h 59 min 59 s (ventana de 24 h de Meta).')
@@ -140,7 +153,7 @@ function revisar(cuadros: Cuadro[], bots: OtroBot[], catalogos: CatalogoOpcion[]
 // --------------------------------------------------------------------------- //
 // Un cuadro en el lienzo
 // --------------------------------------------------------------------------- //
-type DatosNodo = { cuadro: Cuadro; marca: 'nuevo' | 'cambiado' | null; problemas: string[]; editable: boolean; aqui: boolean; destinoBot?: string; catalogo?: string }
+type DatosNodo = { cuadro: Cuadro; marca: 'nuevo' | 'cambiado' | null; problemas: string[]; editable: boolean; aqui: boolean; destinoBot?: string; catalogo?: string; dato?: string }
 
 function recorte(texto: string, n = 110) {
   const t = texto.replace(/\s+/g, ' ').trim()
@@ -148,14 +161,15 @@ function recorte(texto: string, n = 110) {
 }
 
 function NodoCuadro({ data, selected }: NodeProps<Node<DatosNodo>>) {
-  const { cuadro: c, marca, problemas, editable, aqui, destinoBot, catalogo } = data
+  const { cuadro: c, marca, problemas, editable, aqui, destinoBot, catalogo, dato } = data
   const sistema = !delDueno(c)
   const unible = editable && !sistema
   // Mientras se arrastra una flecha, todo el cuadro sirve para soltarla (no solo su punto de entrada).
   const arrastrando = useConnection((u) => u.inProgress)
   const filas: { id: string; titulo: string; destino?: string | null; unible: boolean; opcional?: boolean }[] = [
     ...(c.opciones ?? []).map((o) => ({ id: o.id, destino: o.destino, unible,
-      titulo: c.tipo === 'condicion' ? `${o.titulo} = ${o.palabras?.length ? o.palabras.join(' · ') : '…'}` : `${o.id}. ${o.titulo}` })),
+      titulo: c.tipo === 'condicion' ? `${o.titulo} = ${o.palabras?.length ? o.palabras.join(' · ') : '…'}`
+        : `${o.id}. ${o.titulo}${o.efectos?.atributos && Object.keys(o.efectos.atributos).length ? ' 🏷' : ''}` })),
     // Las salidas de un cuadro del dueño van en su orden (la base guarda el JSON con otro orden de claves).
     ...(delDueno(c) ? salidasDe(c) : Object.keys(c.salidas ?? {})).map((s) => ({ id: s, titulo: SALIDAS[s] ?? s, destino: c.salidas?.[s] ?? null, unible })),
     // Como en Kommo: abajo y en gris; «Error al enviar» en rojo. Sueltas no son un problema (RF-20 a RF-22).
@@ -179,6 +193,7 @@ function NodoCuadro({ data, selected }: NodeProps<Node<DatosNodo>>) {
       {c.formato !== 'sistema' && c.formato !== 'ficha' && <p className="nodo-bot-texto">{recorte(c.texto)}</p>}
       {c.tipo === 'condicion' && <p className="nodo-bot-texto">🔀 Según el último mensaje del cliente</p>}
       {c.tipo === 'pausa' && <p className="nodo-bot-texto">⏳ Espera {textoEspera(Number(c.ajustes?.segundos ?? 0))}</p>}
+      {c.tipo === 'pregunta' && <p className="nodo-bot-texto">❓ Guarda en: <b>{dato ?? 'elige el dato'}</b></p>}
       {c.tipo === 'catalogo' && <p className="nodo-bot-texto">📚 {catalogo ?? 'Elige el catálogo'}</p>}
       {c.tipo === 'ir_bot' && <p className="nodo-bot-texto">↪ {destinoBot ? <>Va al inicio de <b>{destinoBot}</b></> : 'Elige a qué bot lleva'}</p>}
       {c.tipo === 'presupuesto' && <small className="muted">Rangos de presupuesto o un monto escrito</small>}
@@ -204,9 +219,18 @@ const TIPOS_NODO = { cuadro: NodoCuadro }
 // --------------------------------------------------------------------------- //
 // Panel para editar el cuadro elegido
 // --------------------------------------------------------------------------- //
-function Panel({ bot, bots, cuadro, cuadros, editable, contexto, alTerminar }: {
+// «Marca un dato» (RF-27): los sí/no y las listas, cada valor como una elección.
+function marcables(datos: DatoFicha[]) {
+  return datos.flatMap((d) => d.tipo === 'si_no'
+    ? [[d.clave, true], [d.clave, false]] as [string, unknown][]
+    : d.tipo === 'lista' ? (d.opciones ?? []).map((o) => [d.clave, o] as [string, unknown]) : [])
+    .map(([clave, valor]) => ({ clave, valor, texto: `${datos.find((d) => d.clave === clave)!.nombre}: ${valor === true ? 'Sí' : valor === false ? 'No' : valor}` }))
+}
+
+function Panel({ bot, bots, cuadro, cuadros, datos, editable, contexto, alTerminar }: {
   bot: number
   bots: OtroBot[]
+  datos: DatoFicha[]
   cuadro: Cuadro
   cuadros: Cuadro[]
   editable: boolean
@@ -230,7 +254,10 @@ function Panel({ bot, bots, cuadro, cuadros, editable, contexto, alTerminar }: {
   const textoEditable = editable && formato !== 'sistema' && formato !== 'ficha'
   const todas = opciones ?? cuadro.opciones_codigo ?? []
   const medida = medir(texto, formato, todas, cuadro.marcas)
-  const { desconocidas } = revisarMarcas(texto, cuadro.marcas)
+  // Los cuadros del dueño también aceptan los datos de la ficha (RF-26).
+  const { desconocidas } = revisarMarcas(texto, delDueno(cuadro) ? [...cuadro.marcas, ...datos.map((d) => d.clave)] : cuadro.marcas)
+  const area = useRef<HTMLTextAreaElement>(null)
+  const opcionesMarca = useMemo(() => marcables(datos), [datos])
   const limite = cuadro.max_titulo ?? 24
   const titulosMal = (opciones ?? []).some((o) => !o.titulo.trim() || o.titulo.length > limite)
   const ids = (opciones ?? []).map((o) => o.id)
@@ -249,7 +276,7 @@ function Panel({ bot, bots, cuadro, cuadros, editable, contexto, alTerminar }: {
   const elegido = bots.find((b) => String(b.id) === destinoBot)
   const ejemplos: Record<string, string> = { uso: 'Diseño', motivo: '', horario: contexto.horario, proxima: 'mañana a las 8:00 am' }
   const vista = cuadro.formato === 'ficha' ? contexto.ficha
-    : cuadro.marcas.reduce((t, m) => t.replaceAll(`{${m}}`, ejemplos[m] ?? ''), texto)
+    : conEjemplos(cuadro.marcas.reduce((t, m) => t.replaceAll(`{${m}}`, ejemplos[m] ?? ''), texto), datos)
 
   const cambiarOpcion = (i: number, cambio: Partial<OpcionFlujo>) =>
     setOpciones((ops) => (ops ?? []).map((o, j) => (j === i ? { ...o, ...cambio } : o)))
@@ -261,7 +288,9 @@ function Panel({ bot, bots, cuadro, cuadros, editable, contexto, alTerminar }: {
         alTerminar(await guardarAjustes(bot, cuadro.clave, nombre, { bot_id: destinoBot ? Number(destinoBot) : null }))
         return
       }
-      const ops = opciones?.map((o) => ({ id: o.id, titulo: o.titulo, destino: o.destino ?? null })) ?? null
+      // Un Mensaje manda lo que marca cada opción (RF-27; {} lo quita); los cuadros del sistema no.
+      const ops = opciones?.map((o) => ({ id: o.id, titulo: o.titulo, destino: o.destino ?? null,
+        ...(mensaje ? { marcar: (o.efectos?.atributos as Record<string, unknown> | undefined) ?? {} } : {}) })) ?? null
       // Un Mensaje manda también sus salidas opcionales (RF-20 a RF-22); sin botones no lleva «Otra respuesta».
       const salidas = mensaje
         ? { ...(sinBotones ? { respuesta } : { otra }), sin_respuesta: sinRespuesta, error, espera_segundos: espera }
@@ -300,10 +329,12 @@ function Panel({ bot, bots, cuadro, cuadros, editable, contexto, alTerminar }: {
       )}
       {formato === 'sistema' ? null : formato === 'ficha' ? null : (
         <label className="field">Mensaje
-          <textarea rows={Math.min(10, Math.max(3, texto.split('\n').length + 1))} value={texto} disabled={!textoEditable || ocupado}
+          <textarea ref={area} rows={Math.min(10, Math.max(3, texto.split('\n').length + 1))} value={texto} disabled={!textoEditable || ocupado}
             onChange={(e) => setTexto(e.target.value)} />
           <span className="row contador">
-            <small className="muted">*negrita* · _cursiva_ · ~tachado~</small>
+            {textoEditable && delDueno(cuadro)
+              ? <InsertarDato datos={datos} deshabilitado={ocupado} alInsertar={(mk) => setTexto(insertarEn(area.current, texto, mk))} />
+              : <small className="muted">*negrita* · _cursiva_ · ~tachado~</small>}
             <small className={`mono ${medida.largo > medida.limite ? 'bad' : 'muted'}`}>
               {medida.largo.toLocaleString('es-CO')} / {medida.limite.toLocaleString('es-CO')}
               {medida.forma === 'botones' ? ' con botones' : medida.forma === 'lista' ? ' con lista' : ''}
@@ -332,6 +363,21 @@ function Panel({ bot, bots, cuadro, cuadros, editable, contexto, alTerminar }: {
               ) : (
                 <small className="muted">{o.destino === '@pedir_codigo' ? 'pide el código' : cuadros.find((d) => d.clave === o.destino)?.nombre ?? ''}</small>
               )}
+              {mensaje && opcionesMarca.length > 0 && (() => {
+                const [clave, valor] = Object.entries((o.efectos?.atributos as Record<string, unknown> | undefined) ?? {})[0] ?? []
+                const actual = clave ? JSON.stringify([clave, valor]) : ''
+                return (
+                  <select className="lienzo-marca" value={actual} disabled={!editable || ocupado} aria-label={`Dato que marca la opción ${o.id}`}
+                    title="Al tocar esta opción se anota este dato en la ficha del cliente"
+                    onChange={(e) => {
+                      const elegido = e.target.value ? JSON.parse(e.target.value) as [string, unknown] : null
+                      cambiarOpcion(i, { efectos: { ...(o.efectos ?? {}), atributos: elegido ? { [elegido[0]]: elegido[1] } : {} } })
+                    }}>
+                    <option value="">🏷 No marca datos</option>
+                    {opcionesMarca.map((x) => <option key={x.texto} value={JSON.stringify([x.clave, x.valor])}>🏷 {x.texto}</option>)}
+                  </select>
+                )
+              })()}
               {editable && mensaje && (
                 <button type="button" className="btn chico peligro" aria-label={`Quitar opción ${o.id}`} disabled={ocupado}
                   onClick={() => setOpciones(opciones.filter((_, j) => j !== i))}>×</button>
@@ -467,6 +513,7 @@ const AGREGAR: { texto: string; tipo: string; detalle: string; deshabilitada?: b
   { texto: '💬 Mensaje', tipo: 'mensaje', detalle: 'Texto con botones o lista; sin opciones, espera la respuesta' },
   { texto: '🔀 Condiciones', tipo: 'condicion', detalle: 'Elige el camino según lo que escribió el cliente' },
   { texto: '📚 Catálogos', tipo: 'catalogo', detalle: 'Envía un catálogo de Inventario y sigue' },
+  { texto: '❓ Pregunta', tipo: 'pregunta', detalle: 'Pregunta un dato (cédula, ciudad…) y lo guarda en la ficha' },
   { texto: '⏳ Pausa', tipo: 'pausa', detalle: 'Espera; si el cliente no escribe, sigue al recordatorio' },
   { texto: '↪ Ir a otro bot', tipo: 'ir_bot', detalle: 'Lleva al cliente al inicio de otro bot' },
 ]
@@ -487,6 +534,7 @@ type Props = {
   bot: { id: number; nombre: string; archivado: boolean; principal?: boolean }
   bots: OtroBot[] // los demás bots, para «Ir a otro bot»
   catalogos: CatalogoOpcion[] // los de Inventario, para el cuadro Catálogos
+  datos: DatoFicha[] // los datos de la ficha, para la Pregunta, «Marca un dato» e «Insertar dato» (F4·34)
   puedeSubirCatalogo: boolean
   publicada: Version
   borrador: Version | null
@@ -496,7 +544,7 @@ type Props = {
   hayBorrador?: boolean
 }
 
-function LienzoInterno({ bot, bots, catalogos, puedeSubirCatalogo, publicada, borrador, archivada, contexto, choques = [], hayBorrador = false }: Props) {
+function LienzoInterno({ bot, bots, catalogos, datos, puedeSubirCatalogo, publicada, borrador, archivada, contexto, choques = [], hayBorrador = false }: Props) {
   const router = useRouter()
   const modo = useModoApp() // RL-01: el modo de la app, no el del computador
   const flujo = useReactFlow()
@@ -522,7 +570,7 @@ function LienzoInterno({ bot, bots, catalogos, puedeSubirCatalogo, publicada, bo
   const [aviso, setAviso] = useState<Resultado>({})
   const [ocupado, iniciar] = useTransition()
 
-  const problemas = useMemo(() => revisar(cuadros, bots, catalogos), [cuadros, bots, catalogos])
+  const problemas = useMemo(() => revisar(cuadros, bots, catalogos, datos), [cuadros, bots, catalogos, datos])
   const totalProblemas = [...problemas.values()].reduce((s, p) => s + p.length, 0)
   const anteriores = useMemo(() => new Map(publicada.cuadros.map((c) => [c.clave, c])), [publicada])
 
@@ -535,7 +583,8 @@ function LienzoInterno({ bot, bots, catalogos, puedeSubirCatalogo, publicada, bo
     return { id: c.clave, type: 'cuadro', position: { x: c.x, y: c.y }, draggable: editable,
       data: { cuadro: c, marca, problemas: problemas.get(c.clave) ?? [], editable, aqui: probando && aqui?.replace(/-vacio$/, '') === c.clave,
         destinoBot: c.tipo === 'ir_bot' ? bots.find((b) => b.id === Number(c.ajustes?.bot_id))?.nombre : undefined,
-        catalogo: c.tipo === 'catalogo' ? catalogos.find((k) => k.id === Number(c.ajustes?.catalogo_id))?.nombre : undefined } }
+        catalogo: c.tipo === 'catalogo' ? catalogos.find((k) => k.id === Number(c.ajustes?.catalogo_id))?.nombre : undefined,
+        dato: c.tipo === 'pregunta' ? datos.find((d) => d.clave === c.ajustes?.atributo)?.nombre : undefined } }
   })
   const armarFlechas = (): Edge[] => cuadros.flatMap((c) => [
     ...(c.opciones ?? []).filter((o) => o.destino && o.destino !== '@pedir_codigo').map((o) => ({
@@ -659,6 +708,7 @@ function LienzoInterno({ bot, bots, catalogos, puedeSubirCatalogo, publicada, bo
         <small className="muted">
           {editable ? 'Lo que cambies aquí no llega al bot hasta que lo publiques. Arrastra desde el punto de una opción hasta un cuadro para unirlos. ' : 'Abre un borrador para cambiar el flujo sin afectar a los clientes. '}
           Los cuadros 🔒 buscan en el inventario, muestran la ficha o pasan a un asesor: se les cambia el texto pero no lo que hacen.
+          Una ❓ Pregunta guarda lo que escriba el cliente en su ficha; para usar un dato en un mensaje, «Insertar dato».
           Las reglas de siempre siguen en cualquier punto: <b>9</b> o “asesor” pasa a un asesor, un <b>código</b> de equipo abre su ficha,
           “hola” o “menú” vuelve al inicio y el texto libre busca en el inventario.
         </small>
@@ -696,12 +746,14 @@ function LienzoInterno({ bot, bots, catalogos, puedeSubirCatalogo, publicada, bo
           }}>
           {probando ? (
             <Simulador bot={bot.id} version={(archivada ?? borrador ?? publicada).version!} nombres={new Map(cuadros.map((c) => [c.clave, c.nombre]))}
+              nombresDatos={new Map(datos.map((d) => [d.clave, d.nombre]))}
               pausas={new Map([
+                ...cuadros.filter((c) => c.tipo === 'pregunta').map((c) => [c.clave, Number(c.ajustes?.espera_segundos ?? 1800)] as [string, number]),
                 ...cuadros.filter((c) => c.tipo === 'pausa').map((c) => [c.clave, Number(c.ajustes?.segundos ?? 0)] as [string, number]),
                 ...cuadros.filter((c) => c.tipo === 'mensaje' && c.salidas?.sin_respuesta)
                   .map((c) => [c.clave, Number(c.ajustes?.espera_segundos ?? 900)] as [string, number]),
               ])}
-              mensajesConEspera={new Set(cuadros.filter((c) => c.tipo === 'mensaje' && c.salidas?.sin_respuesta).map((c) => c.clave))}
+              mensajesConEspera={new Set(cuadros.filter((c) => c.tipo === 'pregunta' || (c.tipo === 'mensaje' && c.salidas?.sin_respuesta)).map((c) => c.clave))}
               conError={new Set(cuadros.filter((c) => c.tipo === 'mensaje' && c.salidas?.error).map((c) => c.clave))}
               alMoverse={setAqui} alCerrar={() => { setProbando(false); setAqui(null) }} />
           ) : publicando && borrador ? (
@@ -710,6 +762,13 @@ function LienzoInterno({ bot, bots, catalogos, puedeSubirCatalogo, publicada, bo
               alTerminar={(r) => { setAviso(r); if (!r.error) { setPublicando(false); router.refresh() } }} />
           ) : elegidoCuadro?.tipo === 'pausa' ? (
             <PanelPausa key={elegidoCuadro.clave + elegidoCuadro.actualizado_en} bot={bot.id} cuadro={elegidoCuadro} editable={editable}
+              destinos={cuadros.filter((c) => DESTINOS.includes(c.tipo) && c.clave !== elegidoCuadro.clave)}
+              alTerminar={(r, borrado) => {
+                setAviso(r)
+                if (!r.error) { marcarPendiente(false); if (borrado) setElegido(null); router.refresh() }
+              }} />
+          ) : elegidoCuadro?.tipo === 'pregunta' ? (
+            <PanelPregunta key={elegidoCuadro.clave + elegidoCuadro.actualizado_en} bot={bot.id} cuadro={elegidoCuadro} editable={editable} datos={datos}
               destinos={cuadros.filter((c) => DESTINOS.includes(c.tipo) && c.clave !== elegidoCuadro.clave)}
               alTerminar={(r, borrado) => {
                 setAviso(r)
@@ -731,7 +790,7 @@ function LienzoInterno({ bot, bots, catalogos, puedeSubirCatalogo, publicada, bo
                 if (!r.error) { marcarPendiente(false); if (borrado) setElegido(null); router.refresh() }
               }} />
           ) : elegidoCuadro ? (
-            <Panel key={elegidoCuadro.clave + elegidoCuadro.actualizado_en} bot={bot.id} bots={bots} cuadro={elegidoCuadro} cuadros={cuadros} editable={editable}
+            <Panel key={elegidoCuadro.clave + elegidoCuadro.actualizado_en} bot={bot.id} bots={bots} cuadro={elegidoCuadro} cuadros={cuadros} datos={datos} editable={editable}
               contexto={contexto} alTerminar={(r, borrado) => {
                 setAviso(r)
                 if (!r.error) { marcarPendiente(false); if (borrado) setElegido(null); router.refresh() }

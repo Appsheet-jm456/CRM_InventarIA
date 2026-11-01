@@ -22,7 +22,7 @@
 | **F4·14** Arranque por palabra clave y por etapa del embudo | Un bot arranca si el cliente escribe su palabra clave o si su oportunidad entra a cierta etapa |
 | ✅ **F4·17** Lienzo a pantalla completa (3 oct, decisión 0030) | El lienzo de un bot ocupa toda la pantalla, con barra superior: ← Cancelar, Probar, Publicar… y Guardar. Se mantiene el borrador |
 | ✅ **F4·18** Salidas del Mensaje (3 oct, decisión 0030, migración 0021) | «Otra respuesta», «Sin respuesta» (con tiempo) y «Error al enviar el mensaje», como en Kommo |
-| 📝 **F4·34** Cuadro Pregunta, datos en los mensajes y datos de despacho tras el pago (1 nov 2026) | Cuadro ❓ Pregunta que guarda la respuesta en un dato de la ficha y la valida; marcas `{dato}` en los mensajes; efecto «Marcar un dato» en los botones; la compra sigue en un bot del lienzo después del comprobante; bot de ejemplo «Datos de despacho» |
+| 🔵 **F4·34** Cuadro Pregunta, datos en los mensajes y datos de despacho tras el pago (construida 1 nov 2026, migraciones 0038 y 0039; falta la prueba del dueño) | Cuadro ❓ Pregunta que guarda la respuesta en un dato de la ficha y la valida; marcas `{dato}` en los mensajes; efecto «Marcar un dato» en los botones; la compra sigue en un bot del lienzo después del comprobante; bot de ejemplo «Datos de despacho» |
 | 📝 **F4·35** Interruptores del bot y cuadro 🤖 Agente (1 nov 2026, decisión 0034) | Chatbot, Menú guiado y Avi en texto libre en todo el bot, con mensaje fijo opcional; cuadro 🤖 Agente con instrucción, herramientas, límite y salidas; se retira el modo por bot |
 | **F4·15** Simulador y pruebas | Probar los cuadros y bots nuevos en el simulador (la Pausa con "Simular que pasó el tiempo"), pruebas de la base y del motor |
 
@@ -379,7 +379,7 @@ marca *Venta online = No*. Solo atributos de tipo Sí/No o Lista.
 [ninguno · lista de bots]». Con *ninguno*, todo queda como hoy (texto fijo de recibido y paso al asesor). Con un bot elegido:
 1. la oportunidad pasa a *Pago por confirmar* y se pone la etiqueta `Pago-Por-Confirmar`, como hoy (RAG-20);
 2. el bot **no se pausa todavía**: el cliente entra al inicio del bot elegido;
-3. el bot termina en el cuadro 🔒 **Asesor**, que hace el paso a la cola con la tarea *Verificar pago* (lo de hoy, pero al final).
+3. el bot termina en el cuadro 🔒 **Asesor**, que hace el paso a la cola; la nota de la compra (equipo, total, comprobante) queda para el asesor como hoy.
 Si el cliente no termina (Sin respuesta), el asesor igual recibe el chat: el pago nunca se queda sin revisar.
 
 **RF-29 · Bot de ejemplo «Datos de despacho».** Se crea ya dibujado y publicado, para que el dueño lo ajuste:
@@ -403,6 +403,16 @@ de columna (la pantalla lo lee columna por columna). `problemas_del_flujo` revis
 marca `{dato}` exista. Motor: `flujo.py` (Pregunta y marcas) y `compra.py` (RF-28).
 
 **Fuera de esta tarea:** varios equipos en una compra, leer los datos de una foto de la cédula y que el agente Avi llene las preguntas.
+
+**Cómo quedó construida (1 nov 2026).** Migración **0038** (tipo `pregunta`, `borrador_guardar_pregunta`, `marcar` en
+`borrador_guardar_cuadro` → `efectos.atributos`, `marcas_desconocidas`, `problemas_del_flujo` y el disparador `bot_cuadros_limites` aceptan
+las marcas `{dato}` de atributos activos, `agente_config.compra_bot_despues` con su permiso de columna; 10 pruebas en
+`supabase/pruebas/0038_cuadro_pregunta.sql`). Migración **0039**: bot de ejemplo **«Datos de despacho»** publicado (no se conecta solo: se
+elige en Compra). Motor: `flujo.py` (`preguntar`, `responder_pregunta`, `limpiar_respuesta`, `con_datos`, `marcar_datos`, `en_pregunta`),
+`receptor.py` guarda `st["atributos"]` en `leads.atributos` (si la base rechaza un dato, guarda la charla sin él) y no deja que las Acciones
+ni Avi atiendan mientras el cliente responde una Pregunta; `compra.py` sigue al bot elegido. 15 pruebas en `prueba_pregunta.py`.
+Lienzo: «+ Agregar → ❓ Pregunta» con su panel, «+ Insertar dato» en los textos, «🏷 Marca un dato» en cada opción, el simulador muestra
+los datos guardados. Compra: «Después del comprobante, ir al bot».
 
 ## Interruptores del bot y cuadro Agente (F4·35)
 

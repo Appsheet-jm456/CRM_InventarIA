@@ -13,8 +13,9 @@ const PASOS = [
   ['Asesor', 'El asesor verifica el pago en el banco y cierra la venta. Nadie confirma un pago automáticamente.'],
 ] as const
 
-export function Compra({ datos, etapas, disparo }: {
+export function Compra({ datos, etapas, disparo, bots }: {
   datos: DatosCompra
+  bots: { id: number; nombre: string; archivado: boolean; publicado: boolean }[]
   etapas: { embudo: string; esperando: string; confirmar: string }[]
   disparo: { nombre: string; activa: boolean } | null
 }) {
@@ -76,6 +77,20 @@ export function Compra({ datos, etapas, disparo }: {
           onSubmit={async (e) => { e.preventDefault(); setOcupado(true); setAviso(await guardarCompra(d)); setOcupado(false) }}>
           {texto('texto_cuentas', 'Cuentas para pagar', 'Titular, bancos, números, llave, recargo con tarjeta, tiempo para pagar y qué datos de envío mandar', 12)}
           {texto('texto_comprobante', 'Comprobante recibido', 'Se envía al recibir la foto, el PDF o «ya pagué», antes de pasar al asesor')}
+          <label className="field">
+            Después del comprobante, ir al bot
+            <select value={d.compra_bot_despues ?? ''} disabled={ocupado}
+              onChange={(e) => poner('compra_bot_despues', e.target.value ? Number(e.target.value) : null)}>
+              <option value="">Ninguno: el texto de comprobante recibido y pasa al asesor</option>
+              {bots.filter((b) => !b.archivado || b.id === d.compra_bot_despues).map((b) => (
+                <option key={b.id} value={b.id} disabled={!b.publicado}>{b.nombre}{!b.publicado ? ' (sin publicar)' : b.archivado ? ' (archivado)' : ''}</option>
+              ))}
+            </select>
+            <small className="muted">
+              Por ejemplo «Datos de despacho»: el cliente responde sus datos de envío en el lienzo y ese bot termina en el asesor. La oportunidad
+              pasa igual a Pago por confirmar. Con un bot elegido, el texto de comprobante recibido no se envía: lo dice el primer mensaje del bot.
+            </small>
+          </label>
           {texto('texto_sigue_interesado', '¿Sigues interesado?', 'Un solo recordatorio si no responde después de enviar las cuentas', 2)}
           {texto('texto_cancelacion', 'Cancelación', 'Cuando escribe «ya no quiero», «cancelar»…', 2)}
           <div className="row">
