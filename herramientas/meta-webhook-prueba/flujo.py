@@ -414,13 +414,45 @@ def responder_pregunta(st, c, texto):
     return [m_texto(con_datos(st, ajustes.get("texto_error") or "Esa respuesta no me sirve 🙏 ¿Me la escribes de nuevo?"))]
 
 
+def cuadro_actual(st):
+    """El cuadro en el que está el cliente. Lo usan el receptor y el simulador antes de correr el motor, así que fija el bot del
+    cliente por su cuenta (y respeta la versión que puso el simulador)."""
+    previo = getattr(_hilo, "bot", None)
+    _hilo.bot = st.get("bot") or db.principal()
+    try:
+        return (cuadros() or {}).get(st.get("nodo")) or {}
+    finally:
+        _hilo.bot = previo
+
+
 def en_pregunta(st):
-    """El cliente está respondiendo una Pregunta: las Acciones y Avi no se meten (su respuesta es un dato, no una consulta).
-    Lo llama el receptor antes de correr el motor, así que busca el bot del cliente por su cuenta."""
-    if st.get("pausa"):
-        return False
-    todos = db.flujo(st.get("bot") or db.principal()) or {}
-    return (todos.get(st.get("nodo")) or {}).get("tipo") == "pregunta"
+    """El cliente está respondiendo una Pregunta: las Acciones y Avi no se meten (su respuesta es un dato, no una consulta)."""
+    return not st.get("pausa") and cuadro_actual(st).get("tipo") == "pregunta"
+
+
+# --------------------------------------------------------------------------- #
+# Cuadro Agente (F4·35, RF-36 y RF-37): desde aquí conversa Avi (agente.responder_cuadro); el motor solo entra y sale
+# --------------------------------------------------------------------------- #
+
+def entrar_agente(st, c):
+    """Envía el mensaje de entrada del cuadro y deja al cliente con Avi. Las vueltas cuentan desde cero."""
+    st["nodo"], st["errores"] = c["clave"], 0
+    st["campos"].pop("Errores bot", None)
+    st.setdefault("agente", {})["vueltas"] = 0
+    return [m_texto(con_datos(st, c["texto"]))]
+
+
+def en_agente(st):
+    """El cliente está en un cuadro Agente (lo pregunta el receptor antes de correr el motor)."""
+    c = {} if st.get("pausa") else cuadro_actual(st)
+    return c if c.get("tipo") == "agente" else None
+
+
+def salir_de_agente(st, c, salida, por_defecto):
+    """Sigue la flecha `salida` del cuadro Agente; sin unir, hace `por_defecto()` (RF-37)."""
+    destino = (c.get("salidas") or {}).get(salida)
+    st.get("agente", {}).pop("vueltas", None)
+    return ir(st, destino) if destino else por_defecto()
 
 
 def cambiar_de_bot(st, bot):
@@ -507,6 +539,8 @@ def ir(st, clave):
         return esperar(st, c)
     if c["tipo"] == "pregunta":
         return preguntar(st, c)
+    if c["tipo"] == "agente":
+        return entrar_agente(st, c)
     st["nodo"], st["errores"] = c["clave"], 0
     st["campos"].pop("Errores bot", None)
     aplicar(st, c["al_entrar"])
@@ -718,7 +752,9 @@ def _responder(st, texto, avisar):
     k = st["nodo"]
     c = todos.get(k)
     vacio = k and k.endswith("-vacio") and todos.get(k[:-6], {}).get("tipo") == "equipos"
-    if k and n in SALUDOS:
+    if k and (n in SALUDOS or (n == "0" and c and c["tipo"] == "agente")):
+        if c and c["tipo"] == "agente":  # RF-37: «Volvió al menú»; sin unir, al inicio del principal
+            return salir_de_agente(st, c, "menu", lambda: al_principal(st)), st
         return al_principal(st), st
     if not k or not (c or vacio or k == "BUSQUEDA"):  # nuevo, o un cuadro que ya no existe: inicio de su bot
         return ir(st, inicio()), st

@@ -174,6 +174,13 @@ def atributos():
     return {a["clave"]: a for a in filas}
 
 
+def bot_config():
+    """Interruptores del bot (F4·35, RF-31): chatbot_activo, menu_activo, agente_en_todo y texto_apagado. Un cambio se ve en
+    menos de 30 s. Sin la fila (base vieja), todo encendido como antes."""
+    filas = _cacheado("bot_config", "bot_config?id=eq.1&select=chatbot_activo,menu_activo,agente_en_todo,texto_apagado") or []
+    return filas[0] if filas else {"chatbot_activo": True, "menu_activo": True, "agente_en_todo": False, "texto_apagado": ""}
+
+
 def bot_modo(bot):
     """Cómo atiende un bot: menu, hibrido o agente (F4·22, RAG-14). Un cambio se ve en menos de 30 s."""
     filas = _cacheado("bots-modo", "bots?select=id,modo") or []

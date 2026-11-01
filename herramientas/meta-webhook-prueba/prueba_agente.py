@@ -37,7 +37,8 @@ db.mensajes_recientes = lambda lead_id, n: [{"lado": "cliente", "texto": "hola"}
 db.buscar_conocimiento = lambda texto, limite=5: FICHAS
 db.turnos_del_dia = lambda lead_id: 0
 db.actualizar_lead = lambda *a, **k: None
-db.bot_modo = lambda bot: "agente"
+INTERRUPTORES = {"chatbot_activo": True, "menu_activo": True, "agente_en_todo": True, "texto_apagado": ""}
+db.bot_config = lambda: INTERRUPTORES  # F4·35: reemplaza el modo por bot
 db.principal = lambda: 1
 db.agente_config = lambda fresco=False: CONFIG
 REGISTRO = []
@@ -87,9 +88,9 @@ prueba(1, "atiende texto libre de un número de la lista blanca", agente.atiende
 prueba(2, "no atiende a un número que no está en la lista blanca", not agente.atiende(st0, {"id": 8, "telefono": "573009998877"}, "text", "hola", CONFIG))
 prueba(3, "no atiende botones, números sueltos del menú ni chats con asesor", not agente.atiende(st0, lead_b, "interactive", "x", CONFIG)
         and not agente.atiende(st0, lead_b, "text", "3", CONFIG) and not agente.atiende(dict(st0, pausa=True), lead_b, "text", "hola", CONFIG))
-db.bot_modo = lambda bot: "hibrido"
-prueba(4, "no atiende si el bot no está en modo Agente", not agente.atiende(st0, lead_b, "text", "hola", CONFIG))
-db.bot_modo = lambda bot: "agente"
+INTERRUPTORES["agente_en_todo"] = False
+prueba(4, "no atiende si «Avi en todo el bot» está apagado (F4·35)", not agente.atiende(st0, lead_b, "text", "hola", CONFIG))
+INTERRUPTORES["agente_en_todo"] = True
 prueba(5, "apagado no atiende; para todos sí", not agente.atiende(st0, lead_b, "text", "busco un portátil", dict(CONFIG, estado="apagado"))
         and agente.atiende(st0, {"id": 9, "telefono": "573009998877"}, "text", "busco un portátil", dict(CONFIG, estado="todos")))
 

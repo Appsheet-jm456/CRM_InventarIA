@@ -77,23 +77,28 @@ def encendido(config, lead):
     return False
 
 
-def atiende(st, lead, tipo, entrada, config=None):
-    """True si este mensaje lo debe atender Avi. Los números sueltos (0 a 9) son del menú y siguen por él."""
+def atiende(st, lead, tipo, entrada, config=None, interruptores=None):
+    """True si este mensaje lo debe atender Avi fuera de un cuadro Agente: «Avi en texto libre en todo el bot» encendido (F4·35, RF-31).
+    Con el menú encendido, los números sueltos (0 a 9) y «hola», «menú», «reiniciar» siguen por el menú; con el menú apagado, Avi atiende todo."""
     config = config or db.agente_config()
-    if tipo != "text" or st.get("pausa") or not config or not encendido(config, lead):
+    interruptores = interruptores or db.bot_config()
+    if not interruptores.get("agente_en_todo"):
         return False
-    if re.fullmatch(r"\s*\d{1,2}\s*", entrada or "") or not (entrada or "").strip():
+    if tipo != "text" or st.get("pausa") or not config or not encendido(config, lead) or not (entrada or "").strip():
         return False
-    if flujo.normalizar(entrada) in flujo.SALUDOS + ("reiniciar",):  # «hola», «menú» y «reiniciar» siempre muestran el menú guiado
-        return False
-    return db.bot_modo(st.get("bot") or db.principal()) == "agente"
+    if interruptores.get("menu_activo", True):
+        if re.fullmatch(r"\s*\d{1,2}\s*", entrada or ""):
+            return False
+        if flujo.normalizar(entrada) in flujo.SALUDOS + ("reiniciar",):  # «hola», «menú» y «reiniciar» siempre muestran el menú guiado
+            return False
+    return True
 
 
 # --------------------------------------------------------------------------- #
 # Prompt
 # --------------------------------------------------------------------------- #
 
-def sistema(config, lead, st):
+def sistema(config, lead, st, instruccion=""):
     campos = st.get("campos") or {}
     ficha = [f"Nombre: {(lead or {}).get('nombre') or 'no lo sabes todavía'}", f"Etapa: {st.get('etapa') or 'Nuevo'}"]
     for k in ("Uso equipo", "Presupuesto", "Marca interés", "Código producto"):
@@ -110,6 +115,7 @@ def sistema(config, lead, st):
         f"{TRATO.get(config.get('trato'), '')} {LARGO.get(config.get('largo'), '')}",
         REGLAS,
         f"INSTRUCCIONES DEL DUEÑO\n{dueno}" if dueno else "",
+        f"EN ESTE PUNTO DE LA CONVERSACIÓN\n{instruccion}" if instruccion else "",  # cuadro Agente del lienzo (F4·35, RF-36)
         f"HORARIO DE LOS ASESORES\n{flujo.texto_horario()}",
         "EL CLIENTE\n" + "\n".join(ficha),
         f"LO QUE PASÓ EN CONVERSACIONES ANTERIORES\n{resumen}" if resumen else "",
@@ -317,10 +323,19 @@ def _asesor_por(ctx, motivo, etiqueta):
     ctx["asesor"] = True
 
 
-def responder(st, entrada, lead, config=None, simulador=False, previo=None):
+def responder(st, entrada, lead, config=None, simulador=False, previo=None, cuadro=None):
     """Un turno de Avi. Devuelve un dict {mensajes, st, nota, etiquetas, asesor, flujo, traza, costo_usd, tokens} o None si el
-    modelo no respondió (atiende el Híbrido). `previo` es la conversación del simulador (no se lee de la base)."""
+    modelo no respondió (atiende el Híbrido). `previo` es la conversación del simulador (no se lee de la base). `cuadro` es el
+    cuadro Agente del lienzo: suma su instrucción y deja solo sus herramientas (F4·35, RF-36)."""
     config = config or db.agente_config(fresco=True)
+    instruccion = ""
+    if cuadro:
+        ajustes = cuadro.get("ajustes") or {}
+        instruccion = (ajustes.get("instruccion") or "").strip()
+        permitidas = ajustes.get("herramientas")
+        if permitidas is not None:  # null: todas las que estén encendidas en Avi
+            config = {**config, "herramientas_apagadas": list(set(config.get("herramientas_apagadas") or [])
+                                                                    | {h for h in HERRAMIENTAS if h not in permitidas})}
     st.setdefault("bot", None)
     if st["bot"] is None:
         st["bot"] = db.principal()
@@ -334,7 +349,7 @@ def responder(st, entrada, lead, config=None, simulador=False, previo=None):
             _asesor_por(ctx, "Avi llegó al límite de turnos del día con este cliente.", "Revisar-Agente")
             return _salida(ctx, [], traza, costo, tokens)
         mensajes = historial(lead, entrada, int(config.get("memoria_mensajes") or 20), previo)
-        prompt = sistema(config, lead, st)
+        prompt = sistema(config, lead, st, instruccion)
         reintento = False
         for paso in range(1, int(config.get("max_pasos") or 6) + 1):
             try:
@@ -392,6 +407,45 @@ def responder(st, entrada, lead, config=None, simulador=False, previo=None):
         return _salida(ctx, [], traza, costo, tokens)
     finally:
         flujo._hilo.bot, flujo._hilo.saltos = None, 0
+
+
+def responder_cuadro(st, entrada, lead, cuadro, config=None, simulador=False, previo=None):
+    """El cliente le escribió a Avi dentro de un cuadro Agente (F4·35, RF-36 a RF-38). Devuelve el mismo dict que responder(), con
+    los mensajes de la salida que tocó, o None si el cerebro falló y no hay flecha «Error del cerebro» (atiende el Híbrido)."""
+    config = config or db.agente_config(fresco=True)
+    ajustes = cuadro.get("ajustes") or {}
+    memoria = st.setdefault("agente", {})
+    vacio = {"mensajes": [], "st": st, "nota": "", "etiquetas": ["Agente"], "asesor": False, "flujo": None, "traza": [], "trozos": [],
+             "costo_usd": 0, "tokens": 0}
+
+    def ir(salida, por_defecto, **extra):
+        flujo._hilo.bot, flujo._hilo.saltos = st.get("bot") or db.principal(), 0
+        try:
+            return {**vacio, **extra, "mensajes": flujo.salir_de_agente(st, cuadro, salida, por_defecto)}
+        finally:
+            flujo._hilo.bot, flujo._hilo.saltos = None, 0
+
+    # RF-38: con Avi apagado o fuera de su alcance (Solo en Probar / Números de prueba), sale por «Error del cerebro».
+    if not simulador and not encendido(config, lead):
+        return ir("falla", lambda: None) if (cuadro.get("salidas") or {}).get("falla") else None
+    if int(memoria.get("vueltas") or 0) >= int(ajustes.get("max_vueltas") or 8):
+        return ir("asesor", lambda: flujo.asesor(st, motivo="Te paso con un asesor para seguir. 🙌"), asesor=True,
+                  nota=f"Avi llegó al límite de {ajustes.get('max_vueltas') or 8} vueltas en el cuadro {cuadro.get('nombre')}.")
+    avi = responder(st, entrada, lead, config, simulador, previo, cuadro=cuadro)
+    if avi is None:
+        return ir("falla", lambda: None) if (cuadro.get("salidas") or {}).get("falla") else None
+    memoria["vueltas"] = int(memoria.get("vueltas") or 0) + 1
+    salidas = cuadro.get("salidas") or {}
+    if avi["flujo"] == "compra" and salidas.get("compra"):  # «Inició compra» unida: el dueño decide qué sigue (sin unir, el flujo de compra)
+        st.pop("compra", None)
+        st.pop("espera_hasta", None)
+        return {**avi, **ir("compra", lambda: []), "nota": avi["nota"]}
+    if avi["asesor"] and salidas.get("asesor"):  # «Pidió asesor o no avanza» unida: el dueño decide a dónde va
+        st["pausa"] = False
+        return {**avi, **ir("asesor", lambda: []), "asesor": False, "nota": avi["nota"]}
+    if avi["flujo"] or avi["asesor"]:
+        memoria.pop("vueltas", None)
+    return avi
 
 
 def _salida(ctx, textos, traza, costo, tokens):

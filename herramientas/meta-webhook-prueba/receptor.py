@@ -329,7 +329,7 @@ def seguir_error_de_envio(numero, lead, st, cuadro):
 def error_tardio(wamid):
     """Meta avisó por el webhook que un mensaje del bot falló (estado failed, RF-22)."""
     m = db.tomar_error_de_envio(wamid)
-    if not m:
+    if not m or not db.bot_config().get("chatbot_activo", True):
         return
     numero = db.telefono_de(m["lead_id"])
     if not numero:
@@ -356,6 +356,10 @@ def vencer_espera(numero):
         if datetime.fromisoformat(lead["espera_vence_en"]) > datetime.now(timezone.utc):
             return  # alguien la movió mientras tanto
         quitar = {"espera_vence_en": None, "espera_cuadro": None}
+        interruptores = db.bot_config()  # F4·35: con el chatbot apagado no salen recordatorios; con el menú apagado, solo el de la compra
+        if not interruptores.get("chatbot_activo", True) or (not interruptores.get("menu_activo", True) and lead.get("espera_cuadro") != compra.NODO):
+            db.actualizar_lead(lead["id"], quitar)
+            return
         # RF-15: con un asesor o si el cliente ya está en otro cuadro, no se envía nada.
         if lead["pausar_bot"] or lead.get("espera_cuadro") != (lead["paso_menu"] or None):
             db.actualizar_lead(lead["id"], quitar)
@@ -439,14 +443,31 @@ def para_avi(numero, entrada, tipo):
     lead = db.lead(numero)
     if not lead:
         return None
+    interruptores = db.bot_config()
+    if not interruptores.get("chatbot_activo", True):  # F4·35: con el chatbot apagado nadie automático contesta
+        return None
     config = db.agente_config()
     segundos = int(config.get("buffer_segundos") or 0)
     st = cargar_estado(lead)
-    if segundos <= 0 or compra.activa(st) or cotizacion.activa(st) or flujo.en_pregunta(st) or not agente.atiende(st, lead, tipo, entrada, config):
+    en_cuadro = interruptores.get("menu_activo", True) and flujo.en_agente(st)
+    if segundos <= 0 or compra.activa(st) or cotizacion.activa(st) or flujo.en_pregunta(st) \
+            or not (en_cuadro or agente.atiende(st, lead, tipo, entrada, config, interruptores)):
         return None
     if acciones.ganadora(entrada):
         return None
     return lead, segundos
+
+
+def sin_bot(st, interruptores):
+    """Chatbot apagado (o menú y Avi apagados): el chat pasa a la cola sin respuesta automática. El cliente recibe el mensaje de
+    «chatbot apagado» una sola vez por conversación: al entrar a la cola (F4·35, RF-31 a RF-33)."""
+    st.pop("espera_hasta", None)
+    if st["pausa"]:
+        return []
+    st["pausa"] = True
+    st["campos"]["Etiqueta"] = "Chatbot-apagado"
+    texto = (interruptores.get("texto_apagado") or "").strip()
+    return [flujo.m_texto(texto)] if texto else []
 
 
 def contestar(numero, entrada, visible, nombre, tipo, meta_id, media=None):
@@ -496,6 +517,11 @@ def _contestar(numero, entrada, visible, nombre, tipo, meta_id, media=None, guar
                     db.guardar_mensaje(lead["id"], "bot", texto, meta_id=wamid if wamid != "enviado" else None)
 
             mensajes = avi = None
+            interruptores = db.bot_config()
+            menu = interruptores.get("menu_activo", True)
+            if not interruptores.get("chatbot_activo", True):  # F4·35: nadie automático contesta; el chat va a la cola
+                mensajes = sin_bot(st, interruptores)
+                anotar("  ⏻ chatbot apagado: el chat queda en la cola")
             # Una compra (F4·25) o una cotización (F4·26) en curso atienden primero: botones, datos, comprobante, cancelar.
             for nombre_flujo, modulo, icono in (("compra", compra, "🛒"), ("cotizacion", cotizacion, "📄")):
                 if mensajes is not None or not modulo.activa(st) or st["pausa"]:
@@ -529,7 +555,13 @@ def _contestar(numero, entrada, visible, nombre, tipo, meta_id, media=None, guar
                 except Exception as e:
                     anotar(f"  ✗ no se pudo anotar la acción: {e!r}")
             elif mensajes is None:
-                if not en_pregunta and agente.atiende(st, lead, tipo, entrada):  # Avi (F4·28): bot en modo Agente y encendido para este número
+                cuadro_agente = flujo.en_agente(st) if menu and tipo == "text" else None
+                if cuadro_agente:  # cuadro Agente del lienzo (F4·35, RF-36): Avi con la instrucción y las salidas del cuadro
+                    try:
+                        avi = agente.responder_cuadro(st, entrada, lead, cuadro_agente)
+                    except Exception as e:  # si Avi falla, atiende el Híbrido como siempre (RAG-10)
+                        anotar(f"  ✗ Avi falló en el cuadro {cuadro_agente.get('clave')}: {e!r}")
+                elif not en_pregunta and agente.atiende(st, lead, tipo, entrada, interruptores=interruptores):  # «Avi en todo el bot» (F4·35)
                     try:
                         avi = agente.responder(st, entrada, lead)
                     except Exception as e:  # si Avi falla, atiende el Híbrido como siempre (RAG-10)
@@ -539,8 +571,11 @@ def _contestar(numero, entrada, visible, nombre, tipo, meta_id, media=None, guar
                     anotar(f"  🤖 Avi · {len(avi['traza'])} paso(s) · US$ {avi['costo_usd']}"
                            + (" · pasó a asesor" if avi["asesor"] else "") + (f" · {avi['flujo']}" if avi["flujo"] else ""))
                     extras_de_compra(lead, avi["etiquetas"], None, avi["nota"])
-                else:
+                elif menu:
                     mensajes, st = flujo.responder(st, entrada, avisar)
+                else:  # menú apagado y Avi no atiende este mensaje: como con el chatbot apagado (RF-31)
+                    mensajes = sin_bot(st, interruptores)
+                    anotar("  ⏻ menú apagado y Avi no atiende: el chat queda en la cola")
         except Exception as e:  # una falla del árbol o de la base no debe tumbar el receptor
             anotar(f"  ✗ el árbol falló: {e!r}")
             return
@@ -714,7 +749,22 @@ def simular(pedido):
             if not r:
                 avisos.append("Este cuadro no tiene «Error al enviar el mensaje» conectado.")
         else:
-            mensajes, st = flujo.responder(st, str(pedido["texto"])[:1000], avisos.append)
+            texto = str(pedido["texto"])[:1000]
+            cuadro = flujo.en_agente(st) if texto.strip() else None
+            r = None
+            if cuadro and flujo.normalizar(texto) not in flujo.SALUDOS + ("0", "reiniciar"):  # cuadro Agente (F4·35, RF-39): Avi de verdad
+                previo = (st.get("sim_previo") or [])[-29:] + [{"role": "user", "content": texto}]
+                r = agente.responder_cuadro(st, texto, {"id": None, "telefono": "", "nombre": "", "etiquetas": []}, cuadro,
+                                            config=db.agente_config(fresco=True), simulador=True, previo=previo)
+                if r:
+                    st = r["st"]
+                    st["sim_previo"] = (previo + [{"role": "assistant", "content": visor.texto_saliente(m)} for m in r["mensajes"]])[-30:]
+                    avisos.append(f"🤖 Avi respondió · US$ {r['costo_usd']}" + (f" · {r['nota']}" if r["nota"] else ""))
+                    mensajes = r["mensajes"]
+                else:
+                    avisos.append("🤖 Avi no respondió (cerebro apagado o con error): atiende el Híbrido.")
+            if r is None:
+                mensajes, st = flujo.responder(st, texto, avisos.append)
     for m in mensajes:
         m.pop("_cuadro", None)
     if st.get("bot") != antes:  # "Ir a otro bot", o "hola" desde otro bot: se avisa a quien prueba
