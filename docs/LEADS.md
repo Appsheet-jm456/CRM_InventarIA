@@ -100,7 +100,7 @@ La **ficha del lead** es la misma desde los tres: se abre desde la Bandeja, desd
 ## Ajustes tras la prueba del dueño: Venta online o en tienda (F4·33)
 
 **Pedido el 1 nov 2026**, al revisar la ficha de F4·30. La ficha es de atributos, así que casi todo son cambios de datos y de un par de pantallas.
-Se construye en tres bloques: **A** ficha, **B** datos de despacho en el flujo de compra, **C** alistamiento y tareas.
+Se construye en tres bloques: **A** ficha (incluye el botón Guardar), **B** datos de despacho en el flujo de compra, **C** alistamiento y tareas.
 
 ### A. Ficha del lead
 
@@ -114,6 +114,15 @@ Se construye en tres bloques: **A** ficha, **B** datos de despacho en el flujo d
   - **Venta tienda** = el cliente cotiza y viene a la tienda.
   Se guarda como atributo `venta_online` (sí/no): *sí* = online, *no* = tienda; sin marcar = todavía no se sabe. Se ve como dos botones, no como una casilla.
   Aparece en la lista de Leads como columna y filtro, y en el Embudo como insignia (🚚 / 🏬). Cambiarlo queda en la línea de tiempo (RL-12).
+
+- RL-25. **Botón «Guardar» en la ficha.** Hoy cada campo se guarda solo al salir de él. Con este cambio los datos de la ficha (nombre, valor, atributos, Venta
+  online o tienda y datos de despacho) **se editan sin guardar y aparece el botón «Guardar cambios»** apenas se modifica cualquiera.
+  - Mientras haya cambios sin guardar, el botón se ve resaltado y junto a él sale «Cambios sin guardar»; un botón **Descartar** devuelve los valores originales.
+  - Un solo clic guarda todos los cambios juntos, con un solo registro en la línea de tiempo (RL-12) que muestra cada antes → después.
+  - Si algo no es válido (cédula con letras, correo sin @, atributo obligatorio vacío), no se guarda nada y cada campo con error se marca con su aviso.
+  - Si el asesor intenta salir de la ficha con cambios sin guardar, la app **pregunta antes de salir**.
+  - Si otro asesor o el bot cambió el mismo dato mientras tanto, al guardar avisa «Este dato cambió» y deja elegir cuál conservar.
+  - No cambia: notas, tareas, etiquetas, responsable y etapa siguen guardándose al instante porque son acciones y no datos de la ficha.
 
 ### B. Venta online: datos para el despacho
 
