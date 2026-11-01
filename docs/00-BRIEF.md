@@ -1,6 +1,6 @@
 # CRM InventarIA — Brief del proyecto
 
-`v1.2` · 30 sep 2026 · **Fase actual: 3 de 5 construida; en Pruebas (Fase 4) con el dueño** · Responsable: Jhonatan Marín
+`v1.3` · 1 nov 2026 · **Fase actual: 3 de 5 construida; en Pruebas (Fase 4) con el dueño, ya con agente Avi y módulo Leads** · Responsable: Jhonatan Marín
 
 ---
 
@@ -29,6 +29,9 @@ la sigue por las etapas del embudo hasta la venta y la posventa, y la mide.
 | **Seguimientos y SLA** | Notas, tareas, etiquetas y recontacto por cliente; alertas de chats sin respuesta | ✅ Construido (F3·6) |
 | **Métricas** | Conversión por etapa, tiempo de primera respuesta, motivos de pérdida y ventas por asesor | ✅ Construido (F3·8) |
 | **Inventario y catálogos** | Productos con foto, fichas que envía el bot, catálogos en PDF o enlace de Drive, carga por Excel y Chat InventarIA para el equipo | ✅ Construido (F3·9); faltan fotos y PDF del dueño |
+| **Apariencia** | Logo, tres colores, fuente Figtree y modo oscuro por usuario; panel lateral como Futur Green — [APARIENCIA.md](APARIENCIA.md) | ✅ Hecho y aprobado (F4·19, F4·20, F4·21) |
+| **Agente** | Configuración → Agente: conocimiento (fichas y documentos), acciones «Cuando → Hacer», flujos de compra y cotización con PDF (sin IA), cerebro con cualquier proveedor de IA (o modelo local) y el agente **Avi**, que conversa con herramientas y verifica los precios contra la base — [AGENTE.md](AGENTE.md) | ✅ Hecho (F4·22 a F4·28, F4·32); piloto con Distribuidores pendiente (F4·29) |
+| **Leads** | Lista con búsqueda, filtros y vistas guardadas; ficha como la de Kommo (atributos personalizados, oportunidades, tareas, cotizaciones, archivos y línea de tiempo); archivar y papelera de 30 días con borrado según la Ley 1581 — [LEADS.md](LEADS.md) | ✅ Hecho (F4·30) |
 | **Canal WhatsApp oficial** | **Cloud API de Meta** detrás de una interfaz de canal | 🔵 Probado con número de prueba; falta verificar el negocio |
 | **Consumo de Meta** | Contador de mensajes cobrables del mes contra los 1.000 gratis, con aviso al 80 % | ✅ Construido (sin pesos hasta F1·6) |
 | **Campañas de marketing** | Promociones de la tienda por plantillas autorizadas por Meta | ⚪ Por definir (ver objetivos) |
@@ -82,6 +85,8 @@ Todo lo de la tabla de módulos, sobre **una sola base de datos Supabase propia*
 **Modelo de chat híbrido confirmado por el dueño el 1 oct 2026** (decisión 0016, que modifica la 0005): menús guiados más
 texto libre con IA, y la respuesta siempre sale de la base.
 
+**Cambios al 1 nov 2026:** el bot ya puede atender con un agente (Avi, decisión 0032, que modifica la 0016: el texto libre lo atiende Avi, pero **todo precio y dato sale de la base y se verifica antes de enviarse**). Cerebro con cualquier proveedor; hoy corre con un modelo local (llama3.1 8B). Módulo Leads (decisión 0033). Kommo sigue con el cliente final hasta unificar; el CRM propio atiende Distribuidores primero.
+
 **Por decidir con el dueño:** si las campañas de marketing por Meta entran al MVP o a una v2.
 
 **Fuera de alcance en v1:** otros canales (Instagram, Messenger), facturación electrónica y pagos en línea.
@@ -106,7 +111,7 @@ texto libre con IA, y la respuesta siempre sale de la base.
 | 1 · Planeación | 🔵 Pendientes del dueño (F1·6 a F1·9) | [sdlc/1-planeacion.md](sdlc/1-planeacion.md) |
 | 2 · Diseño | 🔵 En curso | [sdlc/2-diseno.md](sdlc/2-diseno.md) |
 | 3 · Implementación | ✅ Construida (F3·1 a F3·10); falta revisar el criterio de cierre | [sdlc/3-implementacion.md](sdlc/3-implementacion.md) |
-| 4 · Pruebas | 🔵 En curso: mejoras módulo por módulo (Bot y horario completo) | [sdlc/4-pruebas.md](sdlc/4-pruebas.md) |
+| 4 · Pruebas | 🔵 En curso: Bot y horario, Apariencia, Agente (Avi) y Leads hechos; faltan F4·14, F4·15, F4·29 (piloto Distribuidores) y F4·31 (capacidad para 1.000 clientes al día) | [sdlc/4-pruebas.md](sdlc/4-pruebas.md) |
 | 5 · Despliegue | ⚪ Pendiente | [sdlc/5-despliegue.md](sdlc/5-despliegue.md) |
 
 ## Stack
