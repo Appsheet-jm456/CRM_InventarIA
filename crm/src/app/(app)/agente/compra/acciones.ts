@@ -22,6 +22,8 @@ export async function guardarCompra(d: DatosCompra): Promise<Resultado> {
     ['texto_cancelacion', 'cancelación']] as const) {
     if (!d[campo].trim()) return { error: `El texto de ${nombre} no puede quedar vacío.` }
   }
+  const raras = [...new Set([...d.texto_comprobante.matchAll(/\{([^{}]*)\}/g)].map((m) => m[1]).filter((m) => !['horario', 'proxima'].includes(m)))]
+  if (raras.length) return { error: `En «comprobante recibido» el bot solo reemplaza {horario} y {proxima}; no {${raras.join('}, {')}}.` }
   if ([d.texto_cuentas, d.texto_comprobante, d.texto_sigue_interesado, d.texto_cancelacion].some((t) => t.length > MAX_WHATSAPP))
     return { error: 'Un mensaje de WhatsApp tiene máximo 4.096 caracteres.' }
   if (!Number.isInteger(d.horas_sin_respuesta) || d.horas_sin_respuesta < 1 || d.horas_sin_respuesta > 23)

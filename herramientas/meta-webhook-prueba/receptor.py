@@ -494,7 +494,7 @@ def sin_bot(st, interruptores):
         return []
     st["pausa"] = True
     st["campos"]["Etiqueta"] = "Chatbot-apagado"
-    texto = (interruptores.get("texto_apagado") or "").strip()
+    texto = flujo.con_horario((interruptores.get("texto_apagado") or "").strip())  # {horario} y {proxima}, F4·38
     return [flujo.m_texto(texto)] if texto else []
 
 

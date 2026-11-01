@@ -143,5 +143,33 @@ ok(receptor.sin_bot(st, INTERRUPTORES) == [], "el mensaje fijo sale una sola vez
 st = nuevo()
 ok(receptor.sin_bot(st, dict(INTERRUPTORES, texto_apagado="")) == [] and st["pausa"], "sin mensaje escrito, va a la cola en silencio")
 
+# --- {horario} y {proxima} en el mensaje de «chatbot apagado» y en el de comprobante (F4·38)
+from datetime import datetime  # noqa: E402
+
+HORARIO = [{"dia": d, "abre": "09:00:00", "cierra": "18:00:00"} for d in range(1, 7)]
+db.horario = lambda: HORARIO
+db.festivos = lambda: set()
+TEXTO = "Un asesor te responde {proxima}.\n{horario}"
+
+
+def a_las(y, m, d, h, mi):
+    real = flujo.datetime
+
+    class Falsa(real):
+        @classmethod
+        def now(cls, tz=None):
+            return real(y, m, d, h, mi, tzinfo=flujo.BOGOTA)
+    flujo.datetime = Falsa
+    try:
+        return flujo.con_horario(TEXTO)
+    finally:
+        flujo.datetime = real
+
+
+ok(a_las(2026, 11, 9, 17, 59).startswith("Un asesor te responde en breve."), "dentro de horario, {proxima} dice «en breve»")
+ok(a_las(2026, 11, 9, 18, 1).startswith("Un asesor te responde mañana a las 9:00 am."), "a las 6:01 p. m., {proxima} dice cuándo abren")
+ok("Lunes a sábado: 9:00 am – 6:00 pm" in a_las(2026, 11, 9, 12, 0) or "9:00 am – 6:00 pm" in a_las(2026, 11, 9, 12, 0), "{horario} trae los días y franjas vivos")
+ok(flujo.con_horario("sin marcas {otra}") == "sin marcas {otra}", "un texto sin {horario} ni {proxima} queda igual")
+
 print(f"\n{n - fallos} de {n} pruebas bien")
 sys.exit(1 if fallos else 0)

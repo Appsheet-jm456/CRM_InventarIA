@@ -153,7 +153,7 @@ def _responder(st, entrada, tipo, lead):
             if despues and db.flujo(despues):  # RF-28 (F4·34): sigue en un bot del lienzo (datos de despacho) y ese termina en el asesor
                 return flujo.cambiar_de_bot(st, despues), ["Pago-Por-Confirmar"], "pago_por_confirmar", nota
             st["pausa"], st["nodo"] = True, flujo.del_tipo("asesor")
-            texto = (cfg.get("texto_comprobante") or "✅ Recibimos tu comprobante. Un asesor valida tu pago y te confirma por aquí.").strip()
+            texto = flujo.con_horario((cfg.get("texto_comprobante") or "✅ Recibimos tu comprobante. Un asesor valida tu pago y te confirma por aquí.").strip())
             return [flujo.m_texto(texto)], ["Pago-Por-Confirmar"], "pago_por_confirmar", nota
         if CANCELA.search(n):
             _limpiar(st)

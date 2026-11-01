@@ -62,6 +62,10 @@ Entra con el equipo ya elegido y la memoria del cliente. Hace, en este orden fle
 
 ### El paso al asesor (sin IA)
 
+- RAG-19c. **Los textos fijos entienden el horario** (1 nov 2026): el de «comprobante recibido» (pestaña Compra) y el de «chatbot apagado»
+  (Bot → Interruptores) pueden llevar `{horario}` (los días y franjas de atención) y `{proxima}` («en breve» si hay atención ahora, o «mañana a las
+  8:00 am» según el horario y los festivos). Ejemplo: «Un asesor te responde {proxima}.» No admiten otras marcas. El paso a asesor de siempre ya elige
+  entre B-ASESOR (en horario) y B-CERRADO (fuera) en el menú, en la compra y en Avi.
 - RAG-19b. **El botón «Lo quiero» de la ficha abre la compra** (arreglo del 1 nov 2026): cuenta como «quiero comprar» si la acción «Quiero comprar»
   está activa, con el equipo de la ficha. Antes pasaba el chat al asesor. Con la acción apagada, sigue pasando al asesor.
 - RAG-20. **Detección del comprobante:** con la oportunidad en *Esperando pago*, si el cliente manda una **foto o un PDF**, o escribe "ya pagué",

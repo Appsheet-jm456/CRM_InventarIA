@@ -136,6 +136,8 @@ export async function guardarAgente(bot: number, clave: string, c: {
 }
 // Interruptores del bot (F4·35, RF-31 a RF-34): la base exige administrar_bot y deja el historial.
 export async function guardarInterruptores(i: { chatbot_activo: boolean; menu_activo: boolean; agente_en_todo: boolean; texto_apagado: string }) {
+  const raras = [...new Set([...i.texto_apagado.matchAll(/\{([^{}]*)\}/g)].map((m) => m[1]).filter((m) => !['horario', 'proxima'].includes(m)))]
+  if (raras.length) return { error: `El mensaje solo puede llevar {horario} y {proxima}; no {${raras.join('}, {')}}.` }
   const r = await rpc('bot_config_cambiar', { p_chatbot: i.chatbot_activo, p_menu: i.menu_activo, p_agente_en_todo: i.agente_en_todo,
     p_texto_apagado: i.texto_apagado }, 'Guardado. El bot usa los interruptores en menos de 30 segundos.')
   if (!r.error) revalidatePath('/', 'layout')

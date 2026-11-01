@@ -76,7 +76,7 @@ export function Compra({ datos, etapas, disparo, bots }: {
         <form className="panel-b" style={{ display: 'grid', gap: 14 }}
           onSubmit={async (e) => { e.preventDefault(); setOcupado(true); setAviso(await guardarCompra(d)); setOcupado(false) }}>
           {texto('texto_cuentas', 'Cuentas para pagar', 'Titular, bancos, números, llave, recargo con tarjeta, tiempo para pagar y qué datos de envío mandar', 12)}
-          {texto('texto_comprobante', 'Comprobante recibido', 'Se envía al recibir la foto, el PDF o «ya pagué», antes de pasar al asesor')}
+          {texto('texto_comprobante', 'Comprobante recibido', 'Se envía al recibir la foto, el PDF o «ya pagué», antes de pasar al asesor. Puede llevar {horario} (los días y franjas) y {proxima} («en breve» si hay atención, o «mañana a las 8:00 am»)')}
           <label className="field">
             Después del comprobante, ir al bot
             <select value={d.compra_bot_despues ?? ''} disabled={ocupado}

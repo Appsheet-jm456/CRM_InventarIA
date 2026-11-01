@@ -95,6 +95,15 @@ def proxima_apertura(ahora=None):
     return True, ""
 
 
+def con_horario(texto):
+    """Cambia {horario} (los días y franjas de atención) y {proxima} («en breve» si hay atención ahora, o «mañana a las 8:00 am») en un
+    texto que escribe el dueño: el de «chatbot apagado» y el de «comprobante recibido». Sin marcas, el texto queda igual."""
+    if "{horario}" not in texto and "{proxima}" not in texto:
+        return texto
+    abierto, cuando = proxima_apertura()
+    return texto.replace("{horario}", texto_horario()).replace("{proxima}", "en breve" if abierto else cuando)
+
+
 _hilo = threading.local()
 
 

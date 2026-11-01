@@ -70,7 +70,11 @@ export function PanelInterruptores({ actual, historial }: { actual: Interruptore
           Mensaje cuando el chatbot está apagado (opcional)
           <textarea rows={2} maxLength={1024} value={i.texto_apagado} disabled={ocupado} placeholder="Hola 👋 En un momento te atiende un asesor."
             onChange={(e) => setI({ ...i, texto_apagado: e.target.value })} />
-          <small className="muted">El cliente lo recibe una vez, cuando su chat entra a la cola. Vacío: no se envía nada. Cuenta como mensaje de Meta.</small>
+          <small className="muted">
+            El cliente lo recibe una vez, cuando su chat entra a la cola. Vacío: no se envía nada. Cuenta como mensaje de Meta. Puede llevar{' '}
+            <b>{'{horario}'}</b> (los días y franjas de atención) y <b>{'{proxima}'}</b> («en breve» si hay atención ahora, o «mañana a las 8:00 am»), por ejemplo:
+            «Hola 👋 Un asesor te responde {'{proxima}'}.»
+          </small>
         </label>
         <div className="row">
           <button className="btn primary" disabled={ocupado || !cambio} onClick={guardar}>{ocupado ? 'Guardando…' : 'Guardar'}</button>
