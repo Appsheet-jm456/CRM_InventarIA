@@ -1,15 +1,15 @@
 import { crearCliente } from '@/lib/supabase/server'
 import { Personalidad } from './Personalidad'
 
-// F4·28: personalidad, límites, encendido y modo de cada bot. El permiso lo revisa el layout del módulo.
+// F4·28: personalidad, límites y encendido (dónde atiende lo deciden los interruptores, F4·35). El permiso lo revisa el layout del módulo.
 export default async function PaginaPersonalidad() {
   const supabase = crearCliente()
-  const [{ data: c }, { data: llaves }, { data: bots }] = await Promise.all([
+  const [{ data: c }, { data: llaves }, { data: interruptores }] = await Promise.all([
     supabase.from('agente_config')
       .select('estado, lista_blanca, nombre, tono, emojis, trato, largo, prompt, herramientas_apagadas, memoria_mensajes, max_pasos, max_mensajes, max_turnos_dia, buffer_segundos, proveedor, presupuesto_usd')
       .eq('id', 1).maybeSingle(),
     supabase.rpc('agente_llaves_estado'),
-    supabase.from('bots').select('id, nombre, principal, modo').eq('archivado', false).order('principal', { ascending: false }).order('nombre'),
+    supabase.from('bot_config').select('agente_en_todo').eq('id', 1).maybeSingle(),
   ])
   if (!c) return <section className="panel"><div className="panel-b">No se encontró la configuración del agente.</div></section>
   return (
@@ -20,7 +20,7 @@ export default async function PaginaPersonalidad() {
         max_pasos: c.max_pasos, max_mensajes: c.max_mensajes, max_turnos_dia: c.max_turnos_dia, buffer_segundos: c.buffer_segundos,
       }}
       listo={c.proveedor === 'local' || (Boolean(llaves?.principal) && Number(c.presupuesto_usd) > 0)}
-      bots={(bots ?? []).map((b) => ({ id: b.id, nombre: b.nombre, principal: b.principal, modo: b.modo }))}
+      agenteEnTodo={!!interruptores?.agente_en_todo}
     />
   )
 }

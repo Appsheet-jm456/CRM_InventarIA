@@ -6,6 +6,11 @@ de las Fases 1 y 2 abajo. **Código nuevo:** el bot de prueba sobre Supabase (`h
 
 ## Dónde retomar (en este orden)
 
+0. **1 nov 2026 · F4·35 construida 🔵** ([FLUJO-DEL-BOT.md](FLUJO-DEL-BOT.md#interruptores-del-bot-y-cuadro-agente-f435), decisión 0034, migración 0040):
+   Bot → **Interruptores** (Chatbot, Menú guiado, Avi en todo el bot, mensaje con el chatbot apagado e historial), aviso «🤖 Chatbot apagado» en toda
+   la app y cuadro **🤖 Agente** en el lienzo. Se retiró el modo por bot: «Avi en todo» quedó **encendido** porque «Bienvenida» estaba en modo Agente.
+   **Para probarlo (dueño):** recargar, revisar Bot → Interruptores; en un bot de prueba agregar un cuadro 🤖 y ▶ Probar (gasta poco de Gemini).
+
 0. **1 nov 2026 · F4·34 construida 🔵** ([FLUJO-DEL-BOT.md](FLUJO-DEL-BOT.md#cuadro-pregunta-y-datos-de-despacho-tras-el-pago-f434), migraciones 0038 y 0039):
    cuadro ❓ Pregunta, «Insertar dato», «🏷 Marca un dato» y bot de ejemplo **«Datos de despacho»** publicado. **Para probarlo (dueño):** abrir el bot
    en el lienzo y ▶ Probar; luego Configuración → Agente → Compra → «Después del comprobante, ir al bot: Datos de despacho» y hacer una compra

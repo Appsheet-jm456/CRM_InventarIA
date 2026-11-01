@@ -98,6 +98,9 @@ button, input, select { font: inherit; color: inherit }
 .crumb small { display: block; font-size: 11px; letter-spacing: .8px; text-transform: uppercase; color: var(--muted) }
 .crumb h1 { margin: 0; font: 700 20px/1.2 var(--f-display); letter-spacing: .1px }
 .content { flex: 1; overflow-y: auto; padding: 22px 24px 40px }
+/* F4·35, RF-34: aviso con el chatbot o el menú guiado apagado, en toda la app */
+.aviso-chatbot { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 8px 24px; background: var(--warn-soft); color: var(--warn); border-bottom: 1px solid var(--line); font-size: 13px; font-weight: 600 }
+.aviso-chatbot a { color: inherit; text-decoration: underline }
 .view { display: flex; flex-direction: column; gap: 18px; max-width: 1280px }
 .menu-btn { display: none }
 .scrim { position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 39 }
@@ -803,3 +806,8 @@ details.columnas > .panel { right: 0; top: calc(100% + 4px); min-width: 220px }
   .ficha .col + .col { border-left: 0; border-top: 1px solid var(--line) }
   .f-linea .chat { max-height: 70vh }
 }
+
+/* F4·35: interruptores del bot */
+.interruptor-fila { display: flex; gap: 12px; align-items: flex-start }
+.interruptor-fila .toggle { flex: none; margin-top: 2px }
+.lista-simple { margin: 6px 0 0; padding-left: 18px; display: grid; gap: 4px; font-size: 13px }

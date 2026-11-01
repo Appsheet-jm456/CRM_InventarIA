@@ -17,6 +17,8 @@ type Props = {
   logo: string | null
   // Con atender_bandeja: número de clientes esperando respuesta y avisos (RS-05).
   alertas?: boolean
+  // F4·35, RF-34: con el chatbot apagado se avisa en toda la app (y quién puede, va a encenderlo).
+  chatbot?: { apagado: boolean; menuApagado: boolean; puedeCambiar: boolean }
   children: React.ReactNode
 }
 
@@ -28,7 +30,7 @@ const iniciales = (nombre: string) =>
     .map((p) => p[0])
     .join('')
 
-export function Shell({ modulos, usuario, logo, alertas = false, children }: Props) {
+export function Shell({ modulos, usuario, logo, alertas = false, chatbot, children }: Props) {
   const espera = useAvisosBandeja(alertas)
   const ruta = usePathname()
   const [plegado, setPlegado] = useState(false)
@@ -155,6 +157,14 @@ export function Shell({ modulos, usuario, logo, alertas = false, children }: Pro
             <h1>{activo?.subtitulo ?? 'CRM InventarIA'}</h1>
           </div>
         </header>
+        {(chatbot?.apagado || chatbot?.menuApagado) && (
+          <div className="aviso-chatbot" role="status">
+            <span>{chatbot.apagado
+              ? '🤖 Chatbot apagado: nadie automático contesta y cada mensaje entra a la cola de la Bandeja.'
+              : '🤖 Menú guiado apagado: solo Avi atiende; lo que él no atiende entra a la cola.'}</span>
+            {chatbot.puedeCambiar && <Link href="/bot?t=interruptores">Interruptores</Link>}
+          </div>
+        )}
         <main className="content">
           <div className="view">{children}</div>
         </main>

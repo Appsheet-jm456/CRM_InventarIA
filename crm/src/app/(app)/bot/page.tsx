@@ -5,6 +5,7 @@ import { crearCliente } from '@/lib/supabase/server'
 import { Bots, type BotFila } from './Bots'
 import { botsDe, contexto, cuadrosDe } from './datos'
 import { Horario } from './Horario'
+import { PanelInterruptores, type Interruptores } from './Interruptores'
 import { Mensajes } from './Mensajes'
 
 export default async function Bot({ searchParams }: { searchParams: { t?: string; n?: string; b?: string } }) {
@@ -13,7 +14,7 @@ export default async function Bot({ searchParams }: { searchParams: { t?: string
 
   const supabase = crearCliente()
   // 'flujo' e 'historial' eran pestañas de un solo flujo (F4·6 y F4·7): ahora cada bot tiene su lienzo y su historial.
-  const pestana = (['horario', 'bots'] as const).find((t) => t === searchParams.t)
+  const pestana = (['horario', 'bots', 'interruptores'] as const).find((t) => t === searchParams.t)
     ?? (searchParams.t === 'flujo' || searchParams.t === 'historial' ? 'bots' : 'mensajes')
   let contenido: React.ReactNode
 
@@ -38,6 +39,19 @@ export default async function Bot({ searchParams }: { searchParams: { t?: string
       }
     })
     contenido = <Bots bots={filas} />
+  } else if (pestana === 'interruptores') {
+    const [{ data: config }, { data: historial }, { data: usuarios }] = await Promise.all([
+      supabase.from('bot_config').select('chatbot_activo, menu_activo, agente_en_todo, texto_apagado').eq('id', 1).maybeSingle(),
+      supabase.from('bot_config_historial').select('en, usuario_id, antes, despues').order('en', { ascending: false }).limit(10),
+      supabase.from('usuarios').select('id, nombre'),
+    ])
+    const nombres = new Map((usuarios ?? []).map((u) => [u.id, u.nombre]))
+    contenido = (
+      <PanelInterruptores
+        actual={(config ?? { chatbot_activo: true, menu_activo: true, agente_en_todo: false, texto_apagado: '' }) as Interruptores}
+        historial={(historial ?? []).map((h) => ({ en: h.en, quien: nombres.get(h.usuario_id) ?? null,
+          antes: h.antes as Record<string, unknown>, despues: h.despues as Record<string, unknown> }))} />
+    )
   } else if (pestana === 'horario') {
     const [{ data: franjas }, { data: festivos }] = await Promise.all([
       supabase.from('horario_atencion').select('id, dia, abre, cierra').order('dia').order('abre'),
@@ -77,6 +91,7 @@ export default async function Bot({ searchParams }: { searchParams: { t?: string
         <Link href="/bot" className={`pastilla${pestana === 'mensajes' ? ' activa' : ''}`}>Mensajes del bot</Link>
         <Link href="/bot?t=bots" className={`pastilla${pestana === 'bots' ? ' activa' : ''}`}>Flujos (lienzo)</Link>
         <Link href="/bot?t=horario" className={`pastilla${pestana === 'horario' ? ' activa' : ''}`}>Horario y festivos</Link>
+        <Link href="/bot?t=interruptores" className={`pastilla${pestana === 'interruptores' ? ' activa' : ''}`}>Interruptores</Link>
       </div>
       {contenido}
     </>

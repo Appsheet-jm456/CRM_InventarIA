@@ -23,7 +23,7 @@
 | ✅ **F4·17** Lienzo a pantalla completa (3 oct, decisión 0030) | El lienzo de un bot ocupa toda la pantalla, con barra superior: ← Cancelar, Probar, Publicar… y Guardar. Se mantiene el borrador |
 | ✅ **F4·18** Salidas del Mensaje (3 oct, decisión 0030, migración 0021) | «Otra respuesta», «Sin respuesta» (con tiempo) y «Error al enviar el mensaje», como en Kommo |
 | 🔵 **F4·34** Cuadro Pregunta, datos en los mensajes y datos de despacho tras el pago (construida 1 nov 2026, migraciones 0038 y 0039; falta la prueba del dueño) | Cuadro ❓ Pregunta que guarda la respuesta en un dato de la ficha y la valida; marcas `{dato}` en los mensajes; efecto «Marcar un dato» en los botones; la compra sigue en un bot del lienzo después del comprobante; bot de ejemplo «Datos de despacho» |
-| 📝 **F4·35** Interruptores del bot y cuadro 🤖 Agente (1 nov 2026, decisión 0034) | Chatbot, Menú guiado y Avi en texto libre en todo el bot, con mensaje fijo opcional; cuadro 🤖 Agente con instrucción, herramientas, límite y salidas; se retira el modo por bot |
+| 🔵 **F4·35** Interruptores del bot y cuadro 🤖 Agente (construida 1 nov 2026, decisión 0034, migración 0040; falta la prueba del dueño) | Chatbot, Menú guiado y Avi en texto libre en todo el bot, con mensaje fijo opcional; cuadro 🤖 Agente con instrucción, herramientas, límite y salidas; se retira el modo por bot |
 | **F4·15** Simulador y pruebas | Probar los cuadros y bots nuevos en el simulador (la Pausa con "Simular que pasó el tiempo"), pruebas de la base y del motor |
 
 ## Reglas
@@ -439,9 +439,10 @@ los datos guardados. Compra: «Después del comprobante, ir al bot».
 **RF-32 · Mensaje con el Chatbot apagado (opcional).** Un texto que escribe el dueño (ej. «Hola 👋 En un momento te atiende un asesor») y que el
 cliente recibe **una vez por conversación** (no en cada mensaje). Vacío = no se envía nada. Se cuenta como mensaje de Meta.
 
-**RF-33 · Apagar y encender sin dejar a nadie colgado.** Al **apagar** el Chatbot, los chats que estaban con el bot pasan a la cola (los recordatorios
-y pausas pendientes se cancelan). Al **encender**, los chats que tomó un asesor siguen con él; el bot atiende a los nuevos y a los de la cola sin
-asesor que vuelvan a escribir.
+**RF-33 · Apagar y encender sin dejar a nadie colgado.** Con el Chatbot **apagado**, cada cliente que escribe pasa a la cola en ese momento (con el
+mensaje fijo, una vez) y no sale ningún recordatorio ni pausa pendiente. Así no se llena la cola con chats viejos que nadie está esperando. Al
+**encender**, los chats que ya están en la cola o con un asesor siguen ahí (el asesor los devuelve al bot con «Devolver al bot» si quiere); el bot
+atiende a los nuevos.
 
 **RF-34 · Quién y cómo.** Solo el administrador (permiso `administrar_bot`). Cada cambio pide confirmar y queda en el historial (quién, cuándo,
 antes → después). Mientras el Chatbot esté apagado, la Bandeja y el panel lateral muestran **«🤖 Chatbot apagado»**. El interruptor del agente
@@ -469,9 +470,18 @@ pagos, el asesor tiene la última palabra (un chat tomado no lo atiende Avi). Si
 **RF-39 · Simulador y Registro.** El simulador del lienzo prueba el cuadro (gasta del presupuesto como Probar, sin contar en Métricas). El Registro de Avi
 anota en qué cuadro y bot respondió.
 
+**Cómo quedó construida (1 nov 2026).** Migración **0040**: `bot_config` (una fila, solo lectura con la sesión) y `bot_config_historial`;
+`bot_config_cambiar` exige `administrar_bot` y deja el historial; cuadro `agente` (`borrador_guardar_agente`, salidas opcionales `compra`, `asesor`,
+`menu` y `falla`); el modo por bot se retiró (el bot en Agente dejó «Avi en todo» encendido). 7 pruebas en `supabase/pruebas/0040_…`. Motor:
+`receptor.py` (`sin_bot`, interruptores en `_contestar`, el búfer de Avi, el reloj y el simulador), `agente.py` (`atiende` con los interruptores,
+`responder_cuadro` con instrucción, herramientas, vueltas y salidas), `flujo.py` (`entrar_agente`, `en_agente`, «menú» dentro del cuadro). 16 pruebas
+en `prueba_interruptores.py`. Pantallas: Bot → **Interruptores** (con el resultado de cada combinación e historial), aviso «🤖 Chatbot apagado» arriba
+en toda la app, «+ Agregar → 🤖 Agente» con su panel, y en Agente → Avi el aviso de dónde atiende (sin modo por bot). Si «Pidió asesor» está unida, se
+sigue la flecha y no se envía lo que Avi dijo en ese turno.
+
 **Modelo.** `bot_config` (una fila): `chatbot_activo`, `menu_activo`, `agente_en_todo`, `texto_apagado`, `actualizado_por`, `actualizado_en`, con
 historial en `bot_config_historial`. Tipo `agente` en `bot_cuadros` con `ajustes.instruccion`, `ajustes.herramientas`, `ajustes.max_vueltas`, y
-salidas `compra`, `asesor`, `menu`, `error`. `leads.estado_bot` guarda las vueltas dentro del cuadro. Receptor: lee la configuración cada 30 s
+salidas `compra`, `asesor`, `menu`, `falla`. `leads.estado_bot` guarda las vueltas dentro del cuadro. Receptor: lee la configuración cada 30 s
 como el resto; `agente.py` recibe la instrucción y las herramientas del cuadro.
 
 ## Arranques y pruebas (F4·14 y F4·15, decisión 0028)

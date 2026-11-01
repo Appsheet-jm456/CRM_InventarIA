@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useState } from 'react'
-import { cambiarModoBot, guardarAvi, type DatosAvi, type Resultado } from './acciones'
+import { guardarAvi, type DatosAvi, type Resultado } from './acciones'
 
 const HERRAMIENTAS: [string, string][] = [
   ['buscar_productos', 'Buscar equipos en el inventario'],
@@ -27,18 +27,17 @@ const REGLAS = [
 const ESTADOS: [DatosAvi['estado'], string, string][] = [
   ['apagado', 'Apagado', 'Nadie habla con Avi; los bots atienden como siempre.'],
   ['simulador', 'Solo en Probar', 'Avi solo responde en la pestaña Probar.'],
-  ['lista_blanca', 'Números de prueba', 'Avi atiende solo a los números de la lista, y solo en los bots en modo Agente.'],
-  ['todos', 'Todos los clientes', 'Avi atiende a todos los clientes de los bots en modo Agente.'],
+  ['lista_blanca', 'Números de prueba', 'Avi atiende solo a los números de la lista, donde lo dejen los interruptores y los cuadros 🤖.'],
+  ['todos', 'Todos los clientes', 'Avi atiende a todos los clientes, donde lo dejen los interruptores y los cuadros 🤖.'],
 ]
 
-export function Personalidad({ datos, listo, bots }: {
+export function Personalidad({ datos, listo, agenteEnTodo }: {
   datos: DatosAvi
   listo: boolean
-  bots: { id: number; nombre: string; principal: boolean; modo: 'menu' | 'hibrido' | 'agente' }[]
+  agenteEnTodo: boolean
 }) {
   const [d, setD] = useState<DatosAvi>(datos)
   const [aviso, setAviso] = useState<Resultado>({})
-  const [avisoBot, setAvisoBot] = useState<Resultado>({})
   const [ocupado, setOcupado] = useState(false)
   const cambio = JSON.stringify(d) !== JSON.stringify(datos)
   const poner = <K extends keyof DatosAvi>(k: K, v: DatosAvi[K]) => setD({ ...d, [k]: v })
@@ -54,22 +53,16 @@ export function Personalidad({ datos, listo, bots }: {
       <section className="panel">
         <div className="panel-h">
           <div>
-            <h2>Cómo atiende cada bot</h2>
-            <small>Menú guiado y Híbrido no gastan IA en la conversación. En modo Agente, Avi contesta el texto libre (los números 0 a 9 siguen yendo al menú).</small>
+            <h2>Dónde atiende Avi</h2>
+            <small>Desde F4·35 ya no se elige por bot: lo deciden los interruptores del bot y los cuadros 🤖 Agente del lienzo.</small>
           </div>
         </div>
-        {(avisoBot.error || avisoBot.ok) && <div className="panel-b" style={{ paddingBottom: 0 }}><div className={`aviso ${avisoBot.error ? 'bad' : 'ok'}`} role="alert">{avisoBot.error ?? avisoBot.ok}</div></div>}
-        <div className="panel-b" style={{ display: 'grid', gap: 10 }}>
-          {bots.map((b) => (
-            <label key={b.id} className="row" style={{ justifyContent: 'space-between' }}>
-              <span>{b.nombre}{b.principal ? ' · principal' : ''}</span>
-              <select defaultValue={b.modo} onChange={async (e) => setAvisoBot(await cambiarModoBot(b.id, e.target.value as 'menu' | 'hibrido' | 'agente'))}>
-                <option value="menu">Menú guiado</option>
-                <option value="hibrido">Híbrido</option>
-                <option value="agente">Agente (Avi)</option>
-              </select>
-            </label>
-          ))}
+        <div className="panel-b">
+          <div className="aviso">
+            «Avi en texto libre en todo el bot» está <b>{agenteEnTodo ? 'encendido' : 'apagado'}</b>
+            {agenteEnTodo ? ': responde cualquier pregunta abierta, en cualquier punto.' : ': Avi solo entra donde pongas un cuadro 🤖 Agente en el lienzo.'}{' '}
+            <Link href="/bot?t=interruptores">Cambiar en Bot → Interruptores</Link>
+          </div>
         </div>
       </section>
 

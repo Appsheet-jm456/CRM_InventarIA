@@ -124,6 +124,23 @@ export async function guardarPregunta(bot: number, clave: string, c: {
     p_sin_respuesta: c.sinRespuesta, p_no_logro: c.noLogro, p_espera: c.espera, p_bot: bot,
   }, 'Cuadro guardado en el borrador.')
 }
+// Agente (F4·35, RF-36 y RF-37): mensaje de entrada, instrucción, herramientas (null: todas las de Avi), vueltas y sus cuatro salidas.
+export async function guardarAgente(bot: number, clave: string, c: {
+  nombre: string; texto: string; instruccion: string; herramientas: string[] | null; maxVueltas: number
+  compra: string | null; asesor: string | null; menu: string | null; falla: string | null
+}) {
+  return rpc('borrador_guardar_agente', {
+    p_clave: clave, p_nombre: c.nombre, p_texto: c.texto, p_instruccion: c.instruccion, p_herramientas: c.herramientas,
+    p_max_vueltas: c.maxVueltas, p_compra: c.compra, p_asesor: c.asesor, p_menu: c.menu, p_falla: c.falla, p_bot: bot,
+  }, 'Cuadro guardado en el borrador.')
+}
+// Interruptores del bot (F4·35, RF-31 a RF-34): la base exige administrar_bot y deja el historial.
+export async function guardarInterruptores(i: { chatbot_activo: boolean; menu_activo: boolean; agente_en_todo: boolean; texto_apagado: string }) {
+  const r = await rpc('bot_config_cambiar', { p_chatbot: i.chatbot_activo, p_menu: i.menu_activo, p_agente_en_todo: i.agente_en_todo,
+    p_texto_apagado: i.texto_apagado }, 'Guardado. El bot usa los interruptores en menos de 30 segundos.')
+  if (!r.error) revalidatePath('/', 'layout')
+  return r
+}
 // "Ir a otro bot" (RF-17): nombre y bot de destino.
 export async function guardarAjustes(bot: number, clave: string, nombre: string, ajustes: Record<string, unknown>) {
   return rpc('borrador_guardar_ajustes', { p_clave: clave, p_nombre: nombre, p_ajustes: ajustes, p_bot: bot }, 'Cuadro guardado en el borrador.')

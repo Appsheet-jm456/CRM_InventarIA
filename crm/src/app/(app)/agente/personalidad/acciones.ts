@@ -1,8 +1,6 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { obtenerSesion, puede } from '@/lib/sesion'
-import { crearClienteAdmin } from '@/lib/supabase/admin'
 import { crearCliente } from '@/lib/supabase/server'
 
 export type Resultado = { error?: string; ok?: string }
@@ -49,15 +47,4 @@ export async function guardarAvi(d: DatosAvi): Promise<Resultado> {
   if (!data?.length) return { error: 'No tienes permiso para cambiar al agente.' }
   revalidatePath('/agente/personalidad')
   return { ok: 'Guardado. El bot usa los cambios en menos de 30 s.' }
-}
-
-// Cómo atiende cada bot (RAG-14). La tabla bots no deja escribir con la sesión: se verifica el permiso y se escribe con la llave del servidor.
-export async function cambiarModoBot(bot: number, modo: 'menu' | 'hibrido' | 'agente'): Promise<Resultado> {
-  const sesion = await obtenerSesion()
-  if (!sesion || !puede(sesion, ['administrar_agente'])) return { error: 'No tienes permiso para cambiar cómo atiende un bot.' }
-  if (!['menu', 'hibrido', 'agente'].includes(modo)) return { error: 'Modo no válido.' }
-  const { error } = await crearClienteAdmin().from('bots').update({ modo }).eq('id', bot)
-  if (error) return { error: error.message }
-  revalidatePath('/agente/personalidad')
-  return { ok: 'Listo. El bot cambia de modo en menos de 30 s.' }
 }
