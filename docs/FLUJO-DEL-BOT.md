@@ -514,7 +514,7 @@ el lienzo las conserva, pero no las muestra para editar.
 
 **Catálogos (3 nov 2026).** Lenovo, Dell, HP y Unificado son enlaces de Drive públicos, con categoría «Portátiles usados» para que el bot principal no los elija. **Gaming varios se quitó de la lista** hasta tener su catálogo (decisión del dueño); la migración 0043 todavía crea ese cuadro: el borrador en la base es el que manda. Para volver a tenerlo: cargar el catálogo y agregar el cuadro y la opción en el lienzo.
 
-**Para publicarlo:** publicar el bot y marcarlo como principal; ya no tiene problemas por resolver. Avi solo
+**Publicado y marcado como principal el 3 nov 2026** (versión 1). Para volver atrás: marcar «Bienvenida» como principal. Avi solo
 atiende los números de su alcance (hoy «Números de prueba»); a los demás los atiende el Híbrido hasta pasarlo a «Todos». **Avi responde según el
 inventario del CRM**, que hoy solo tiene 17 equipos Dell: sin cargar Lenovo y HP dirá que no los tiene aunque estén en el catálogo.
 
