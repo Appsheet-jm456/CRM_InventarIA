@@ -25,7 +25,8 @@ TRATO = {"tu": "Háblale de tú.", "usted": "Háblale de usted."}
 LARGO = {"corto": "Respuestas cortas: una a tres frases.", "medio": "Respuestas de tamaño medio, sin párrafos largos."}
 
 HERRAMIENTAS = {
-    "buscar_productos": 'Busca portátiles con stock. args: {"marca":"", "procesador":"i5", "generacion":10, "ram_gb":16, "precio_max":1500000, "uso":"Diseño"} (todos opcionales). '
+    "buscar_productos": 'Busca portátiles con stock. args: {"marca":"", "modelo":"X1 Yoga Gen 6", "procesador":"i5", "generacion":10, "ram_gb":16, "precio_max":1500000, "uso":"Diseño"} (todos opcionales). '
+                        "Si el cliente nombra un modelo (X1 Yoga, T14, 5420, ZBook…) usa «modelo» con lo que dijo; «generacion» es solo la del procesador, no el «Gen 6» de un modelo. "
                         "Pon SOLO los filtros que el cliente dijo; no inventes presupuesto ni uso. Para «el más barato» o «qué tienen», llámala sin filtros: "
                         "los equipos vienen ordenados del más barato al más caro. Devuelve código, equipo, especificaciones, precio y stock reales.",
     "ficha_producto": 'Envía al cliente la ficha con foto de un equipo. args: {"codigo":"100-102-1030-1"}.',
@@ -116,6 +117,9 @@ def sistema(config, lead, st, instruccion=""):
         f"Tu personalidad es {TONOS.get(config.get('tono'), TONOS['amigable'])}. {EMOJIS.get(config.get('emojis'), '')} "
         f"{TRATO.get(config.get('trato'), '')} {LARGO.get(config.get('largo'), '')}",
         REGLAS,
+        f"MOSTRAR EQUIPOS\nEn «equipos» puedes poner hasta {max(1, min(int(config.get('max_equipos') or 3), 10))} códigos. El sistema escribe cada ficha con los datos de la base y "
+        "agrega el catálogo al final: tú solo escribes una frase antes y una pregunta después. Pon primero los que más se parecen a lo pedido. "
+        "Si total_que_cumplen es mayor que los que muestras, dilo en la frase de antes («tengo 30 Lenovo, estos son los 10 más económicos»).",
         f"INSTRUCCIONES DEL DUEÑO\n{dueno}" if dueno else "",
         f"EN ESTE PUNTO DE LA CONVERSACIÓN\n{instruccion}" if instruccion else "",  # cuadro Agente del lienzo (F4·35, RF-36)
         f"HORARIO DE LOS ASESORES\n{flujo.texto_horario()}",
@@ -209,13 +213,21 @@ def usar(nombre, args, ctx):
                 except ValueError:
                     f.pop(k)
         todos = flujo.inventario()
+        h = interprete.por_modelo(str(args.get("modelo") or ""), todos) if args.get("modelo") else None
+        if h:  # el modelo que nombró el cliente: «X1 Yoga Gen 6» (su «Gen 6» no es la generación del procesador)
+            f.update(cods=h["cods"], parecidos=h["parecidos"])
+            if h["gen_del_modelo"]:
+                f.pop("generacion", None)
+            if not f.get("marca") and len(h["marcas"]) == 1:
+                f["marca"] = next(iter(h["marcas"]))
         r = interprete.filtrar(todos, f, flujo.es_diseno)
         exactos = bool(r)
-        r = (r or interprete.cercanos(todos, f))[:5]
+        total = len(r)
+        r = (r or interprete.cercanos(todos, f))[:max(1, min(int(ctx["config"].get("max_equipos") or 3), 10))]
         for p in r:
             ctx["permitido"].add(p["precio"])
         ctx["avance"] = ctx["avance"] or exactos
-        return {"coincide_exacto": exactos, "orden": "del más barato al más caro", "equipos": [_resumen(p) for p in r],
+        return {"coincide_exacto": exactos, "orden": "del más barato al más caro", "equipos": [_resumen(p) for p in r], "total_que_cumplen": total,
                 "nota": "" if r else "No hay equipos con stock que se parezcan."}, False
     if nombre == "ficha_producto":
         p = flujo.buscar_codigo(str(args.get("codigo", "")))
@@ -356,12 +368,29 @@ def equipos_pedidos(codigos, maximo):
     return r[:maximo]
 
 
-def textos_con_equipos(antes, equipos, despues, config):
-    """Los mensajes de una respuesta con lista: en uno solo, o un mensaje por equipo (RAG-41)."""
+def catalogo_final(equipos):
+    """El catálogo que cierra la lista (3 nov 2026): el de la marca si todos los equipos son de una y tiene el suyo; si no, el unificado.
+    Devuelve (texto, pdf): el texto lleva el enlace de Drive; un PDF va aparte, como documento. (None, None) si no hay catálogo."""
+    marcas = {str(p.get("marca") or "").upper() for p in equipos}
+    try:
+        elegido, _ = db.catalogo_para("Portátiles", marcas.pop() if len(marcas) == 1 else "")
+    except Exception:  # sin catálogo la lista sale igual
+        return None, None
+    if not elegido:
+        return None, None
+    if elegido["tipo"] == "pdf":
+        return f"Te envío el catálogo de equipos usados:\n📚 *{elegido['nombre']}* (en el documento de abajo)", elegido
+    return f"Te envío el catálogo de equipos usados:\n📚 *{elegido['nombre']}*\n{elegido['url']}", None
+
+
+def textos_con_equipos(antes, equipos, despues, config, catalogo=""):
+    """Los mensajes de una respuesta con lista: en uno solo, o un mensaje por equipo (RAG-41). El catálogo va después de los equipos."""
     bloques = [armar_equipo(config.get("plantilla_equipo"), p) for p in equipos]
     if config.get("equipos_separados"):
-        return [t for t in [antes, *bloques, despues] if t]
-    return ["\n\n".join(t for t in [antes, *bloques, despues] if t)[:4096]]
+        return [t for t in [antes, *bloques, catalogo, despues] if t]
+    while len(bloques) > 1 and len("\n\n".join(t for t in [antes, *bloques, catalogo, despues] if t)) > 4096:
+        bloques.pop()  # WhatsApp admite 4.096 caracteres: antes de cortar el cierre se quita el último equipo
+    return ["\n\n".join(t for t in [antes, *bloques, catalogo, despues] if t)[:4096]]
 
 
 def partir(texto, maximo):
@@ -461,7 +490,10 @@ def responder(st, entrada, lead, config=None, simulador=False, previo=None, cuad
                 memoria["sin_avance"] = 0
                 _asesor_por(ctx, f"Avi respondió {SIN_AVANCE} veces seguidas sin avanzar la venta.", "Escalado-Asesor")
             if equipos:
-                return _salida(ctx, textos_con_equipos(texto, equipos, despues, config), traza, costo, tokens)
+                catalogo, pdf = catalogo_final(equipos)
+                if pdf:
+                    ctx["extra"].append({"_pdf": pdf})
+                return _salida(ctx, textos_con_equipos(texto, equipos, despues, config, catalogo or ""), traza, costo, tokens)
             return _salida(ctx, partir("\n\n".join(filter(None, [texto, despues])), int(config.get("max_mensajes") or 3)), traza, costo, tokens)
         _asesor_por(ctx, "Avi usó todos sus pasos sin llegar a una respuesta.", "Revisar-Agente")
         return _salida(ctx, [], traza, costo, tokens)

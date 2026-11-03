@@ -87,7 +87,7 @@ export function PlantillaEquipos({ plantilla, maxEquipos, separados, ejemplo, oc
       <div className="row" style={{ gap: 16, alignItems: 'flex-end' }}>
         <label className="field deslizador" style={{ flex: '1 1 220px' }}>
           <span className="row" style={{ justifyContent: 'space-between' }}>Máximo de equipos por respuesta <b>{maxEquipos}</b></span>
-          <input type="range" min={1} max={5} value={maxEquipos} disabled={ocupado} onChange={(e) => cambiar({ max_equipos: Number(e.target.value) })} />
+          <input type="range" min={1} max={10} value={maxEquipos} disabled={ocupado} onChange={(e) => cambiar({ max_equipos: Number(e.target.value) })} />
         </label>
         <div className="interruptor-fila" style={{ flex: '1 1 260px' }}>
           <button type="button" className={`toggle${separados ? ' on' : ''}`} aria-pressed={separados} aria-label="Un mensaje por equipo" disabled={ocupado}

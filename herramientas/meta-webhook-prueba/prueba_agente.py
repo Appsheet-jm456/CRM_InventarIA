@@ -36,6 +36,7 @@ db.mensajes_recientes = lambda lead_id, n: [{"lado": "cliente", "texto": "hola"}
                                             {"lado": "cliente", "texto": "busco un dell i5"}]
 db.buscar_conocimiento = lambda texto, limite=5: FICHAS
 db.turnos_del_dia = lambda lead_id: 0
+db.catalogo_para = lambda categoria, marca: (None, None)  # el catálogo al final de la lista se prueba en prueba_fichas.py
 db.actualizar_lead = lambda *a, **k: None
 INTERRUPTORES = {"chatbot_activo": True, "menu_activo": True, "agente_en_todo": True, "texto_apagado": ""}
 db.bot_config = lambda: INTERRUPTORES  # F4·35: reemplaza el modo por bot

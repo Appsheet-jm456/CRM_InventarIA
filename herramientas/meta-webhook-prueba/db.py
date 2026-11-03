@@ -333,7 +333,7 @@ def catalogo_para(categoria, marca):
             return -1
         return (2 if c_cat else 0) + (1 if c_mar else 0)
 
-    elegibles = sorted((c for c in candidatos if puntos(c) >= 0), key=puntos, reverse=True)
+    elegibles = sorted((c for c in candidatos if puntos(c) >= 0), key=lambda c: (puntos(c), c["id"]), reverse=True)  # a igual puntaje, el más nuevo
     return (elegibles[0] if elegibles else None), todos
 
 

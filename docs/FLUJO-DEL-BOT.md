@@ -521,6 +521,19 @@ inventario del CRM** (53 equipos desde el 3 nov 2026): un equipo que esté en un
 **Verificación (3 nov 2026).** Ensayo de la migración con `ROLLBACK`; 8 rutas por el simulador (`/interno/simular`) con el motor real, y un turno real
 de Avi desde el catálogo. El único problema para publicar son los catálogos sin elegir. **Falta la prueba del dueño** por WhatsApp, con el bot publicado.
 
+## Hasta 10 fichas de Avi con el catálogo al final (F4·40, migración 0044)
+
+**Pedido el 3 nov 2026.** Una respuesta de Avi: frase, hasta 10 fichas, catálogo y pregunta, en un solo mensaje.
+
+- **Tope:** `agente_config.max_equipos` va de 1 a 10 (Agente → Avi; hoy en 10). «Hasta 10» es un tope: con 5 equipos que cumplan muestra 5.
+- **Búsqueda:** `buscar_productos` recibe `modelo` (usa `interprete.por_modelo`, como el Híbrido) y devuelve `total_que_cumplen`, para avisar si hay más de los que muestra.
+- **Catálogo al final:** lo agrega el sistema, no el modelo (`agente.catalogo_final`): el de la marca si todos los equipos son de una y tiene el suyo; si no, el unificado. Sin catálogo la lista sale igual; un PDF va aparte, como documento. Solo aplica cuando Avi muestra una lista: la ficha de un equipo no lo lleva.
+- **Elección de catálogo:** a igual puntaje gana el más nuevo (`db.catalogo_para`), así el Dell de Drive le gana al PDF viejo id 39. Los catálogos de Avi Ventas pasaron a la categoría «Portátiles», y el bot «Bienvenida» también los usa si vuelve a ser principal.
+- **Instrucciones de Avi:** reescritas en Agente → Avi; las anteriores quedaron en `~/avi-instrucciones-antes-2026-11-03.txt`, fuera del repositorio.
+- **El aviso «cuando llegue»:** Avi deja un seguimiento para el asesor. El CRM no detecta solo que entró un equipo.
+
+**Verificación:** `prueba_fichas.py` (21) y seis preguntas con DeepSeek en el simulador. **Falta la prueba del dueño** por WhatsApp.
+
 ## Arranques y pruebas (F4·14 y F4·15, decisión 0028)
 
 **Lienzo.** "+ Mensaje" pasa a **"+ Agregar ▾"** con los cinco cuadros (Ir a otro bot es el quinto: un desplegable con los bots y una sola flecha de entrada); cada uno se crea en el centro de la vista y

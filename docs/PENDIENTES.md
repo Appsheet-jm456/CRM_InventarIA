@@ -6,6 +6,8 @@ de las Fases 1 y 2 abajo. **Código nuevo:** el bot de prueba sobre Supabase (`h
 
 ## Dónde retomar (en este orden)
 
+0. **3 nov 2026 · F4·40 Hasta 10 fichas de Avi con catálogo al final construida 🔵 ([FLUJO-DEL-BOT.md](FLUJO-DEL-BOT.md), migración 0044):** falta la prueba del dueño por WhatsApp. Los equipos no tienen foto: Avi ofrece «ficha con foto» y sale sin imagen hasta subirlas en Inventario.
+
 0. **3 nov 2026 · Avi con DeepSeek (`deepseek-flash`) como principal**, el modelo local `crm-llama` de respaldo y Gemini descartado por ahora. Responde en 1 a 7 s y cada pregunta cuesta entre US$ 0,0005 y 0,003. Se subió `tokens_max` de 500 a 1.000 porque una respuesta de garantía salía cortada, y `interpretar()` ya no manda al cliente un JSON a medias (`prueba_json.py`). **Sin cargar las fichas de Envíos y Pagos, Avi pasa esas preguntas a un asesor.** El presupuesto mensual sigue en US$ 5: el dueño compró US$ 2 en DeepSeek.
 
 0. **3 nov 2026 · Respaldo de Avi activo:** si Gemini falla, responde `crm-llama` (llama3.1, local, sin costo; Configuración → Agente → Cerebro). Se configuró porque Gemini dejó de responder desde las 17:03 UTC. Con Gemini caído cada paso espera 30 s antes de pasar al respaldo (31 a 77 s por respuesta en la prueba), y las respuestas del modelo local son más flojas: es un respaldo, no un reemplazo.

@@ -41,7 +41,7 @@ export async function guardarAvi(d: DatosAvi): Promise<Resultado> {
   if (!entre(d.espera_primera_ms, 0, 5000) || !entre(d.pausa_mensajes_ms, 0, 5000)) return { error: 'Las pausas van de 0 a 5 segundos.' }
   const plantilla = d.plantilla_equipo.split('\n').map((l) => l.trimEnd()).filter((l) => l.trim()).join('\n')
   if (!plantilla || plantilla.length > 1000) return { error: 'La plantilla de equipos va de 1 a 1.000 caracteres.' }
-  if (!entre(d.max_equipos, 1, 5)) return { error: 'Los equipos por respuesta van de 1 a 5.' }
+  if (!entre(d.max_equipos, 1, 10)) return { error: 'Los equipos por respuesta van de 1 a 10.' }
   const numeros = d.lista_blanca.split(/[\n,;]+/).map((n) => n.replace(/\D/g, '')).filter(Boolean)
   if (numeros.some((n) => n.length < 10 || n.length > 15)) return { error: 'Cada número de prueba lleva entre 10 y 15 dígitos, con el indicativo (57…).' }
   if (d.estado === 'lista_blanca' && !numeros.length) return { error: 'Para encenderlo solo para números de prueba, escribe al menos uno.' }
