@@ -218,6 +218,13 @@ def buscar_codigo(texto):
     return None
 
 
+def codigo_sin_stock(texto):
+    """Lo que parece un código (100-102-1041, PU-23) y buscar_codigo no encontró: vendido o mal escrito. Sin esto, el texto llegaba al
+    intérprete, que sacaba filtros de los números y ofrecía equipos que nadie pidió."""
+    m = re.search(r"(?<!\d)100-10\d-\d[\d-]*|(?<![A-Z])PU-\d+", re.sub(r"\s", "", texto.upper()))
+    return m.group().rstrip("-") if m else None
+
+
 def es_diseno(p):
     """Provisional hasta F1·8: 16 GB de RAM o procesador serie H/HQ."""
     sufijo = p["cpu"].split("-")[-1] if "-" in p["cpu"] else ""
@@ -776,6 +783,10 @@ def _responder(st, texto, avisar):
     p = buscar_codigo(texto) if tipo != "presupuesto" else None
     if p:
         return r11(st, p), st
+    falta = codigo_sin_stock(texto) if tipo != "presupuesto" else None
+    if falta:
+        return [m_texto(f"😕 El código *{falta}* no está disponible: puede que ya se haya vendido o que esté mal escrito.\n\n"
+                        "Cuéntame qué equipo buscas o escribe *asesor* y te ayuda una persona.")], st
     if n == "9" or "asesor" in n:
         return asesor(st), st
     if n == "0" and (k == "BUSQUEDA" or tipo in ("equipos", "ficha")):

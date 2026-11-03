@@ -160,7 +160,7 @@ opcionalmente `palabras` (exacta; `*x` si contiene x; `re:x` expresión desde el
 con destino asesor, la etiqueta y el motivo van al aviso). Un cuadro del sistema sigue por `salidas`
 (`siguiente`, `cambiar_presupuesto`) y puede anotar algo al llegar (`al_entrar`).
 
-**Reglas globales, en el código:** `reiniciar`, saludos al inicio, código de un equipo a su ficha, `9` o "asesor",
+**Reglas globales, en el código:** `reiniciar`, saludos al inicio, código de un equipo a su ficha, código sin stock o mal escrito (formatos `100-10x-…` y `PU-…`) a un aviso sin pasar por el intérprete, sin contar como error (3 nov 2026), `9` o "asesor",
 `0` desde la lista, la ficha o una búsqueda, texto libre al intérprete y el error (tres seguidos pasan a asesor).
 Un cliente cuyo cuadro ya no existe en la versión publicada vuelve al inicio.
 
