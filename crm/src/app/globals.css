@@ -567,7 +567,11 @@ button.wa-boton:hover, button.wa-fila:hover { background: rgba(2, 126, 181, .06)
 :root { --cli: #FFFFFF; --bot: #EEF1F5; --ase: #E4ECF7 }
 @media (prefers-color-scheme: dark) { :root:not([data-modo="claro"]) { --cli: #1B2533; --bot: #202936; --ase: #1D2A3F } }
 :root[data-modo="oscuro"] { --cli: #1B2533; --bot: #202936; --ase: #1D2A3F }
-.bandeja { height: calc(100dvh - 130px); min-height: 460px; display: grid; grid-template-columns: 300px minmax(0, 1fr) 290px; grid-template-rows: minmax(0, 1fr); background: var(--surface); border: 1px solid var(--line); border-radius: 10px; overflow: hidden }
+/* F4·38: la Bandeja ocupa todo el espacio libre, sin márgenes ni el tope de ancho de .view. Solo aplica a esta pantalla. */
+.app:has(.bandeja) { grid-template-rows: minmax(0, 1fr) }
+.content:has(> .view > .bandeja) { display: flex; padding: 0 }
+.view:has(> .bandeja) { flex: 1; min-width: 0; min-height: 0; max-width: none; gap: 0 }
+.bandeja { flex: 1; min-height: 460px; display: grid; grid-template-columns: 290px minmax(0, 1fr) 270px; grid-template-rows: minmax(0, 1fr); background: var(--surface); overflow: hidden }
 .bandeja .col { min-height: 0; overflow: hidden; display: flex; flex-direction: column }
 .bandeja .col + .col { border-left: 1px solid var(--line) }
 .col-h { padding: 12px 16px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 10px; min-height: 58px }
@@ -611,6 +615,26 @@ button.wa-boton:hover, button.wa-fila:hover { background: rgba(2, 126, 181, .06)
 .dato small { display: block; font-size: 11px; letter-spacing: .6px; text-transform: uppercase; color: var(--muted) }
 .dato div { font-weight: 500; overflow-wrap: anywhere }
 .vacio { margin: auto; padding: 20px; color: var(--muted); text-align: center; font-size: 13px }
+/* F4·38: diseño del chat de la Bandeja. .m, .chat, .col-h y .b-caja también los usan la ficha del lead, Chat e Inventario: aquí solo se cambian dentro de .bandeja. */
+.bandeja .col-h { min-height: 62px }
+.bandeja .b-chat .col-h .avatar { width: 38px; height: 38px; font-size: 13px }
+.bandeja .b-chat .chat { padding: 24px clamp(18px, 4%, 56px); gap: 10px }
+.bandeja .m { max-width: min(66%, 720px); padding: 10px 14px; border: 0; border-radius: 14px; font-size: 14px; line-height: 1.5; box-shadow: 0 1px 2px rgba(15, 30, 51, .1) }
+.bandeja .m.cliente { background: var(--surface); border-top-left-radius: 4px }
+.bandeja .m.bot { border-top-right-radius: 4px }
+.bandeja .m.asesor { background: var(--accent-soft); border-top-right-radius: 4px }
+.bandeja .b-responder { padding: 12px clamp(14px, 4%, 56px); background: var(--surface) }
+.bandeja .b-caja { align-items: center; gap: 10px }
+.bandeja .b-caja textarea { padding: 10px 14px; border-radius: 12px; font-size: 14px }
+.bandeja .b-filtros .pastilla { padding: 3px 9px; font-size: 12px }
+.bandeja .conv { padding: 12px 14px; gap: 1px 11px }
+.bandeja .conv .avatar { width: 40px; height: 40px; font-size: 13px }
+.bandeja .conv-pie { min-width: 0 }
+.bandeja .conv-pie .chip { max-width: 100%; padding: 1px 7px; font-size: 10.5px; overflow: hidden; text-overflow: ellipsis }
+.b-cliente { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 0 12px; border-bottom: 1px solid var(--line); text-align: center; overflow-wrap: anywhere }
+.b-cliente .avatar { width: 64px; height: 64px; margin-bottom: 8px; font-size: 21px }
+.b-cliente b { font: 600 15px var(--f-display) }
+.b-cliente small { color: var(--muted); font-size: 12.5px }
 .b-volver { display: none }
 .bandeja { position: relative }
 .b-verficha { display: none }
@@ -622,11 +646,11 @@ button.wa-boton:hover, button.wa-fila:hover { background: rgba(2, 126, 181, .06)
   .iconbtn.b-verficha { display: grid }
 }
 @media (max-width: 760px) {
-  .bandeja { grid-template-columns: 1fr; height: calc(100dvh - 110px) }
+  .bandeja { grid-template-columns: 1fr }
   .bandeja[data-vista=chat] .b-lista, .bandeja[data-vista=lista] .b-chat { display: none }
   .bandeja .col + .col { border-left: 0 }
   .b-volver { display: grid }
-  .m { max-width: 88% }
+  .m, .bandeja .m { max-width: 88% }
 }
 
 /* ---------- embudo (F3·5) ---------- */

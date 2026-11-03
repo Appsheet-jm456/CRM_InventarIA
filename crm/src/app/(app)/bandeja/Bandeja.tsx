@@ -70,6 +70,8 @@ export const hora = (t: string) => {
 }
 export const iniciales = (s: string) => (s || '?').split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]).join('').toUpperCase()
 const pesos = (n: number) => n.toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 })
+// F4·38: cada cliente conserva su color, para reconocerlo de un vistazo en la lista.
+const colorAvatar = (id: number) => ({ background: `hsl(${(id * 47) % 360} 42% 40%)` })
 
 // El bot guarda las opciones de sus listas y botones al final: "texto\n\n[Ver: A · B]".
 export function partirOpciones(texto: string) {
@@ -309,7 +311,7 @@ export function Bandeja({ yo, usuarios, asesores, embudos, etapas, rapidas, inic
             const espera = l.minutos_espera
             return (
               <button key={l.id} className={`conv${l.id === sel ? ' on' : ''}`} onClick={() => setSel(l.id)}>
-                <span className="avatar">{iniciales(l.nombre || l.telefono)}</span>
+                <span className="avatar" style={colorAvatar(l.id)}>{iniciales(l.nombre || l.telefono)}</span>
                 <b>{l.nombre || `+${l.telefono}`}</b>
                 <time>{l.fecha_ultimo_contacto ? hora(l.fecha_ultimo_contacto) : ''}</time>
                 <small>{l.ultimo_mensaje || 'Sin mensajes'}</small>
@@ -344,7 +346,7 @@ export function Bandeja({ yo, usuarios, asesores, embudos, etapas, rapidas, inic
           <>
             <div className="col-h">
               <button className="iconbtn b-volver" onClick={() => setSel(null)} aria-label="Volver a la lista">←</button>
-              <span className="avatar">{iniciales(lead.nombre || lead.telefono)}</span>
+              <span className="avatar" style={colorAvatar(lead.id)}>{iniciales(lead.nombre || lead.telefono)}</span>
               <div style={{ minWidth: 0 }}>
                 <h2>{lead.nombre || `+${lead.telefono}`}</h2>
                 <small>+{lead.telefono} · {ESTADOS[lead.estado_chat].texto}
@@ -427,6 +429,11 @@ export function Bandeja({ yo, usuarios, asesores, embudos, etapas, rapidas, inic
           <p className="vacio">Sin conversación abierta.</p>
         ) : (
           <div className="b-datos">
+            <div className="b-cliente">
+              <span className="avatar" style={colorAvatar(lead.id)}>{iniciales(lead.nombre || lead.telefono)}</span>
+              <b>{lead.nombre || `+${lead.telefono}`}</b>
+              {lead.nombre && <small>+{lead.telefono}</small>}
+            </div>
             <div className="row">
               {lead.estado_chat !== 'asignada' || lead.asignado_a !== yo.id ? (
                 <button className="btn primary chico" disabled={ocupado} onClick={() => hacer(() => tomar(lead.id), 'La tomaste: el bot ya no le contesta.')}>Tomar</button>
@@ -452,7 +459,6 @@ export function Bandeja({ yo, usuarios, asesores, embudos, etapas, rapidas, inic
             )}
             <OportunidadesCliente key={`op-${lead.id}`} lead={lead.id} embudos={embudos} etapas={etapas} puede={yo.moverEtapas}
               version={versionOps} alCambiar={cargarLista} />
-            <Dato titulo="Teléfono" valor={`+${lead.telefono}`} />
             <Dato titulo="Busca" valor={lead.categoria_interes} />
             <Dato titulo="Uso" valor={lead.uso_equipo} />
             <Dato titulo="Presupuesto" valor={lead.presupuesto} />

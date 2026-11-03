@@ -1,10 +1,14 @@
 # Pendientes y dónde retomar
 
-**Última sesión:** 1 nov 2026 · **Fase actual:** Fase 3 (Implementación) empezando por **F3·1**, con pendientes
+**Última sesión:** 3 nov 2026 · **Fase actual:** Fase 3 (Implementación) empezando por **F3·1**, con pendientes
 de las Fases 1 y 2 abajo. **Código nuevo:** el bot de prueba sobre Supabase (`herramientas/`) y las migraciones
 0001–0004. La app nueva **CRM InventarIA** corre en **http://100.114.72.43:8096** (`crm/`, decisión 0017). La v0 sigue viva en el 3000 sin tocar.
 
 ## Dónde retomar (en este orden)
+
+0. **3 nov 2026 · F4·38 Bandeja más amplia construida 🔵:** la Bandeja ocupa todo el espacio libre (sin márgenes ni el tope de 1280 px), con el chat más ancho, burbujas sin borde, un color por cliente en la lista y el cliente arriba en el panel derecho. Solo CSS y presentación: los estilos nuevos van dentro de `.bandeja` porque `.m`, `.chat` y `.col-h` también los usan la ficha del lead, Chat e Inventario. **Falta la prueba del dueño** (recargar la página).
+
+0. **3 nov 2026 · Cambio de Meta a Ventas Virtual, en curso:** portafolio Ventas Virtual Colombia, app *Aiutomatizacion Chatbot Ventas*, número **+57 318 7514195** (registrado). Token permanente generado por el dueño. Falta el App Secret (recuperar la contraseña de Facebook), pegar todo en `/meta`, Probar, Guardar, registrar el webhook y probar de ida y vuelta. Sin tarjeta todavía: no hay plantillas fuera de las 24 h.
 
 0. **1 nov 2026 · F4·37 construida 🔵** ([AGENTE.md](AGENTE.md#4c-lista-de-equipos-con-plantilla-f437), migración 0042): Avi elige los equipos y el sistema
    arma la lista con la plantilla de Agente → Avi → «Cómo muestra los equipos» (renglones por atributo: modificar, agregar, quitar y ordenar; máximo
