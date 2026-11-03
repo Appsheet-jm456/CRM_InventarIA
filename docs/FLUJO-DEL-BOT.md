@@ -516,7 +516,7 @@ el lienzo las conserva, pero no las muestra para editar.
 
 **Publicado y marcado como principal el 3 nov 2026** (versión 1). Para volver atrás: marcar «Bienvenida» como principal. Avi solo
 atiende los números de su alcance (hoy «Números de prueba»); a los demás los atiende el Híbrido hasta pasarlo a «Todos». **Avi responde según el
-inventario del CRM**, que hoy solo tiene 17 equipos Dell: sin cargar Lenovo y HP dirá que no los tiene aunque estén en el catálogo.
+inventario del CRM** (53 equipos desde el 3 nov 2026): un equipo que esté en un catálogo pero no en el inventario dirá que no lo tiene.
 
 **Verificación (3 nov 2026).** Ensayo de la migración con `ROLLBACK`; 8 rutas por el simulador (`/interno/simular`) con el motor real, y un turno real
 de Avi desde el catálogo. El único problema para publicar son los catálogos sin elegir. **Falta la prueba del dueño** por WhatsApp, con el bot publicado.
