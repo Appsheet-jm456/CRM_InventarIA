@@ -488,6 +488,37 @@ historial en `bot_config_historial`. Tipo `agente` en `bot_cuadros` con `ajustes
 salidas `compra`, `asesor`, `menu`, `falla`. `leads.estado_bot` guarda las vueltas dentro del cuadro. Receptor: lee la configuración cada 30 s
 como el resto; `agente.py` recibe la instrucción y las herramientas del cuadro.
 
+## Bot «Avi Ventas»: el Salesbot de Kommo en el CRM (F4·39, migración 0043)
+
+**Pedido el 3 nov 2026.** Lleva al CRM el flujo del Salesbot #5 de Kommo (`~/kommo-salesbot`) con la fórmula **Menú guiado + Avi + Asesor = cierre
+de venta**. Queda en **borrador**: no atiende a nadie y no cambia el bot principal «Bienvenida» hasta que el dueño lo publique y lo marque como principal.
+
+```
+Bienvenida ─ Productos ─ Lista de productos
+   │                       ├─ Portátiles Usados ─ Marcas ─ Lenovo / Dell / HP / Gaming / Unificado ─ Catálogo ─ 🤖 Avi
+   │                       │                                                                                    ├─ Inició compra → compra de siempre
+   │                       │                                                                                    ├─ Pidió asesor o no avanza → Asesor
+   │                       │                                                                                    ├─ Volvió al menú → Bienvenida
+   │                       │                                                                                    └─ Error del cerebro → Híbrido
+   │                       └─ Nuevos, Gamer, Escritorio, Monitores, Impresoras, Accesorios, Tablet, Otros → Asesor
+   ├─ Distribuidores ─ bot «Distribuidor»
+   └─ Servicio al cliente ─ Asesor
+```
+
+**Qué anota.** Categoría interés y etiqueta `Interes-Productos` al elegir producto; Marca interés y `Catalogo-Enviado` al elegir marca;
+`Interes-Distribuidor` e `Interes-Soporte` en esas ramas. El `9` está reservado para pasar a asesor (RF), por eso «Otros» es la opción 10.
+
+**Diferencias con Kommo.** La lista no permite cambiar el texto del botón («Ver opciones») ni el título de sección o el pie: el motor los fija. El `0`
+vuelve al menú en vez de pasar a asesor; para el asesor son `9` o la palabra *asesor*. Las descripciones de las filas se guardan directo en la opción:
+el lienzo las conserva, pero no las muestra para editar.
+
+**Para publicarlo:** cargar los 5 catálogos en Inventario → Catálogos, elegirlos en los cuadros CAT1 a CAT5, publicar y marcar como principal. Avi solo
+atiende los números de su alcance (hoy «Números de prueba»); a los demás los atiende el Híbrido hasta pasarlo a «Todos». **Avi responde según el
+inventario del CRM**, que hoy solo tiene 17 equipos Dell: sin cargar Lenovo y HP dirá que no los tiene aunque estén en el catálogo.
+
+**Verificación (3 nov 2026).** Ensayo de la migración con `ROLLBACK`; 8 rutas por el simulador (`/interno/simular`) con el motor real, y un turno real
+de Avi desde el catálogo. El único problema para publicar son los catálogos sin elegir. **Falta la prueba del dueño** por WhatsApp, con el bot publicado.
+
 ## Arranques y pruebas (F4·14 y F4·15, decisión 0028)
 
 **Lienzo.** "+ Mensaje" pasa a **"+ Agregar ▾"** con los cinco cuadros (Ir a otro bot es el quinto: un desplegable con los bots y una sola flecha de entrada); cada uno se crea en el centro de la vista y
