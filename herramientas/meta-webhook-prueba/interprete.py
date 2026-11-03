@@ -94,7 +94,37 @@ def quiere_comprar(n):
     return bool(re.search(r"lo quiero|quiero (comprar|ese|este|el equipo)|me interesa|lo compro|como (lo )?pago|comprar(lo)?\b", _n(n)))
 
 
-def reglas(texto, marcas_en_stock=()):
+NO_DISTINGUEN = {"gen", "gaming", "fire", "fly"}  # palabras de un modelo que por sí solas no dicen cuál es
+
+
+def por_modelo(texto, productos):
+    """Los equipos cuyo modelo nombra el cliente («X1 Yoga Gen 6», «T14», «dell 5420»), o None si no nombra ninguno.
+    Gana el modelo con más palabras en el mensaje, así «x1 carbon» no trae los X1 Yoga. Un número suelto de 1 o 2 cifras no
+    basta (el 14 de «Inspiron 14» o el 16 de «16 GB»). Si pide «gen N» y el modelo la lleva, es la del equipo, no la del procesador."""
+    n = _n(texto)
+    pedidas = set(re.findall(r"[a-z0-9]+", n))
+    mejor, tope, palabras = [], 0, []
+    for p in productos:
+        base = re.findall(r"[a-z0-9]+", re.sub(r"\bgen\s*\d+", " ", _n(p.get("modelo"))))
+        dichas = [x for x in base if x in pedidas]
+        if not [x for x in dichas if x not in NO_DISTINGUEN and not (x.isdigit() and len(x) < 3)]:
+            continue
+        if len(dichas) > tope:
+            mejor, tope, palabras = [], len(dichas), dichas
+        if len(dichas) == tope:
+            mejor.append(p)
+    if not mejor:
+        return None
+    pedida = re.search(r"\bgen\s*(\d{1,2})\b", n)
+    de_modelo = [p for p in mejor if re.search(r"\bgen\s*\d+", _n(p.get("modelo")))]
+    es_del_modelo = bool(pedida and de_modelo)
+    exactos = [p for p in de_modelo if re.search(rf"\bgen\s*{pedida.group(1)}\b", _n(p.get("modelo")))] if es_del_modelo else mejor
+    nombre = " ".join(palabras).upper() + (f" GEN {pedida.group(1)}" if es_del_modelo else "")
+    return {"cods": [p["cod"] for p in exactos], "parecidos": [p["cod"] for p in mejor], "modelo": nombre,
+            "marcas": {p["marca"].upper() for p in mejor}, "gen_del_modelo": es_del_modelo}
+
+
+def reglas(texto, marcas_en_stock=(), productos=()):
     n = _n(texto)
     f = {}
     for palabra, marca in MARCAS_CONOCIDAS.items():
@@ -127,6 +157,13 @@ def reglas(texto, marcas_en_stock=()):
         f["uso"] = u
     if re.search(r"barat|economic|menor precio", n):
         f["orden"] = "precio"
+    hallado = por_modelo(texto, productos)
+    if hallado:
+        f.update(cods=hallado["cods"], parecidos=hallado["parecidos"], modelo=hallado["modelo"])
+        if hallado["gen_del_modelo"]:
+            f.pop("generacion", None)
+        if not f.get("marca") and len(hallado["marcas"]) == 1:
+            f["marca"] = next(iter(hallado["marcas"]))
     return f
 
 
@@ -213,6 +250,8 @@ def con_ia(texto):
 
 def filtrar(productos, f, es_diseno):
     r = productos
+    if "cods" in f:
+        r = [p for p in r if p["cod"] in f["cods"]]
     if f.get("marca"):
         r = [p for p in r if p["marca"].upper() == f["marca"].upper()]
     if f.get("procesador"):
@@ -232,6 +271,7 @@ def cercanos(productos, f):
     """Si nada cumple todo, los 3 que más filtros cumplen (a igual puntaje, el más barato)."""
     def puntos(p):
         return sum([
+            3 * (p["cod"] in (f.get("parecidos") or ())),  # el modelo que nombró pesa más que cualquier otro filtro
             bool(f.get("marca")) and p["marca"].upper() == f["marca"].upper(),
             bool(f.get("procesador")) and _cpu(p) == f["procesador"],
             bool(f.get("generacion")) and p["gen"] == f["generacion"],
@@ -246,6 +286,8 @@ def describir(f):
     partes = []
     if f.get("marca"):
         partes.append(f["marca"].title())
+    if f.get("modelo"):
+        partes.append(f["modelo"])
     if f.get("procesador"):
         partes.append(f["procesador"] + (f" de {f['generacion']}.ª generación" if f.get("generacion") else ""))
     elif f.get("generacion"):

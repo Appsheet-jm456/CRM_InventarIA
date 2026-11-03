@@ -161,7 +161,7 @@ con destino asesor, la etiqueta y el motivo van al aviso). Un cuadro del sistema
 (`siguiente`, `cambiar_presupuesto`) y puede anotar algo al llegar (`al_entrar`).
 
 **Reglas globales, en el código:** `reiniciar`, saludos al inicio, código de un equipo a su ficha, código sin stock o mal escrito (formatos `100-10x-…` y `PU-…`) a un aviso sin pasar por el intérprete, sin contar como error (3 nov 2026), `9` o "asesor",
-`0` desde la lista, la ficha o una búsqueda, texto libre al intérprete y el error (tres seguidos pasan a asesor).
+`0` desde la lista, la ficha o una búsqueda, texto libre al intérprete (que primero busca el modelo que nombre el cliente: «X1 Yoga Gen 6», «T14», «dell 5420»; el «Gen» de un modelo no es la generación del procesador; 3 nov 2026) y el error (tres seguidos pasan a asesor).
 Un cliente cuyo cuadro ya no existe en la versión publicada vuelve al inicio.
 
 **Versión 1 = árbol de F3·4.** Se comprobó con el motor anterior: 85.536 conversaciones simuladas (todas las

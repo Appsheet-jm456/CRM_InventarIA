@@ -829,7 +829,7 @@ def _responder(st, texto, avisar):
 
     # Texto libre: reglas primero; si no alcanzan, IA (Gemini o qwen3). La respuesta sale de la base.
     if not re.fullmatch(r"\d{1,2}", n):
-        filtros = interprete.reglas(texto, [p["marca"] for p in inventario()])
+        filtros = interprete.reglas(texto, [p["marca"] for p in inventario()], inventario())
         if not filtros and interprete.vale_la_pena_ia(n):
             if avisar:
                 avisar("🔎 Estoy buscando en el inventario…")

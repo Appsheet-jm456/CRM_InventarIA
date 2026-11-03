@@ -765,7 +765,7 @@ def buscar(texto):
     if p:
         return {"fuente": "codigo", "filtros": {}, "descripcion": f"el código {p['cod']}", "codigos": [p["cod"]],
                 "cercanos": []}
-    filtros, fuente = interprete.reglas(texto, [p["marca"] for p in todos]), "reglas"
+    filtros, fuente = interprete.reglas(texto, [p["marca"] for p in todos], todos), "reglas"
     if not filtros and interprete.vale_la_pena_ia(flujo.normalizar(texto)):
         filtros, fuente = interprete.con_ia(texto), "ia"
     if not filtros:
