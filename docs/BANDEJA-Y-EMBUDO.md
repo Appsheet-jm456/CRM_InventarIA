@@ -99,3 +99,32 @@ qué eventos le llegan. El navegador llega a la API por el mismo equipo por dond
 - **Embudo** (`/embudo`): una columna por etapa con sus clientes; se mueven arrastrando o con el menú de
   la tarjeta. *Perdido* pide el motivo.
 - **Etapas** (`/etapas`): crear, renombrar, color, orden y borrar (si no tiene clientes).
+
+## Bandeja a toda la pantalla (F4·38, 3 nov 2026)
+
+**Por qué:** el dueño pidió un chat más grande. La Bandeja estaba limitada a 1280 px y con márgenes, y en pantallas
+anchas sobraba espacio a los lados.
+
+**Qué cambió (solo presentación, sin tocar la lógica):**
+
+| Parte | Antes | Ahora |
+|---|---|---|
+| Espacio | Máximo 1280 px, con márgenes y borde | Todo el espacio libre junto al panel lateral, sin márgenes |
+| Columnas | Lista 300 px y Cliente 290 px | Lista 290 px y Cliente 270 px; el chat toma el resto |
+| Altura | Calculada con un número fijo; el aviso de chatbot apagado no se descontaba | Se ajusta sola, también con ese aviso |
+| Mensajes | Con borde, hasta 72 % del ancho | Sin borde, con sombra suave, hasta 66 % o 720 px para que sigan siendo fáciles de leer |
+| Asesor | Color `--ase` | Color `--accent-soft` (azul de la marca) |
+| Lista | Avatar de un solo color | Un color por cliente, calculado con su id; las etiquetas largas se cortan con «…» |
+| Panel Cliente | Teléfono como un dato más | Avatar grande, nombre y teléfono arriba |
+
+**Reglas para quien la modifique:**
+
+- `.m`, `.chat`, `.col-h`, `.b-responder` y `.b-caja` también los usan la ficha del lead, Chat e Inventario. Los cambios
+  de la Bandeja van dentro de `.bandeja`.
+- Quitar los márgenes usa `:has(.bandeja)` sobre `.app`, `.content` y `.view`, y solo aplica a esta pantalla.
+- `.app:has(.bandeja)` necesita `grid-template-rows: minmax(0, 1fr)`: sin eso la fila crece con el contenido, la página
+  se alarga y la caja de respuesta queda fuera de la vista.
+
+**Verificación:** maqueta con el `globals.css` real y datos de ejemplo en 1900 px (claro y oscuro), 1000 px y 400 px;
+una pantalla de ejemplo con las clases compartidas fuera de la Bandeja conservó sus medidas; `next build` sin errores.
+**Falta la prueba del dueño** con su sesión y conversaciones reales.

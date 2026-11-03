@@ -1,5 +1,10 @@
 # Changelog del brief
 
+## v1.3 · 3 nov 2026 (F4·38)
+
+- Bandeja a toda la pantalla: sin márgenes ni tope de 1280 px, chat más ancho, burbujas sin borde, un color por cliente
+  y el cliente arriba en el panel derecho. Solo presentación (`docs/BANDEJA-Y-EMBUDO.md`).
+
 ## v1.2 · 31 oct 2026 (F4·19)
 
 - Apariencia configurable (0031, `docs/APARIENCIA.md`): Configuración → Apariencia con logo propio, tres colores de marca

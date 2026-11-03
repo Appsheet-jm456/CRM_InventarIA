@@ -6,7 +6,7 @@ de las Fases 1 y 2 abajo. **Código nuevo:** el bot de prueba sobre Supabase (`h
 
 ## Dónde retomar (en este orden)
 
-0. **3 nov 2026 · F4·38 Bandeja más amplia construida 🔵:** la Bandeja ocupa todo el espacio libre (sin márgenes ni el tope de 1280 px), con el chat más ancho, burbujas sin borde, un color por cliente en la lista y el cliente arriba en el panel derecho. Solo CSS y presentación: los estilos nuevos van dentro de `.bandeja` porque `.m`, `.chat` y `.col-h` también los usan la ficha del lead, Chat e Inventario. **Falta la prueba del dueño** (recargar la página).
+0. **3 nov 2026 · F4·38 Bandeja más amplia construida 🔵:** la Bandeja ocupa todo el espacio libre (sin márgenes ni el tope de 1280 px), con el chat más ancho, burbujas sin borde, un color por cliente en la lista y el cliente arriba en el panel derecho. Solo CSS y presentación: los estilos nuevos van dentro de `.bandeja` porque `.m`, `.chat` y `.col-h` también los usan la ficha del lead, Chat e Inventario. Detalle en [BANDEJA-Y-EMBUDO.md](BANDEJA-Y-EMBUDO.md#bandeja-a-toda-la-pantalla-f438-3-nov-2026). **Falta la prueba del dueño** (recargar la página).
 
 0. **3 nov 2026 · Cambio de Meta a Ventas Virtual, en curso:** portafolio Ventas Virtual Colombia, app *Aiutomatizacion Chatbot Ventas*, número **+57 318 7514195** (registrado). Token permanente generado por el dueño. Falta el App Secret (recuperar la contraseña de Facebook), pegar todo en `/meta`, Probar, Guardar, registrar el webhook y probar de ida y vuelta. Sin tarjeta todavía: no hay plantillas fuera de las 24 h.
 
