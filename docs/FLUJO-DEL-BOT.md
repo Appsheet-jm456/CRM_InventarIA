@@ -495,7 +495,7 @@ de venta**. Queda en **borrador**: no atiende a nadie y no cambia el bot princip
 
 ```
 Bienvenida ─ Productos ─ Lista de productos
-   │                       ├─ Portátiles Usados ─ Marcas ─ Lenovo / Dell / HP / Gaming / Unificado ─ Catálogo ─ 🤖 Avi
+   │                       ├─ Portátiles Usados ─ Marcas ─ Lenovo / Dell / HP / Unificado ─ Catálogo      ─ 🤖 Avi
    │                       │                                                                                    ├─ Inició compra → compra de siempre
    │                       │                                                                                    ├─ Pidió asesor o no avanza → Asesor
    │                       │                                                                                    ├─ Volvió al menú → Bienvenida
@@ -512,7 +512,9 @@ Bienvenida ─ Productos ─ Lista de productos
 vuelve al menú en vez de pasar a asesor; para el asesor son `9` o la palabra *asesor*. Las descripciones de las filas se guardan directo en la opción:
 el lienzo las conserva, pero no las muestra para editar.
 
-**Para publicarlo:** cargar los 5 catálogos en Inventario → Catálogos, elegirlos en los cuadros CAT1 a CAT5, publicar y marcar como principal. Avi solo
+**Catálogos (3 nov 2026).** Lenovo, Dell, HP y Unificado son enlaces de Drive públicos, con categoría «Portátiles usados» para que el bot principal no los elija. **Gaming varios se quitó de la lista** hasta tener su catálogo (decisión del dueño); la migración 0043 todavía crea ese cuadro: el borrador en la base es el que manda. Para volver a tenerlo: cargar el catálogo y agregar el cuadro y la opción en el lienzo.
+
+**Para publicarlo:** publicar el bot y marcarlo como principal; ya no tiene problemas por resolver. Avi solo
 atiende los números de su alcance (hoy «Números de prueba»); a los demás los atiende el Híbrido hasta pasarlo a «Todos». **Avi responde según el
 inventario del CRM**, que hoy solo tiene 17 equipos Dell: sin cargar Lenovo y HP dirá que no los tiene aunque estén en el catálogo.
 
