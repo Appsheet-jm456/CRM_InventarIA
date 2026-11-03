@@ -308,7 +308,10 @@ def interpretar(texto):
                 return d
         except ValueError:
             pass
-    return {"responder": re.sub(r"^```\w*|```$", "", crudo).strip()}
+    plano = re.sub(r"^```\w*|```$", "", crudo).strip()
+    if plano.startswith("{"):  # JSON cortado por el límite de tokens o roto: nunca se le manda al cliente; el ciclo vuelve a pedirlo
+        return {"responder": ""}
+    return {"responder": plano}
 
 
 # --------------------------------------------------------------------------- #
