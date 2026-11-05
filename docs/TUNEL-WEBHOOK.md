@@ -20,6 +20,11 @@
 
 ## Opción A — Para la prueba, rápida y gratis: Tailscale Funnel (F2·17)
 
+> **Actualización del 5 nov 2026:** HTTPS y Funnel ya están activos en el tailnet (A1 y A2 hechos). El 443 lo usa ahora otra app del dueño
+> (la Escuela, rutas `/`, `/auth/v1`, `/rest/v1`, `/storage/v1`): `/webhook` convive con ellas, pero `tailscale funnel reset` borra todo.
+> El operador de Tailscale sigue sin configurarse (A3), así que los comandos piden `sudo`. Contexto completo en
+> [PUBLICAR-CRM-EMPRESA.md](PUBLICAR-CRM-EMPRESA.md).
+
 El servidor ya tiene Tailscale (`atlasjm.taile98044.ts.net`, versión 1.102). Funnel publica en internet, con HTTPS, una ruta
 del servidor en una **dirección fija**: `https://atlasjm.taile98044.ts.net/webhook`. No necesita dominio ni pago. Hoy Funnel
 **no está activado** en el tailnet.

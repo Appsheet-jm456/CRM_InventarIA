@@ -100,6 +100,8 @@ de las Fases 1 y 2 abajo. **Código nuevo:** el bot de prueba sobre Supabase (`h
 3. **Webhook con dirección fija ([TUNEL-WEBHOOK.md](TUNEL-WEBHOOK.md)).** El 1 oct el túnel rápido lo borró Cloudflare y el bot
    dejó de responder horas (se arregló con `systemctl --user restart crm-meta-tunel`). Opción A ya (F2·17, Tailscale Funnel:
    el dueño activa HTTPS y Funnel en la consola de Tailscale) y opción B al tener dominio (F2·10, Cloudflare con dominio propio).
+   **Estudio del 5 nov 2026: [PUBLICAR-CRM-EMPRESA.md](PUBLICAR-CRM-EMPRESA.md)** (poner el CRM a trabajar para la empresa desde el
+   servidor mientras se despliega; opciones, riesgos y decisiones del dueño). Sin decisión todavía.
 3. **Salida a producción en Meta ([PLAN-PRODUCCION-META.md](PLAN-PRODUCCION-META.md), 1 oct 2026).** App nueva **CRM InventarIA**
    (reemplaza a *Futur Green bot*), número real **+57 320 521 1803**, dominio comprado en Hostinger y web en GitHub. Fases 1 a 7:
    dominio en Cloudflare → web y política de privacidad → correo del dominio → número real y token → webhook fijo y cambio de app
