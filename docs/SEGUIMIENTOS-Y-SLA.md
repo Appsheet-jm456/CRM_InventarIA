@@ -78,7 +78,12 @@ Meta puede recategorizar una plantilla de Utilidad como Marketing si la ve promo
 ## Retorno del bot y seguimiento automático (F4·45)
 
 > Decisión [0035](decisiones/0035-retorno-del-bot-y-mensaje-automatico.md), aceptada el 6 nov 2026. Origen: mejora 1 de
-> [MEJORAS-FLUJO.md](MEJORAS-FLUJO.md). **Estado: documentada, sin construir** (espera la orden del dueño).
+> [MEJORAS-FLUJO.md](MEJORAS-FLUJO.md). **Estado: construida el 6 nov 2026, falta la prueba del dueño** (migración 0049, nace apagada).
+>
+> **Para probarlo (dueño):** Configuración → Bot → **Retorno y seguimiento** → encender, bajar las horas de la Regla A a 1 y apagar
+> «Solo en horario» → Guardar. Escribir al bot desde el celular, dejar que conteste y no responder: a la hora (±1 min) llega
+> «¿Sigues necesitando ayuda?». Probar los tres botones. Para la Regla B: escribir «asesor», no contestar desde la Bandeja y esperar las
+> horas hábiles. Al terminar, volver a dejar los valores (5 h y «Solo en horario»).
 
 ### Historia de usuario
 
@@ -110,13 +115,13 @@ falta plantilla ni tiene costo.
 a «bot») por cualquiera de estos disparadores, cada uno con su casilla:
 1. El cliente toca *Sí, continuar* o *Sí, sigue tú* (o escribe la palabra configurada, por defecto «continuar»).
 2. El asesor pulsa **«Devolver al bot»** en la Bandeja (siempre disponible; no depende de las casillas).
-3. El asesor **cierra** el chat en la Bandeja.
+3. El asesor **cierra** el chat en la Bandeja (siempre, como antes de F4·45: no tiene casilla).
 4. **Sin actividad**: nadie escribe en el chat (ni cliente ni asesor) en **P horas** (24 por defecto). Vuelve en silencio, sin
    enviar nada; el próximo mensaje del cliente lo atiende el bot.
 `reiniciar` sigue funcionando como hoy.
 
-**RT-06 · A dónde vuelve.** Se elige el destino al volver al bot: *el inicio del bot principal* (por defecto), *otro bot* o *un
-cuadro* de un bot publicado. Para clientes en etapa de cierre ganada (**Vendido**) hay un destino aparte (por defecto: *se queda con
+**RT-06 · A dónde vuelve.** Se elige el destino al volver al bot: *el inicio del bot principal* (por defecto) u *otro bot* (su
+inicio). Al construirla se dejó fuera «un cuadro»: el cliente entra siempre por el inicio de un bot. Para clientes en etapa de cierre ganada (**Vendido**) hay un destino aparte (por defecto: *se queda con
 el asesor*; puede ser un bot de postventa).
 
 **RT-07 · Cuándo no se envía nada.** Ningún mensaje automático sale si: el chat está **cerrado** o archivado; la oportunidad está en
@@ -135,7 +140,8 @@ con el disparador. El mensaje automático **no** cuenta como respuesta de un ase
 **RT-10 · Parametrización.** Pantalla **Configuración → Bot → Retorno y seguimiento** (permiso `administrar_bot`): interruptor
 general (**apagado** al instalar), Regla A (casilla, horas, texto ≤ 1.024, botones ≤ 20 caracteres), Regla B (casilla, horas
 hábiles, texto, botones), disparadores de RT-05 (casillas, palabra, horas de inactividad), destinos de RT-06, *Solo en horario*,
-etiquetas excluidas. Con vista previa como WhatsApp y marca `{nombre}`. Toma efecto en menos de 30 s, como el resto del bot.
+etiquetas excluidas. Con vista previa como WhatsApp y marca `{nombre}`. Los textos de las respuestas («espero al asesor», «ya no») también
+se editan. Toma efecto en menos de 30 s, como el resto del bot.
 
 ### Criterios de aceptación
 
@@ -148,14 +154,18 @@ etiquetas excluidas. Con vista previa como WhatsApp y marca `{nombre}`. Toma efe
 6. Con el interruptor general apagado, todo funciona como hoy.
 7. Cambiar tiempos o textos en la pantalla se refleja en el siguiente envío sin reiniciar nada.
 
-### Cómo se construye (resumen técnico)
+### Cómo está construida (6 nov 2026)
 
-- **Migración 0049:** tabla `retorno_config` (una fila, con `grant` por columna como `agente_config`) con los ajustes de RT-10;
-  columnas en `leads`: `seguimiento_enviado_en`, `demora_enviada_en` (para RT-03); función `devolver_al_bot(lead)` con permiso
-  (quita `pausar_bot`; el disparador `leads_derivar_estado` ya pasa el chat a «bot») y registro en `lead_eventos`.
-- **Receptor:** el `reloj()` suma una revisión **cada minuto** (consulta de candidatos a la Regla A y B con las exclusiones de RT-07),
-  con el mismo candado por número que las Pausas. Las respuestas a los botones (`ret-si`, `ret-asesor`, `ret-no`) se atienden antes
-  que el menú.
-- **CRM:** pantalla Retorno y seguimiento; botón **Devolver al bot** en la Bandeja; marca *🤖 automático* en el chat.
-- **Pruebas:** `prueba_retorno.py` (reglas A y B, una vez por silencio, 24 h, exclusiones, horario, festivos, disparadores) y pruebas
-  SQL de la migración.
+- **Migración 0049:** tabla `retorno_config` (una fila, apagada; se cambia solo con `retorno_config_cambiar`, que exige
+  `administrar_bot`); columnas `leads.seguimiento_enviado_en`, `demora_enviada_en` y `retorno_pendiente` (RT-03) y
+  `mensajes.automatico` (RT-09); tipo `retorno` en `lead_eventos`. Funciones del receptor (solo `service_role`):
+  `retorno_candidatos(lead)` decide quién recibe la regla A o B con todas las exclusiones de RT-04, RT-07 y RT-08;
+  `retorno_marcar`, `retorno_evento`, `retorno_destino(etapa)`, `retorno_devolver(lead, motivo)` y `retorno_inactivos()` (RT-05.4).
+  `reanudar_bot` («Devolver al bot» de la Bandeja, que ya existía) ahora usa el destino y deja el historial.
+  Pruebas: `supabase/pruebas/0049_retorno_del_bot.sql` (14).
+- **Receptor:** `retorno.py` arma los mensajes y atiende los botones `ret-si`, `ret-asesor`, `ret-no` y `ret-espera`, antes que la
+  compra y el menú y aun con el chat en asesor. `reloj()` llama a `revisar_retorno()` cada minuto: primero los inactivos, luego los
+  candidatos; cada envío se revisa otra vez con el candado del cliente y se marca aunque Meta lo rechace (nunca insiste). Pruebas:
+  `prueba_retorno.py` (18).
+- **CRM:** Configuración → Bot → pestaña **Retorno y seguimiento** (`bot/Retorno.tsx`); marca *🤖 automático* en el chat de la
+  Bandeja y de la ficha del cliente.

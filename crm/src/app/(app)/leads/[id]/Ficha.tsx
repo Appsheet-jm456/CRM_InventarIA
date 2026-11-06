@@ -231,7 +231,7 @@ export function Ficha({ lead: inicial, yo, usuarios, asesores, embudos, etapas, 
   const cargar = useCallback(async () => {
     const sb = clienteNavegador()
     const [m, e, t] = await Promise.all([
-      sb.from('mensajes').select('id, lado, tipo, texto, creado_en, usuario_id, media_ruta, media_mime, media_nombre, estado_entrega, error_meta')
+      sb.from('mensajes').select('id, lado, tipo, texto, creado_en, usuario_id, media_ruta, media_mime, media_nombre, estado_entrega, error_meta, automatico')
         .eq('lead_id', inicial.id).order('creado_en').limit(1000),
       sb.from('lead_eventos').select('id, en, usuario_id, tipo, antes, despues, detalle').eq('lead_id', inicial.id).order('en').limit(1000),
       sb.from('seguimientos').select('id, tipo, que, vence_en, estado, resultado, asignado_a, cerrado_en').eq('lead_id', inicial.id).order('vence_en'),
@@ -595,6 +595,7 @@ export function Ficha({ lead: inicial, yo, usuarios, asesores, embudos, etapas, 
               return (
                 <div key={`m${m.id}`} className={`m ${m.lado}`}>
                   {m.lado === 'asesor' && <span className="m-quien">{nombres.get(m.usuario_id ?? '') ?? 'Asesor'}</span>}
+                    {m.automatico && <span className="m-quien" title="Mensaje automático del retorno (F4·45)">🤖 automático</span>}
                   {m.media_ruta && <Media m={m} />}
                   {cuerpo}
                   {opciones.length > 0 && <div className="opts">{opciones.map((o, i) => <span key={i}>{o}</span>)}</div>}

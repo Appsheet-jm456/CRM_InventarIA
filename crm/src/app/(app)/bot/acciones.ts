@@ -149,6 +149,20 @@ export async function guardarInterruptores(i: { chatbot_activo: boolean; menu_ac
   if (!r.error) revalidatePath('/', 'layout')
   return r
 }
+// Retorno y seguimiento (F4·45, RT-10): la base exige administrar_bot y valida límites y bots.
+export async function guardarRetorno(a: Record<string, unknown> & { a_texto: string; b_texto: string; texto_espera: string; texto_no: string;
+  a_boton_si: string; a_boton_asesor: string; a_boton_no: string; b_boton_si: string; b_boton_espera: string }) {
+  for (const [k, nombre] of [['a_texto', 'El mensaje A'], ['b_texto', 'El mensaje de demora'], ['texto_espera', 'La respuesta «espero al asesor»'],
+    ['texto_no', 'La respuesta «ya no»']] as const) {
+    if (!a[k].trim()) return { error: `${nombre} no puede quedar vacío.` }
+    const raras = [...a[k].matchAll(/\{([^{}]*)\}/g)].map((m) => m[1]).filter((m) => m !== 'nombre')
+    if (raras.length) return { error: `${nombre} solo puede llevar {nombre}; no {${raras.join('}, {')}}.` }
+  }
+  for (const k of ['a_boton_si', 'a_boton_asesor', 'a_boton_no', 'b_boton_si', 'b_boton_espera'] as const) {
+    if (!a[k].trim()) return { error: 'Los botones no pueden quedar vacíos.' }
+  }
+  return rpc('retorno_config_cambiar', { p: a }, 'Guardado. El bot lo usa en menos de 30 segundos.')
+}
 // "Ir a otro bot" (RF-17): nombre y bot de destino.
 export async function guardarAjustes(bot: number, clave: string, nombre: string, ajustes: Record<string, unknown>) {
   return rpc('borrador_guardar_ajustes', { p_clave: clave, p_nombre: nombre, p_ajustes: ajustes, p_bot: bot }, 'Cuadro guardado en el borrador.')

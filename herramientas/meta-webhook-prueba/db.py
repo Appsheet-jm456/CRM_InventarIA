@@ -355,6 +355,36 @@ def catalogo(catalogo_id):
     return filas[0] if filas else None
 
 
+def retorno_config():
+    """Ajustes del retorno del bot y el seguimiento automático (F4·45, RT-10). Un cambio se ve en menos de 30 s. Sin la fila, apagado."""
+    filas = _cacheado("retorno_config", "retorno_config?id=eq.1&select=*") or []
+    return filas[0] if filas else {"activo": False}
+
+
+def retorno_candidatos(lead_id=None):
+    """Clientes que deben recibir el mensaje automático ahora: [{lead_id, telefono, nombre, regla}] (RT-01 a RT-08)."""
+    cuerpo = {"p_lead": int(lead_id)} if lead_id else {}
+    return pedir("rpc/retorno_candidatos", "POST", cuerpo) or []
+
+
+def retorno_marcar(lead_id, regla):
+    pedir("rpc/retorno_marcar", "POST", {"p_lead": int(lead_id), "p_regla": regla})
+
+
+def retorno_evento(lead_id, detalle):
+    pedir("rpc/retorno_evento", "POST", {"p_lead": int(lead_id), "p_detalle": detalle})
+
+
+def retorno_destino(etapa):
+    """El bot al que vuelve el cliente (RT-06); None = el principal."""
+    return pedir("rpc/retorno_destino", "POST", {"p_etapa": etapa or ""})
+
+
+def retorno_inactivos():
+    """RT-05.4: devuelve al bot los chats con asesor sin actividad en P horas. Cuántos volvieron."""
+    return pedir("rpc/retorno_inactivos", "POST", {}) or 0
+
+
 def esperas_vencidas():
     """Teléfonos de los clientes cuya Pausa ya venció (F4·13); el reloj del receptor los atiende."""
     ahora = datetime.now(timezone.utc).isoformat()
@@ -408,8 +438,10 @@ def subir_media(ruta, contenido, mime):
 # Mensajes
 # --------------------------------------------------------------------------- #
 
-def guardar_mensaje(lead_id, lado, texto, tipo="text", meta_id=None, media=None, cuadro=None, desde_error=False):
+def guardar_mensaje(lead_id, lado, texto, tipo="text", meta_id=None, media=None, cuadro=None, desde_error=False, automatico=False):
     fila = {"lead_id": lead_id, "lado": lado, "texto": texto, "tipo": tipo}
+    if automatico:  # F4·45 (RT-09): «¿Sigues necesitando ayuda?» o el aviso de demora
+        fila["automatico"] = True
     if cuadro:  # el cuadro del bot que lo envió, para «Error al enviar» (RF-22)
         fila["cuadro"] = cuadro
     if desde_error:

@@ -44,6 +44,7 @@ export type Mensaje = {
   media_nombre: string
   estado_entrega: '' | 'enviado' | 'entregado' | 'leido' | 'fallido'
   error_meta: string
+  automatico?: boolean // F4·45: «¿Sigues necesitando ayuda?» o el aviso de demora
 }
 
 type Persona = { id: string; nombre: string }
@@ -152,7 +153,7 @@ export function Bandeja({ yo, usuarios, asesores, embudos, etapas, rapidas, inic
   const cargarMensajes = useCallback(async (id: number) => {
     const { data } = await clienteNavegador()
       .from('mensajes')
-      .select('id, lado, tipo, texto, creado_en, usuario_id, media_ruta, media_mime, media_nombre, estado_entrega, error_meta')
+      .select('id, lado, tipo, texto, creado_en, usuario_id, media_ruta, media_mime, media_nombre, estado_entrega, error_meta, automatico')
       .eq('lead_id', id)
       .order('creado_en')
       .limit(500)
@@ -361,6 +362,7 @@ export function Bandeja({ yo, usuarios, asesores, embudos, etapas, rapidas, inic
                 return (
                   <div key={m.id} className={`m ${m.lado}`}>
                     {m.lado === 'asesor' && <span className="m-quien">{nombres.get(m.usuario_id ?? '') ?? 'Asesor'}</span>}
+                    {m.automatico && <span className="m-quien" title="Mensaje automático del retorno (F4·45)">🤖 automático</span>}
                     {m.media_ruta && <Media m={m} />}
                     {cuerpo}
                     {opciones.length > 0 && (
@@ -441,7 +443,7 @@ export function Bandeja({ yo, usuarios, asesores, embudos, etapas, rapidas, inic
                 <button className="btn chico" disabled={ocupado} onClick={() => hacer(() => liberar(lead.id), 'Devuelta a la cola.')}>Devolver a la cola</button>
               )}
               {lead.estado_chat !== 'bot' && lead.estado_chat !== 'cerrada' && (
-                <button className="btn chico" disabled={ocupado} onClick={() => hacer(() => reanudarBot(lead.id), 'El bot la atiende de nuevo desde el menú de inicio.')}>Devolver al bot</button>
+                <button className="btn chico" disabled={ocupado} onClick={() => hacer(() => reanudarBot(lead.id), 'El bot la atiende de nuevo (al inicio del bot de destino de «Retorno y seguimiento»).')}>Devolver al bot</button>
               )}
               {lead.estado_chat !== 'cerrada' && (
                 <button className="btn chico" disabled={ocupado} onClick={() => hacer(() => cerrar(lead.id), 'Conversación cerrada.')}>Cerrar</button>

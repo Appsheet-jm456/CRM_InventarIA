@@ -38,6 +38,7 @@ import compra
 import cotizacion
 import flujo
 import interprete
+import retorno
 import visor
 
 RAIZ = Path(__file__).resolve().parents[2]
@@ -418,6 +419,41 @@ def vencer_espera(numero):
         guardar_estado(lead, st, "", None, del_cliente=False)
 
 
+def enviar_retorno(candidato, cfg):
+    """F4·45: envía el mensaje automático (regla A o B) a un cliente, con el mismo candado que al contestar. Antes de enviar se
+    revisa otra vez en la base (pudo escribir el cliente o el asesor mientras tanto). Se marca aunque Meta lo rechace: nunca se
+    insiste (RT-03)."""
+    numero = candidato["telefono"]
+    with _candados.setdefault(numero, threading.Lock()):
+        vigente = db.retorno_candidatos(candidato["lead_id"])
+        if not vigente:
+            return
+        regla = vigente[0]["regla"]
+        m = retorno.mensaje(regla, vigente[0].get("nombre"), cfg)
+        wamid = enviar(numero, m)
+        if wamid:
+            db.guardar_mensaje(candidato["lead_id"], "bot", visor.texto_saliente(m), m["type"],
+                               wamid if wamid != "enviado" else None, automatico=True)
+        db.retorno_marcar(candidato["lead_id"], regla)
+        anotar(f"🔁 {numero}: mensaje automático de la regla {regla}" + ("" if wamid else " · Meta lo rechazó (no se reintenta)"))
+
+
+def revisar_retorno():
+    """F4·45, cada minuto: con el retorno encendido y el chatbot prendido, devuelve al bot los chats sin actividad (RT-05.4) y
+    envía los mensajes automáticos de las reglas A y B."""
+    cfg = db.retorno_config()
+    if not cfg.get("activo") or not db.bot_config().get("chatbot_activo", True):
+        return
+    volvieron = db.retorno_inactivos()
+    if volvieron:
+        anotar(f"🔁 {volvieron} chat(s) con asesor sin actividad volvieron al bot")
+    for candidato in db.retorno_candidatos():
+        try:
+            enviar_retorno(candidato, cfg)
+        except Exception as e:
+            anotar(f"  ✗ no se pudo enviar el mensaje automático a {candidato.get('telefono')}: {e!r}")
+
+
 def vaciar_papelera():
     """Leads con más de 30 días en la papelera: se borran con sus mensajes y sus archivos (F4·30 E, 0035)."""
     r = db.vaciar_papelera()
@@ -430,9 +466,15 @@ def vaciar_papelera():
 def reloj():
     """Cada 5 s atiende las Pausas vencidas. Si el receptor estuvo apagado, al volver atiende las que siguen en ventana.
     Una vez por hora vacía la papelera de leads."""
-    ultima_papelera = 0
+    ultima_papelera = ultimo_retorno = 0
     while True:
         time.sleep(5)
+        if time.time() - ultimo_retorno > 60:  # F4·45: retorno del bot y «¿Sigues necesitando ayuda?»
+            ultimo_retorno = time.time()
+            try:
+                revisar_retorno()
+            except Exception as e:
+                anotar(f"  ✗ el retorno del bot falló: {e!r}")
         if time.time() - ultima_papelera > 3600:
             ultima_papelera = time.time()
             try:
@@ -564,6 +606,17 @@ def _contestar(numero, entrada, visible, nombre, tipo, meta_id, media=None, guar
             if not interruptores.get("chatbot_activo", True):  # F4·35: nadie automático contesta; el chat va a la cola
                 mensajes = sin_bot(st, interruptores)
                 anotar("  ⏻ chatbot apagado: el chat queda en la cola")
+            # F4·45: la respuesta al mensaje automático («Sí, continuar», «Hablar con asesor»…) va antes que todo, aun con asesor.
+            if lead.get("retorno_pendiente") or entrada in retorno.IDS:
+                try:
+                    cfg_retorno = db.retorno_config()
+                    if mensajes is None and retorno.es_respuesta(entrada, lead, cfg_retorno):
+                        mensajes, detalle = retorno.responder(st, entrada, lead, cfg_retorno)
+                        anotar(f"  🔁 {detalle}")
+                        db.retorno_evento(lead["id"], detalle)
+                    db.actualizar_lead(lead["id"], {"retorno_pendiente": None})
+                except Exception as e:  # si falla, el mensaje sigue por donde iba
+                    anotar(f"  ✗ la respuesta al mensaje automático falló: {e!r}")
             # Una compra (F4·25) o una cotización (F4·26) en curso atienden primero: botones, datos, comprobante, cancelar.
             for nombre_flujo, modulo, icono in (("compra", compra, "🛒"), ("cotizacion", cotizacion, "📄")):
                 if mensajes is not None or not modulo.activa(st) or st["pausa"]:

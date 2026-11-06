@@ -7,6 +7,7 @@ import { botsDe, contexto, cuadrosDe } from './datos'
 import { Horario } from './Horario'
 import { PanelInterruptores, type Interruptores } from './Interruptores'
 import { Mensajes } from './Mensajes'
+import { PanelRetorno, type AjustesRetorno } from './Retorno'
 
 export default async function Bot({ searchParams }: { searchParams: { t?: string; n?: string; b?: string } }) {
   const sesion = (await obtenerSesion())!
@@ -14,7 +15,7 @@ export default async function Bot({ searchParams }: { searchParams: { t?: string
 
   const supabase = crearCliente()
   // 'flujo' e 'historial' eran pestañas de un solo flujo (F4·6 y F4·7): ahora cada bot tiene su lienzo y su historial.
-  const pestana = (['horario', 'bots', 'interruptores'] as const).find((t) => t === searchParams.t)
+  const pestana = (['horario', 'bots', 'interruptores', 'retorno'] as const).find((t) => t === searchParams.t)
     ?? (searchParams.t === 'flujo' || searchParams.t === 'historial' ? 'bots' : 'mensajes')
   let contenido: React.ReactNode
 
@@ -52,6 +53,18 @@ export default async function Bot({ searchParams }: { searchParams: { t?: string
         historial={(historial ?? []).map((h) => ({ en: h.en, quien: nombres.get(h.usuario_id) ?? null,
           antes: h.antes as Record<string, unknown>, despues: h.despues as Record<string, unknown> }))} />
     )
+  } else if (pestana === 'retorno') {
+    const [{ data: ajustes }, bots] = await Promise.all([
+      supabase.from('retorno_config').select('*').eq('id', 1).maybeSingle(),
+      botsDe(supabase),
+    ])
+    if (!ajustes) {
+      contenido = <section className="panel"><div className="panel-b"><div className="aviso warn">Falta la migración 0049 (retorno del bot).</div></div></section>
+    } else {
+      const { id: _id, actualizado_por: _por, actualizado_en: _en, ...resto } = ajustes
+      const actual = { ...resto, a_horas: Number(resto.a_horas), b_horas: Number(resto.b_horas) } as AjustesRetorno
+      contenido = <PanelRetorno actual={actual} bots={bots.filter((b) => !b.archivado).map((b) => ({ id: b.id, nombre: b.nombre, principal: b.principal }))} />
+    }
   } else if (pestana === 'horario') {
     const [{ data: franjas }, { data: festivos }] = await Promise.all([
       supabase.from('horario_atencion').select('id, dia, abre, cierra').order('dia').order('abre'),
@@ -92,6 +105,7 @@ export default async function Bot({ searchParams }: { searchParams: { t?: string
         <Link href="/bot?t=bots" className={`pastilla${pestana === 'bots' ? ' activa' : ''}`}>Flujos (lienzo)</Link>
         <Link href="/bot?t=horario" className={`pastilla${pestana === 'horario' ? ' activa' : ''}`}>Horario y festivos</Link>
         <Link href="/bot?t=interruptores" className={`pastilla${pestana === 'interruptores' ? ' activa' : ''}`}>Interruptores</Link>
+        <Link href="/bot?t=retorno" className={`pastilla${pestana === 'retorno' ? ' activa' : ''}`}>Retorno y seguimiento</Link>
       </div>
       {contenido}
     </>
