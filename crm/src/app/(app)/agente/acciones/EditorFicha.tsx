@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { VistaWhatsApp } from '../../bot/VistaWhatsApp'
 import { DATOS_EQUIPO, armarEquipo, type DatoEquipo, type EquipoEjemplo } from '../personalidad/PlantillaEquipos'
 import { CONDICION_EQUIPO, type Condicion, type PasoFicha } from './tipos'
@@ -8,6 +9,7 @@ type Equipo = Extract<Condicion, { forma: 'equipo' }>
 
 // El disparador «nombra un equipo del inventario» (F4·42, RAG-43): exigir una palabra de interés y aceptar la marca sola.
 export function EditorCondicionEquipo({ c, cambiar, disabled }: { c: Equipo; cambiar: (c: Equipo) => void; disabled: boolean }) {
+  const [texto, setTexto] = useState(c.palabras.join(', '))
   return (
     <div className="accion-paso" style={{ marginTop: 8 }}>
       <b>🔎 El mensaje nombra un equipo del inventario</b>
@@ -17,9 +19,13 @@ export function EditorCondicionEquipo({ c, cambiar, disabled }: { c: Equipo; cam
         <span>Solo si además escribe una de estas palabras</span>
       </label>
       {c.exigir && (
-        <input value={c.palabras.join(', ')} disabled={disabled} aria-label="Palabras de interés, separadas por coma"
-          placeholder={CONDICION_EQUIPO.forma === 'equipo' ? CONDICION_EQUIPO.palabras.join(', ') : ''}
-          onChange={(e) => cambiar({ ...c, palabras: e.target.value.split(',') })} />
+        <>
+          {/* El texto queda como lo escribe el dueño; las palabras se separan por coma (antes se rearmaba en cada tecla y no dejaba borrar) */}
+          <input value={texto} disabled={disabled} aria-label="Palabras de interés, separadas por coma"
+            placeholder={CONDICION_EQUIPO.forma === 'equipo' ? CONDICION_EQUIPO.palabras.join(', ') : ''}
+            onChange={(e) => { setTexto(e.target.value); cambiar({ ...c, palabras: e.target.value.split(',').map((x) => x.trim()).filter(Boolean) }) }} />
+          <small className="muted">Separadas por coma; puede ser una frase («me interesa»). No importan tildes ni mayúsculas, y «precio» también encuentra «precios».</small>
+        </>
       )}
       <label className="check">
         <input type="checkbox" checked={c.marca} disabled={disabled} onChange={(e) => cambiar({ ...c, marca: e.target.checked })} />
