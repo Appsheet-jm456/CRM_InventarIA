@@ -68,7 +68,8 @@ Entra con el equipo ya elegido y la memoria del cliente. Hace, en este orden fle
   entre B-ASESOR (en horario) y B-CERRADO (fuera) en el menú, en la compra y en Avi.
 - RAG-19b. **El botón «Lo quiero» de la ficha abre la compra** (arreglo del 1 nov 2026): cuenta como «quiero comprar» si la acción «Quiero comprar»
   está activa, con el equipo de la ficha. Antes pasaba el chat al asesor. Con la acción apagada, sigue pasando al asesor.
-- RAG-20. **Detección del comprobante:** con la oportunidad en *Esperando pago*, si el cliente manda una **foto o un PDF**, o escribe "ya pagué",
+- RAG-20. **Detección del comprobante** (*modificada por F4·46, RAG-63: el texto ya no confirma el pago y el despacho espera la
+  validación del asesor*): con la oportunidad en *Esperando pago*, si el cliente manda una **foto o un PDF**, o escribe "ya pagué",
   "ya transferí", "listo el pago", el **sistema** (no la IA):
   1. mueve la oportunidad a **Pago por confirmar** y pone la etiqueta `Pago-Por-Confirmar`;
   2. responde el texto fijo *«✅ Recibimos tu comprobante. Un asesor valida tu pago y te confirma por aquí. 🙌»*;
@@ -461,6 +462,67 @@ Se evalúa un aviso al asesor o un reinicio automático (otra tarea).
 **Para probarlo (dueño):** Agente → Compra → encender «Permitir comprar varios equipos» y Guardar; por WhatsApp ver una ficha, tocar **Lo
 quiero**, **Sí, agregar otro**, escribir otro código o modelo, **Agregar este**, **No, continuar** y revisar el resumen; probar Quitar, Cotizar
 y Confirmar. Para el lienzo: en un bot, + Agregar → 🛒 Carrito, unirlo desde un botón, publicar y probar en el Simulador.
+
+### 4g. Validación del comprobante por el asesor (F4·46)
+
+> Pedida por el dueño el 6 nov 2026 al probar la compra completa (nuevo → quiero comprar → pagar → datos de despacho). Decisión
+> [0036](decisiones/0036-validacion-del-comprobante.md), que **modifica RAG-20** y la F4·34. **Estado: documentada, sin construir.**
+
+**Historia de usuario.** **Como** dueño, **quiero** que todo comprobante lo valide un asesor contra la cuenta bancaria antes de que el
+bot le confirme el pago al cliente y siga con el despacho, **para** evitar estafas con comprobantes falsos o pagos que no entraron.
+
+**Hoy (problema):** al llegar la foto o el PDF, el bot responde «✅ Recibimos tu comprobante» y arranca enseguida el bot «Datos de
+despacho» (*¿Cómo recibes tu equipo?*). El cliente cree que su pago ya está confirmado aunque nadie lo haya visto en el banco.
+
+**Reglas**
+
+- **RAG-63 · Al llegar el soporte, solo se acusa recibo.** Con la compra *esperando el pago*, una foto, un PDF o «ya pagué» → el bot
+  responde un texto configurable que **no confirma el pago** (por defecto: *«📄 Recibimos tu soporte. Un asesor está validando el pago en
+  nuestra cuenta y te confirma por aquí {proxima}. 🙌»*), mueve la oportunidad a **Pago por confirmar**, pone la etiqueta
+  `Comprobante-Por-Validar` y pasa el chat a la **cola de la Bandeja**. **No** arranca el bot de después del comprobante ni sigue la
+  flecha «Pedido pagado» del cuadro 🛒 Carrito. «Ya pagué» sin foto ni PDF pide el soporte (no hay validación sin soporte).
+- **RAG-64 · Tarjeta «💳 Comprobante por validar» en la Bandeja y en la ficha del cliente.** Mientras la compra está en *Pago por
+  confirmar*: el comprobante a la vista (clic para ampliar), los equipos, el **total esperado**, el tipo de cliente y la hora en que llegó,
+  con dos botones: **✅ Comprobante validado** y **❌ No es válido**.
+- **RAG-65 · «✅ Comprobante validado».** Pide confirmar: *«¿Verificaste en la cuenta bancaria que entraron $X?»*. Al aceptar:
+  1. envía al cliente el texto de pago confirmado (por defecto *«✅ Recibimos tu comprobante.»*) y enseguida arranca el bot de después del
+     comprobante (Agente → Compra) o la flecha «Pedido pagado» del cuadro 🛒 Carrito. Con «Datos de despacho» el cliente ve:
+     *«¿Cómo recibes tu equipo? 1️⃣ Envío a domicilio 2️⃣ Recojo en tienda»*;
+  2. el chat vuelve al bot para ese flujo y, al terminarlo, pasa al asesor como hoy;
+  3. la oportunidad pasa a la etapa de pago confirmado del embudo (por defecto la siguiente a *Pago por confirmar*, configurable),
+     cambia la etiqueta a `Pago-Validado` y deja en el historial **quién validó, cuándo y el monto**.
+- **RAG-66 · «❌ No es válido».** El asesor elige un motivo (*no aparece en la cuenta*, *el monto no coincide*, *no se lee*, *otro* con
+  texto). El cliente recibe un texto configurable (por defecto *«😕 No pudimos validar tu pago: {motivo}. Envíanos de nuevo el
+  comprobante o escribe *asesor*.»*), la compra vuelve a **esperando el pago** (la oportunidad a *Esperando pago*) y queda la etiqueta
+  `Comprobante-Rechazado`. Al **segundo** rechazo de la misma compra, el chat queda con el asesor y la etiqueta `Revisar-Posible-Fraude`.
+- **RAG-67 · Solo una persona con permiso valida.** Los botones los ven quienes tienen el permiso nuevo **`validar_pagos`** (por defecto el
+  administrador; el dueño lo da a otros roles). El bot, Avi y las acciones **nunca** confirman un pago (RAG-21 sigue).
+- **RAG-68 · Ventana de 24 h.** Si pasaron más de 24 h desde el último mensaje del cliente, la validación se registra igual pero el
+  mensaje sale con **plantilla aprobada** de Meta (`crm_pago_confirmado`, por crear) o, sin plantilla, el CRM avisa al asesor que debe
+  escribirle cuando el cliente responda.
+- **RAG-69 · Tiempo de validación.** El chat con comprobante por validar cuenta en el SLA de la Bandeja (alerta a los 10 y 15 min
+  hábiles) y en las Métricas se mide el **tiempo desde el soporte hasta la validación**. El retorno de F4·45 no escribe en *Pago por
+  confirmar* (RT-07).
+- **RAG-70 · Configuración.** En **Agente → Compra → Validación del pago**: casilla *«El asesor valida el comprobante antes de
+  confirmar»* (**encendida** por defecto, porque es una medida contra estafas; apagada vuelve al comportamiento de hoy), los tres
+  textos (soporte recibido, pago confirmado, no válido) con `{proxima}`, `{motivo}` y `{total}`, la lista de motivos y la etapa de pago
+  confirmado.
+
+**Criterios de aceptación**
+
+1. Al mandar la foto del comprobante, el cliente recibe el acuse que **no** confirma el pago y **no** recibe «¿Cómo recibes tu equipo?».
+2. En la Bandeja aparece la tarjeta con el comprobante, el total y los dos botones, solo para usuarios con `validar_pagos`.
+3. Al pulsar «Comprobante validado» y confirmar, el cliente recibe «✅ Recibimos tu comprobante.» y en seguida «¿Cómo recibes tu
+   equipo? 1️⃣ Envío a domicilio 2️⃣ Recojo en tienda»; la oportunidad avanza y el historial dice quién validó.
+4. Al pulsar «No es válido», el cliente recibe el motivo y puede mandar otro soporte; al segundo rechazo queda `Revisar-Posible-Fraude`.
+5. Con la casilla apagada, todo funciona como hoy.
+6. Funciona igual para una compra de un equipo y para un pedido del carrito (F4·44).
+
+**Cómo se construye (resumen técnico).** Migración 0050: ajustes en `agente_config`, permiso `validar_pagos`, funciones
+`validar_comprobante(lead)` y `rechazar_comprobante(lead, motivo)` (exigen el permiso, mueven la oportunidad y dejan historial) y un aviso al
+receptor (como el envío desde la Bandeja) para que mande los mensajes y arranque el bot de despacho. Receptor: `compra.py` deja la compra en
+`pago_por_confirmar` sin seguir; un punto interno `/interno/comprobante` atiende validado o rechazado. CRM: tarjeta en Bandeja y ficha,
+sección en Agente → Compra. Pruebas: `prueba_validacion.py` y pruebas SQL.
 
 ### 5. Herramientas (lo que el agente puede hacer)
 

@@ -6,6 +6,8 @@ de las Fases 1 y 2 abajo. **Código nuevo:** el bot de prueba sobre Supabase (`h
 
 ## Dónde retomar (en este orden)
 
+0. **6 nov 2026 · F4·46 El asesor valida el comprobante antes de confirmar el pago, documentada, sin construir ([AGENTE.md](AGENTE.md#4g-validación-del-comprobante-por-el-asesor-f446), decisión [0036](decisiones/0036-validacion-del-comprobante.md), RAG-63 a RAG-70):** el bot solo acusa recibo del soporte; en la Bandeja «✅ Comprobante validado» envía «Recibimos tu comprobante» y arranca Datos de despacho; «❌ No es válido» con motivo. Permiso `validar_pagos`. Migración prevista 0050. Espera la orden del dueño.
+
 0. **6 nov 2026 · Revisión crítica del flujo Menú + Agente + Asesor: 8 mejoras propuestas, sin construir ([MEJORAS-FLUJO.md](MEJORAS-FLUJO.md)).** Prioridad: 1) retorno tras la pausa del asesor, 3) seguimiento tras la cotización, 2) alarma de cola. Cada una se documenta como HU con la orden del dueño.
 
 0. **6 nov 2026 · F4·45 Retorno del bot y «¿Sigues necesitando ayuda?» construida 🔵, falta la prueba del dueño ([SEGUIMIENTOS-Y-SLA.md](SEGUIMIENTOS-Y-SLA.md#retorno-del-bot-y-seguimiento-automático-f445), decisión [0035](decisiones/0035-retorno-del-bot-y-mensaje-automatico.md), RT-01 a RT-10):** Regla A (cliente callado 5 h) y Regla B (asesor sin responder 2 h hábiles), una vez y dentro de las 24 h; botón «Devolver al bot»; todo en Configuración → Bot → Retorno y seguimiento (nace apagado). Migración 0049, `retorno.py`, prueba_retorno.py 18/18. Pruebas SQL en rojo ajenas a esto: 0012 (depende del bot principal) y 0048 prueba 1 (el dueño encendió el carrito).
