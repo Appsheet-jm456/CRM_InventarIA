@@ -74,6 +74,10 @@ export function EditorFicha({ p, cambiar, disabled, atributos, ejemplo }: {
         <input type="checkbox" checked={p.foto} disabled={disabled} onChange={(e) => pon({ foto: e.target.checked })} />
         <span>Enviar la foto del equipo con la ficha (si tiene)</span>
       </label>
+      <label className="check">
+        <input type="checkbox" checked={!!p.catalogo} disabled={disabled} onChange={(e) => pon({ catalogo: e.target.checked })} />
+        <span>Agregar el catálogo de la marca al final (si la marca no tiene, el Unificado)</span>
+      </label>
       <details>
         <summary className="muted" style={{ cursor: 'pointer' }}>Si coinciden varios equipos o está agotado</summary>
         <div style={{ display: 'grid', gap: 10, marginTop: 8 }}>

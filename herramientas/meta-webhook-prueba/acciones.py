@@ -11,6 +11,9 @@ bot, etiqueta, pasar a asesor, iniciar los flujos de compra (F4·25) y cotizaci�
 F4·42 (RAG-43 a RAG-48): el «Cuando» puede ser «el mensaje nombra un equipo del inventario» (código o modelo, sin IA) y el
 paso «ficha_equipo» responde con la ficha de ese equipo (encabezado, renglones por atributo y cierre editables), una lista si
 coinciden varios, o el aviso de agotado.
+
+F4·43 (RAG-49 a RAG-53): pasos «catalogo» (uno de la lista, el de la marca del equipo o el Unificado; PDF como documento o enlace de
+Drive) y «archivo» (PDF o imagen subido en la acción, bucket conocimiento/acciones/), y la casilla «catalogo» de la ficha del equipo.
 """
 
 import re
@@ -22,7 +25,7 @@ import cotizacion
 import db
 import flujo
 
-PASOS_LISTOS = {"texto", "conocimiento", "cuentas", "bot", "etiqueta", "asesor", "flujo", "ficha_equipo"}
+PASOS_LISTOS = {"texto", "conocimiento", "cuentas", "bot", "etiqueta", "asesor", "flujo", "ficha_equipo", "catalogo", "archivo"}
 
 # Textos por defecto de la ficha (F4·42). La pantalla los muestra y el dueño los cambia.
 FICHA = {
@@ -34,7 +37,9 @@ FICHA = {
     "agotado": "😕 El *{modelo}* no está disponible en este momento.",
     "si_agotado": "parecidos",  # parecidos | asesor | nada
     "foto": True,
+    "catalogo": False,  # F4·43 (RAG-51): el catálogo de la marca al final
 }
+CATALOGO_TEXTO = "Te envío el catálogo de {marca} 📚"
 FLUJOS_LISTOS = {"compra", "cotizacion"}
 
 
@@ -144,14 +149,16 @@ def ficha_equipo(paso, accion, st, lead, texto, fresco=False):
         # RAG-48: queda como el último equipo que vio, para «Lo quiero» o «quiero comprar» sin repetir el código.
         st.setdefault("campos", {}).update({"Código producto": p["cod"], "Valor estimado": flujo.cop(p["precio"])})
         st["valor"] = p["precio"]
+        al_final = mensajes_catalogo({"modo": "marca"}, accion, st, lead) if f.get("catalogo") else []  # RAG-51
         if f.get("foto") and p.get("foto") and len(cuerpo) <= 1024:
-            return [flujo.m_imagen(p["foto"], cuerpo)]
-        return [flujo.m_texto(cuerpo)]
+            return [flujo.m_imagen(p["foto"], cuerpo)] + al_final
+        return [flujo.m_texto(cuerpo)] + al_final
     if equipos:  # varios: la lista de Avi (F4·37 / F4·40) con su plantilla y su máximo (RAG-45)
         maximo = int(config.get("max_equipos") or 3)
         antes = _limpio(f["varios"].replace("{modelo}", extra["modelo"]).replace("{nombre}", nombre))
         despues = _limpio(f["cierre_varios"].replace("{nombre}", nombre))
-        return [flujo.m_texto(t) for t in agente.textos_con_equipos(antes, equipos[:maximo], despues, config)]
+        al_final = mensajes_catalogo({"modo": "marca"}, accion, st, lead) if f.get("catalogo") else []
+        return [flujo.m_texto(t) for t in agente.textos_con_equipos(antes, equipos[:maximo], despues, config)] + al_final
     # Agotado o código que no existe (RAG-46): nunca se ofrece un equipo sin stock.
     mensajes = [flujo.m_texto(_limpio(f["agotado"].replace("{modelo}", extra["modelo"]).replace("{nombre}", nombre)))]
     if f.get("si_agotado") == "asesor":
@@ -163,6 +170,47 @@ def ficha_equipo(paso, accion, st, lead, texto, fresco=False):
             mensajes += [flujo.m_texto(t) for t in agente.textos_con_equipos(
                 "Te puede interesar uno de estos 👇", parecidos[:maximo], _limpio(f["cierre_varios"].replace("{nombre}", nombre)), config)]
     return mensajes
+
+
+def _marca_de(accion, st):
+    """La marca del equipo que encontró el disparador (F4·42) o del último equipo que vio el cliente (RAG-49). "" si no hay o son varias."""
+    hallado = accion.get("_equipo") or {}
+    marcas = {e["marca"].upper() for e in hallado.get("equipos") or [] if e.get("marca")} or set(hallado.get("marcas") or ())
+    if not marcas:
+        cod = (st.get("campos") or {}).get("Código producto")
+        p = next((x for x in flujo.inventario() if cod and x["cod"] == cod), None)
+        marcas = {p["marca"].upper()} if p and p.get("marca") else set()
+    return marcas.pop() if len(marcas) == 1 else ""
+
+
+def catalogo_elegido(paso, accion, st):
+    """(catálogo, marca) según el modo del paso: «lista» (uno fijo), «marca» (el de la marca; si no tiene, el Unificado) o «unificado»."""
+    modo = paso.get("modo") or "marca"
+    if modo == "lista":
+        return db.catalogo(paso.get("catalogo_id")), ""
+    marca = _marca_de(accion, st) if modo == "marca" else ""
+    elegido, _ = db.catalogo_para("Portátiles", marca)
+    return elegido, marca
+
+
+def mensajes_catalogo(paso, accion, st, lead):
+    """RAG-49: el texto y el catálogo (PDF como documento, Drive como enlace). Sin catálogo activo, nada (RAG-52)."""
+    c, marca = catalogo_elegido(paso, accion, st)
+    if not c:
+        return []
+    texto = _limpio(_texto((paso.get("texto") or CATALOGO_TEXTO).replace("{marca}", marca.title() or "nuestros equipos"), lead))
+    if c["tipo"] == "pdf":
+        return ([flujo.m_texto(texto)] if texto else []) + [{"_pdf": c}]
+    return [flujo.m_texto(f"{texto}\n📚 *{c['nombre']}*\n{c['url']}".strip())]
+
+
+def mensajes_archivo(paso, lead):
+    """RAG-50: el PDF o la imagen subidos en la acción, con su texto antes. Sin archivo, nada."""
+    if not paso.get("archivo"):
+        return []
+    texto = _texto(paso.get("texto") or "", lead)
+    nombre = (paso.get("nombre") or "").strip() or "Archivo"
+    return ([flujo.m_texto(texto)] if texto else []) + [{"_conocimiento": {"archivo": paso["archivo"], "titulo": nombre}}]
 
 
 def ejecutar(accion, st, lead=None, fresco=False, texto=""):
@@ -207,6 +255,10 @@ def _ejecutar(accion, st, lead, fresco, texto):
             mensajes += cotizacion.iniciar(st, texto, lead)
         elif tipo == "ficha_equipo":
             mensajes += ficha_equipo(paso, accion, st, lead, texto, fresco)
+        elif tipo == "catalogo":  # F4·43
+            mensajes += mensajes_catalogo(paso, accion, st, lead)
+        elif tipo == "archivo":
+            mensajes += mensajes_archivo(paso, lead)
         elif tipo == "asesor":
             mensajes += flujo.asesor(st, etiqueta="Escalado-Asesor", motivo=(paso.get("texto") or "").strip() or None)
     if not mensajes and not st.get("pausa"):
@@ -227,6 +279,15 @@ def responder(st, texto, lead=None):
         return None
     mensajes, st, etiquetas = r
     return a, mensajes, st, etiquetas
+
+
+def _para_pantalla(m):
+    """Cómo se ve en «Probar con una frase» un archivo del conocimiento o de la acción, o un catálogo PDF (RAG-52)."""
+    if "_conocimiento" in m:
+        return {"type": "archivo", "archivo": m["_conocimiento"]["archivo"], "titulo": m["_conocimiento"]["titulo"]}
+    if "_pdf" in m:
+        return {"type": "archivo", "archivo": m["_pdf"].get("archivo") or "catalogo.pdf", "titulo": m["_pdf"].get("nombre") or "Catálogo"}
+    return m
 
 
 def _resumen_hallado(h):
@@ -250,6 +311,5 @@ def probar(texto, acciones=None):
     mensajes = r[0] if r else []
     return {"accion": {"id": a["id"], "nombre": a["nombre"]}, "apagada": None, "vacia": r is None,
             "equipo": _resumen_hallado(a.get("_equipo")),
-            "mensajes": [m if "_conocimiento" not in m else {"type": "archivo", "archivo": m["_conocimiento"]["archivo"],
-                                                              "titulo": m["_conocimiento"]["titulo"]} for m in mensajes],
+            "mensajes": [_para_pantalla(m) for m in mensajes],
             "etiquetas": r[2] if r else []}

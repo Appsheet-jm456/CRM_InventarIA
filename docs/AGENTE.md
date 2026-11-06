@@ -391,6 +391,17 @@ acción de F4·42 con la casilla de catálogo encendida (ficha del Legion 7 y de
 **Fuera de alcance por ahora:** catálogos por categoría distinta de Portátiles (torres, partes) más allá de lo que ya permite la tabla de
 catálogos, y generar el catálogo PDF desde el inventario (hoy se sube hecho).
 
+**Construida el 6 nov 2026 (migración 0047, `prueba_catalogos_acciones.py` 13/13).** En Agente → Acciones, «+ Agregar paso» ofrece
+**Enviar catálogo** (el de la marca del equipo, el Unificado o uno de la lista, con texto antes y `{marca}`) y **Enviar archivo (PDF o
+imagen)** (botón para subir, nombre con el que llega y texto antes; «Ver PDF» lo abre). La ficha del equipo tiene la casilla **«Agregar el
+catálogo de la marca al final»**. El bucket `conocimiento` pasó de 5 a 16 MB (las imágenes siguen en 5 MB). Al guardar o borrar una acción,
+los archivos que ya no usa se borran del almacenamiento. Un archivo subido y no guardado (Deshacer) queda huérfano en `acciones/`.
+Motor en `acciones.py` (`mensajes_catalogo`, `mensajes_archivo`); el PDF del catálogo sale como `_pdf` y el archivo como `_conocimiento`,
+que el receptor ya sabía subir a Meta.
+
+**Para probarlo (dueño):** recargar; en una acción (por ejemplo P17 o una nueva «Catálogo» con la frase «catálogo») agregar «Enviar
+catálogo» y «Enviar archivo» con un PDF; activarla, probar con una frase y por WhatsApp.
+
 ### 5. Herramientas (lo que el agente puede hacer)
 
 | Herramienta | Qué hace | Escribe en la base |

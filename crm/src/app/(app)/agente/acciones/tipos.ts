@@ -11,7 +11,13 @@ export type CondicionFrase = Extract<Condicion, { forma: 'contiene' | 'igual' | 
 export type PasoFicha = {
   tipo: 'ficha_equipo'; encabezado: string; plantilla: string; cierre: string; varios: string; cierre_varios: string
   agotado: string; si_agotado: 'parecidos' | 'asesor' | 'nada'; foto: boolean
+  catalogo?: boolean // F4·43 (RAG-51): el catálogo de la marca al final
 }
+// F4·43 (RAG-49 y RAG-50): enviar un catálogo de Inventario → Catálogos o un archivo subido en la acción.
+export type PasoCatalogo = { tipo: 'catalogo'; modo: 'lista' | 'marca' | 'unificado'; catalogo_id?: number; texto: string }
+export type PasoArchivo = { tipo: 'archivo'; archivo: string; nombre: string; texto: string }
+export const MAX_PDF_ACCION = 16 * 1024 * 1024
+export const MAX_IMAGEN_ACCION = 5 * 1024 * 1024
 export const FICHA_INICIAL: PasoFicha = {
   tipo: 'ficha_equipo',
   encabezado: '¡Hola {nombre}! 👋🔥\nGracias por tu interés en nuestro *{equipo}*.',
@@ -22,6 +28,7 @@ export const FICHA_INICIAL: PasoFicha = {
   agotado: '😕 El *{modelo}* no está disponible en este momento.',
   si_agotado: 'parecidos',
   foto: true,
+  catalogo: false,
 }
 export const CONDICION_EQUIPO: Condicion = {
   forma: 'equipo', texto: 'un equipo del inventario', exigir: false, marca: false,
@@ -36,6 +43,8 @@ export type Paso =
   | { tipo: 'etiqueta'; etiqueta: string }
   | { tipo: 'asesor'; texto?: string }
   | PasoFicha
+  | PasoCatalogo
+  | PasoArchivo
 
 export const FORMAS: { valor: CondicionFrase['forma']; texto: string }[] = [
   { valor: 'contiene', texto: 'contiene' },
@@ -44,7 +53,7 @@ export const FORMAS: { valor: CondicionFrase['forma']; texto: string }[] = [
 ]
 
 // Pasos que el receptor ya ejecuta (acciones.py). Flujos: compra (F4·25) y cotización (F4·26).
-export const PASOS_LISTOS: Paso['tipo'][] = ['texto', 'conocimiento', 'cuentas', 'bot', 'etiqueta', 'asesor', 'flujo', 'ficha_equipo']
+export const PASOS_LISTOS: Paso['tipo'][] = ['texto', 'conocimiento', 'cuentas', 'bot', 'etiqueta', 'asesor', 'flujo', 'ficha_equipo', 'catalogo', 'archivo']
 export const FLUJOS_LISTOS = ['compra', 'cotizacion']
 export const pasoListo = (p: Paso) => PASOS_LISTOS.includes(p.tipo) && (p.tipo !== 'flujo' || FLUJOS_LISTOS.includes(p.flujo))
 
@@ -56,6 +65,8 @@ export const PASOS: { tipo: Paso['tipo']; texto: string; ayuda: string }[] = [
   { tipo: 'bot', texto: 'Ir a otro bot', ayuda: 'El cliente pasa al inicio de ese bot del lienzo' },
   { tipo: 'etiqueta', texto: 'Poner etiqueta', ayuda: 'Se agrega a las etiquetas del cliente' },
   { tipo: 'asesor', texto: 'Pasar a asesor', ayuda: 'Pausa el bot y deja el chat en la cola de la Bandeja (con el aviso de horario)' },
+  { tipo: 'catalogo', texto: 'Enviar catálogo', ayuda: 'Un catálogo de Inventario → Catálogos: PDF como documento o Drive como enlace. «El de la marca» usa el equipo que nombró el cliente o el último que vio' },
+  { tipo: 'archivo', texto: 'Enviar archivo (PDF o imagen)', ayuda: 'Ficha técnica, promoción… PDF hasta 16 MB o imagen JPG, PNG o WEBP hasta 5 MB. {nombre} en el texto es el nombre del cliente' },
   { tipo: 'ficha_equipo', texto: 'Responder la ficha del equipo', ayuda: 'El equipo que nombró el cliente: un equipo, su ficha con la plantilla; varios, la lista de Avi; agotado, el aviso. Precios de la base' },
 ]
 
@@ -68,6 +79,8 @@ export function pasoVacio(tipo: Paso['tipo']): Paso {
     case 'etiqueta': return { tipo, etiqueta: '' }
     case 'asesor': return { tipo }
     case 'ficha_equipo': return { ...FICHA_INICIAL }
+    case 'catalogo': return { tipo, modo: 'marca', texto: 'Te envío el catálogo de {marca} 📚' }
+    case 'archivo': return { tipo, archivo: '', nombre: '', texto: '' }
     default: return { tipo: 'cuentas' }
   }
 }

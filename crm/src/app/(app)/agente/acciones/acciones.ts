@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { crearCliente } from '@/lib/supabase/server'
-import { pasoListo, type Condicion, type Paso } from './tipos'
+import { MAX_IMAGEN_ACCION, MAX_PDF_ACCION, pasoListo, type Condicion, type Paso } from './tipos'
 
 export type Resultado = { error?: string; ok?: string }
 export type Prueba = {
@@ -38,6 +38,8 @@ function limpiar(cuando: Condicion[], hacer: Paso[]) {
     if (p.tipo === 'conocimiento') return !!p.categoria
     if (p.tipo === 'etiqueta') return !!p.etiqueta?.trim()
     if (p.tipo === 'bot') return !!p.bot_id
+    if (p.tipo === 'catalogo') return p.modo !== 'lista' || !!p.catalogo_id
+    if (p.tipo === 'archivo') return !!p.archivo
     return true
   })
   return { cuando: c, hacer: h }
@@ -47,11 +49,13 @@ export async function guardarAccion(id: number, datos: { nombre: string; cuando:
   if (!datos.nombre.trim()) return { error: 'La acción necesita un nombre.' }
   const { cuando, hacer } = limpiar(datos.cuando, datos.hacer)
   const supabase = crearCliente()
-  const { data: antes } = await supabase.from('acciones').select('activa').eq('id', id).maybeSingle()
+  const { data: antes } = await supabase.from('acciones').select('activa, hacer').eq('id', id).maybeSingle()
   // Si quedó con un paso que todavía no existe, se apaga en lugar de fallar.
   const apagar = antes?.activa && !hacer.every(pasoListo)
   const { data, error } = await supabase.from('acciones')
     .update({ nombre: datos.nombre.trim(), cuando, hacer, ...(apagar ? { activa: false } : {}) }).eq('id', id).select('id')
+  // Los archivos que la acción ya no usa (se cambiaron o se quitaron) se borran del almacenamiento (F4·43).
+  if (!error && data?.length) await borrarArchivos(supabase, archivosDe((antes?.hacer as Paso[] | undefined) ?? []).filter((r) => !archivosDe(hacer).includes(r)))
   return listo(error, data, apagar ? 'Guardada y apagada: tiene un paso que llega en una tarea siguiente.' : 'Acción guardada. El bot la usa en menos de 30 s.')
 }
 
@@ -76,8 +80,33 @@ export async function crearAccion(nombre: string): Promise<Resultado> {
 }
 
 export async function borrarAccion(id: number): Promise<Resultado> {
-  const { data, error } = await crearCliente().from('acciones').delete().eq('id', id).select('id')
+  const supabase = crearCliente()
+  const { data, error } = await supabase.from('acciones').delete().eq('id', id).select('hacer')
+  if (!error && data?.length) await borrarArchivos(supabase, archivosDe((data[0].hacer as Paso[]) ?? []))
   return listo(error, data, 'Acción borrada.')
+}
+
+// --------------------------------------------------------------------------- //
+// Archivos de las acciones (F4·43, RAG-50): bucket privado conocimiento, carpeta acciones/
+// --------------------------------------------------------------------------- //
+const TIPOS_ARCHIVO: Record<string, string> = { 'application/pdf': 'pdf', 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' }
+const archivosDe = (hacer: Paso[]) => hacer.flatMap((p) => (p.tipo === 'archivo' && p.archivo.startsWith('acciones/') ? [p.archivo] : []))
+async function borrarArchivos(supabase: ReturnType<typeof crearCliente>, rutas: string[]) {
+  if (rutas.length) await supabase.storage.from('conocimiento').remove(rutas)
+}
+
+// Sube el archivo y devuelve su ruta; la acción lo guarda en el paso al pulsar Guardar (el archivo viejo se borra entonces).
+export async function subirArchivoAccion(datos: FormData): Promise<{ error?: string; ruta?: string; nombre?: string }> {
+  const archivo = datos.get('archivo')
+  if (!(archivo instanceof File) || archivo.size === 0) return { error: 'Elige un archivo.' }
+  const ext = TIPOS_ARCHIVO[archivo.type]
+  if (!ext) return { error: 'El archivo tiene que ser PDF, JPG, PNG o WEBP.' }
+  if (ext === 'pdf' ? archivo.size > MAX_PDF_ACCION : archivo.size > MAX_IMAGEN_ACCION)
+    return { error: ext === 'pdf' ? 'El PDF pesa más de 16 MB.' : 'La imagen pesa más de 5 MB.' }
+  const ruta = `acciones/${Date.now()}.${ext}`
+  const { error } = await crearCliente().storage.from('conocimiento').upload(ruta, archivo, { contentType: archivo.type })
+  if (error) return { error: /policy|security|permission/i.test(error.message) ? 'No tienes permiso para cambiar las acciones.' : `No se pudo subir: ${error.message}` }
+  return { ruta, nombre: archivo.name.replace(/\.[^.]+$/, '') }
 }
 
 // Sube o baja una acción intercambiando su prioridad con la vecina. «Pasar a asesor» (la primera) no se mueve.

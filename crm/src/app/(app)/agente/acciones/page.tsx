@@ -7,7 +7,7 @@ import type { Condicion, Paso } from './tipos'
 export default async function PaginaAcciones() {
   const supabase = crearCliente()
   const hace30 = new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString()
-  const [{ data: acciones }, { data: registro }, { data: fichas }, { data: bots }, { data: config }, { data: atributos }, { data: equipos }] = await Promise.all([
+  const [{ data: acciones }, { data: registro }, { data: fichas }, { data: bots }, { data: config }, { data: atributos }, { data: equipos }, { data: catalogos }] = await Promise.all([
     supabase.from('acciones').select('id, nombre, prioridad, activa, sistema, cuando, hacer, actualizado_en').order('prioridad'),
     supabase.from('acciones_registro').select('accion_id').gte('en', hace30).limit(20000),
     supabase.from('conocimiento').select('categoria, activa'),
@@ -17,6 +17,7 @@ export default async function PaginaAcciones() {
     supabase.from('producto_atributos').select('clave, nombre, emoji').is('archivado_en', null).order('orden').order('id'),
     supabase.from('productos').select('codigo, marca, modelo, procesador, generacion, ram, almacenamiento, estado, precio, stock, categoria, descripcion, atributos')
       .gt('stock', 0).ilike('categoria', '%port%').order('precio', { ascending: false }).limit(200),
+    supabase.from('catalogos').select('id, nombre, tipo, marca').eq('activo', true).order('nombre'), // F4·43
   ])
   const e = [...(equipos ?? [])].sort((a, b) => Object.keys(b.atributos ?? {}).length - Object.keys(a.atributos ?? {}).length)[0]
   const valores = (e?.atributos ?? {}) as Record<string, ValorAtributo>
@@ -40,6 +41,7 @@ export default async function PaginaAcciones() {
       hayCuentas={!!config?.texto_cuentas?.trim()}
       atributos={atributos ?? []}
       ejemplo={ejemplo}
+      catalogos={catalogos ?? []}
     />
   )
 }

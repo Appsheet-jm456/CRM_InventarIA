@@ -6,6 +6,7 @@ import {
 } from './acciones'
 import { CONDICION_EQUIPO, FORMAS, PASOS, pasoListo, pasoVacio, type Condicion, type CondicionFrase, type Paso } from './tipos'
 import { EditorCondicionEquipo, EditorFicha } from './EditorFicha'
+import { EditorArchivo, EditorCatalogo, type CatalogoActivo } from './EditorArchivos'
 import type { DatoEquipo, EquipoEjemplo } from '../personalidad/PlantillaEquipos'
 
 type Accion = {
@@ -15,6 +16,7 @@ type Accion = {
 type Contexto = {
   categorias: Record<string, number>; bots: { id: number; nombre: string }[]; hayCuentas: boolean
   atributos: DatoEquipo[]; ejemplo: EquipoEjemplo | null // para la ficha del equipo (F4·42)
+  catalogos: CatalogoActivo[] // F4·43
 }
 type Correr = (a: () => Promise<Resultado>) => Promise<Resultado>
 
@@ -24,6 +26,12 @@ function avisoPaso(p: Paso, ctx: Contexto): string | null {
   if (p.tipo === 'conocimiento' && p.categoria && !ctx.categorias[p.categoria]) return `«${p.categoria}» no tiene fichas activas: no se enviará nada.`
   if ((p.tipo === 'cuentas' || (p.tipo === 'flujo' && p.flujo === 'compra')) && !ctx.hayCuentas)
     return p.tipo === 'cuentas' ? 'Todavía no hay texto de cuentas (pestaña Compra): no se enviará nada.' : 'Sin texto de cuentas (pestaña Compra), al confirmar la compra el chat pasa a un asesor para que las envíe.'
+  // F4·43 (RAG-52): lo que hace que el paso no envíe nada
+  if (p.tipo === 'catalogo' && p.modo === 'lista' && p.catalogo_id && !ctx.catalogos.some((c) => c.id === p.catalogo_id))
+    return 'Ese catálogo está apagado o se borró: no se enviará nada.'
+  if (p.tipo === 'catalogo' && p.modo === 'lista' && !p.catalogo_id) return 'Elige el catálogo.'
+  if (p.tipo === 'catalogo' && !ctx.catalogos.length) return 'No hay catálogos activos (Inventario → Catálogos): no se enviará nada.'
+  if (p.tipo === 'archivo' && !p.archivo) return 'Sube el PDF o la imagen: sin archivo el paso no envía nada.'
   return null
 }
 
@@ -64,6 +72,8 @@ function EditorPaso({ p, ctx, cambiar, quitar, disabled }: {
         <textarea rows={2} value={p.texto} disabled={disabled} maxLength={4096} aria-label="Texto"
           placeholder="Hola {nombre} 👋 Nuestro horario es {horario}" onChange={(e) => cambiar({ ...p, texto: e.target.value })} />
       )}
+      {p.tipo === 'catalogo' && <EditorCatalogo p={p} cambiar={cambiar} disabled={disabled} catalogos={ctx.catalogos} />}
+      {p.tipo === 'archivo' && <EditorArchivo p={p} cambiar={cambiar} disabled={disabled} />}
       {p.tipo === 'ficha_equipo' && (
         <EditorFicha p={p} cambiar={cambiar} disabled={disabled} atributos={ctx.atributos} ejemplo={ctx.ejemplo} />
       )}
@@ -235,14 +245,15 @@ function Probar() {
   )
 }
 
-export function Acciones({ acciones, usos, categorias, bots, hayCuentas, atributos, ejemplo }: {
+export function Acciones({ acciones, usos, categorias, bots, hayCuentas, atributos, ejemplo, catalogos }: {
   acciones: Accion[]; usos: Record<number, number>; categorias: Record<string, number>
   bots: { id: number; nombre: string }[]; hayCuentas: boolean; atributos: DatoEquipo[]; ejemplo: EquipoEjemplo | null
+  catalogos: CatalogoActivo[]
 }) {
   const [aviso, setAviso] = useState<Resultado>({})
   const [ocupado, setOcupado] = useState(false)
   const [nombre, setNombre] = useState('')
-  const ctx: Contexto = { categorias, bots, hayCuentas, atributos, ejemplo }
+  const ctx: Contexto = { categorias, bots, hayCuentas, atributos, ejemplo, catalogos }
   const correr: Correr = async (accion) => {
     setOcupado(true)
     const r = await accion()
