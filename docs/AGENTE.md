@@ -305,6 +305,50 @@ mensajes con una pausa entre ellos, como escribe una persona y no como un muro d
 - Un atributo **nuevo del inventario** (por ejemplo pantalla o batería, que hoy no existen en `productos`) es otra mejora: hoy se puede usar
   `{descripcion}` para eso.
 
+### 4d. Acción «Pregunta por un equipo» con ficha de plantilla (F4·42)
+
+**Pedido el 6 nov 2026 por el cliente Ventas Tech.** Cuando el cliente pregunta por un equipo («Hola, ¿cuánto vale el Lenovo Legion 7?»),
+el bot responde al instante con la ficha de ese equipo, ordenada con emojis, sin gastar IA. Se configura en **Configuración → Agente →
+Acciones**, como cualquier otra acción «Cuando → Hacer» (RAG-23 a RAG-26). Decisiones del dueño (6 nov 2026): el disparador vive en
+Acciones (no en Avi), la ficha lleva precio de la base, los datos que faltan van como atributos del producto (F4·41, antes) y con varias
+coincidencias se envía una lista.
+
+Respuesta esperada (ejemplo con F4·41 cargado; precio y código ilustrativos):
+
+```
+¡Hola! 👋🔥
+Gracias por tu interés en nuestro Lenovo Legion 7.
+
+🎮 Intel Core i9-11980HK
+🚀 NVIDIA GeForce RTX 3080
+🧠 32 GB RAM DDR4
+💾 SSD NVMe 512 GB
+🌈 Teclado RGB
+✨ Estado estético 10/10
+💰 $ 4.800.000
+
+¿Te lo separo? Escribe *quiero comprar LG7-01*
+```
+
+- RAG-43. **Cuándo nuevo: «El mensaje nombra un equipo del inventario».** Además de las frases, una acción puede dispararse cuando el
+  mensaje trae un **código** o un **modelo** que existe en `productos` (marca + modelo, como «Legion 7», con `interprete.por_modelo`, el mismo
+  del Híbrido y de Avi). Sin IA. Opcional: exigir además una palabra de interés («cuánto», «vale», «precio», «info», «tienen»), editable.
+- RAG-44. **Hacer nuevo: «Responder ficha del equipo».** Plantilla en tres partes editables: **encabezado** (texto con datos, ej.
+  `¡Hola! 👋🔥 Gracias por tu interés en nuestro {equipo}.`; acepta `{nombre}` del cliente si se conoce), **renglones de atributos** (el mismo
+  editor de F4·37: emoji + datos, modificar, agregar, quitar y ordenar; incluye los atributos de F4·41 y `{precio}` por defecto) y **cierre**
+  (ej. `¿Te lo separo? Escribe *quiero comprar {codigo}*`). Interruptor «Enviar la foto del equipo» (si tiene). Vista previa con un equipo real.
+- RAG-45. **Un equipo → ficha; varios → lista.** Si coincide un solo equipo con stock, sale su ficha. Si coinciden dos o más (dos Legion 7, o
+  solo «Lenovo»), sale la lista de F4·37 / F4·40 (hasta el máximo configurado) y «¿Cuál te interesa? Escribe el código». La plantilla de la
+  lista sigue siendo la de Avi → «Cómo muestra los equipos».
+- RAG-46. **Sin stock o no existe:** mensaje editable («Ese equipo ya no está disponible 😕») y, según se configure, equipos parecidos de la
+  misma marca con stock o pasar a asesor. Nunca se ofrece un equipo sin stock (como el arreglo del 3 nov).
+- RAG-47. **Precio siempre de la base** (RAG-01). El renglón `{precio}` viene puesto y se puede quitar. La ficha la arma el sistema: la IA
+  no interviene.
+- RAG-48. **Prioridad y memoria.** Va en la lista de Acciones con su prioridad: «Asesor», «Quiero comprar» y «Cotización» quedan arriba
+  (así «quiero comprar el Legion 7» abre la compra y no la ficha). El equipo enviado queda como **último equipo visto** del lead, para que
+  «Lo quiero» y «quiero comprar» funcionen sin repetir el código. No corre si el chat está con un asesor (RAG-25). Contador y **Probar con una
+  frase**, como las demás acciones.
+
 ### 5. Herramientas (lo que el agente puede hacer)
 
 | Herramienta | Qué hace | Escribe en la base |

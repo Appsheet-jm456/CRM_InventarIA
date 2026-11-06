@@ -37,6 +37,27 @@ devuelve filtros. La respuesta lista equipos de la base con stock; si nada cumpl
 | RLS de escritura en `productos` y `catalogos` | `administrar_inventario` (alta y edición; sin borrar productos) |
 | `cargar_inventario(productos jsonb, aplicar boolean)` | RI-04; la usan la app y `cargar_inventario.py` |
 
+## Atributos del producto (F4·41)
+
+**Pedido el 6 nov 2026** (cliente Ventas Tech, para la ficha de F4·42). Hoy `productos` solo tiene procesador, generación, RAM, disco,
+estado y descripción: no hay dónde guardar la tarjeta gráfica, la pantalla, el teclado o el estado estético. Se agregan **atributos
+configurables**, como los atributos del lead (F4·30).
+
+**RI-07 · Atributos que crea el administrador.** En **Inventario → Atributos**: nombre («Tarjeta gráfica»), clave para las plantillas
+(`{grafica}`), tipo (texto, número, sí/no o lista de opciones), emoji sugerido, orden y categorías donde aplica (opcional). Se editan,
+ordenan, archivan y restauran; no se borran si tienen datos. Pide `administrar_inventario`. Sugeridos al crear: Tarjeta gráfica, Pantalla,
+Teclado, Batería y Estado estético.
+
+**RI-08 · Valores por equipo.** Se llenan en la ficha del equipo (crear y editar) y se validan por tipo. Se guardan en `productos.atributos`
+(jsonb, validado en la base). Un atributo vacío no sale en ninguna plantilla.
+
+**RI-09 · Carga por Excel.** Cada atributo activo es una columna de la hoja (encabezado = nombre del atributo) y sale en la plantilla
+`docs/plantillas/inventario.xlsx`. Aplica RI-04: primero muestra los cambios, un valor que no cumple el tipo detiene la carga, y una columna
+que no viene no se toca.
+
+**RI-10 · Dónde se usan.** En la plantilla de la ficha (F4·42), en la lista de Avi (F4·37) como `{clave}`, en la ficha de Inventario y en
+la vista «cómo lo ve el cliente». `buscar_productos` de Avi los devuelve. Filtrar por atributo (ej. «con RTX») queda fuera por ahora.
+
 ## Chat InventarIA
 
 La app llama a `POST /interno/buscar` del receptor (127.0.0.1:8095) con el token `CRM_INTERNO_TOKEN`
