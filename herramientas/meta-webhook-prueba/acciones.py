@@ -123,7 +123,8 @@ def ganadora(texto, acciones=None):
 
 def _texto(plantilla, lead):
     nombre = ((lead or {}).get("nombre") or "").split(" ")[0]
-    return plantilla.replace("{horario}", flujo.texto_horario()).replace("{nombre}", nombre or "").strip()
+    # Sin nombre, «¡Hola {nombre}!» queda «¡Hola!» y no «¡Hola !».
+    return _limpio(plantilla.replace("{horario}", flujo.texto_horario()).replace("{nombre}", nombre or ""))
 
 
 def _limpio(s):

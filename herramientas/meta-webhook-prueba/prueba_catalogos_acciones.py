@@ -81,6 +81,8 @@ p = acciones.probar("catalogo", [{"id": 5, "nombre": "Catálogo", "activa": True
 ok(p["accion"]["id"] == 5 and p["mensajes"][-1] == {"type": "archivo", "archivo": "hp.pdf", "titulo": "Catálogo HP PDF"},
    "«Probar con una frase» muestra el catálogo PDF que se adjuntaría")
 ok(acciones.lista({"hacer": [{"tipo": "catalogo"}, {"tipo": "archivo"}]}), "los pasos nuevos se pueden activar")
+m = correr([{"tipo": "texto", "texto": "¡Hola {nombre}! 👋 Tenemos equipos"}], lead={"nombre": None})
+ok(texto(m[0]) == "¡Hola! 👋 Tenemos equipos", "sin nombre del cliente, «¡Hola {nombre}!» queda «¡Hola!»")
 
 print(f"{'✅' if not fallos else '✗'} {n - fallos}/{n}")
 sys.exit(1 if fallos else 0)
