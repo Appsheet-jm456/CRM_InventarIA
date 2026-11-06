@@ -197,5 +197,14 @@ st_r = nuevo(compra={"paso": "esperando_pago", "equipos": [{"codigo": "A-1", "eq
 m = compra.tiempo_cumplido(st_r)
 ok("HP 840" in cuerpo(m[0]) and "Dell 5420" in cuerpo(m[0]), "«¿Sigues interesado?» recuerda los equipos del pedido")
 
+# 17. Cotizó dos equipos y luego compra: el resumen lleva los dos, no solo el primero
+CONFIG["carrito_activo"] = True
+st_c = nuevo(campos={"Código producto": "100-101-1113, 100-101-1050-1"})
+m = compra.iniciar(st_c, "quiero comprar", {"etiquetas": []})
+ok(len(st_c["compra"]["equipos"]) == 2 and st_c["compra"]["paso"] == "tipo", "tras cotizar 2 equipos, «quiero comprar» los carga a los dos y pide el tipo")
+m, *_ = responder(st_c, "compra-final")
+t = cuerpo(m[0])
+ok("100-101-1113" in t and "100-101-1050-1" in t and "Total (2 equipos)" in t and "compra-si" in botones(m[0]), "el resumen muestra los dos equipos y «Confirmar pedido»")
+
 print(f"\n{n - fallos}/{n} en verde" if not fallos else f"\n{fallos} de {n} fallaron")
 sys.exit(1 if fallos else 0)

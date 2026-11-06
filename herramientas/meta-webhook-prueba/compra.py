@@ -270,6 +270,17 @@ def iniciar(st, texto, lead=None, cuadro=None):
     st["nodo"] = NODO
     st.pop("espera_hasta", None)
     p = flujo.buscar_codigo(texto)
+    if not p and _carrito(st["compra"]):  # viene de cotizar un pedido con varios equipos: entran todos, no solo el primero
+        codigos = [k.strip() for k in ((st.get("campos") or {}).get("Código producto") or "").split(",") if k.strip()]
+        vigentes = [q for q in (_producto_por_codigo(k) for k in codigos) if q]
+        if len(vigentes) > 1:
+            st["compra"]["equipos"] = [{"codigo": q["cod"], "equipo": f"{q['marca']} {q['modelo']}".strip(), "precio": q["precio"]}
+                                       for q in vigentes[:_maximo()]]
+            first = st["compra"]["equipos"][0]
+            st["compra"].update(codigo=first["codigo"], equipo=first["equipo"], precio=first["precio"])
+            if _es_distribuidor(lead):
+                st["compra"]["tipo"] = "distribuidor"
+            return _seguir(st, lead)
     if not p and (st.get("campos") or {}).get("Código producto"):  # el de la última ficha que vio
         p = _producto_por_codigo(st["campos"]["Código producto"].split(",")[0].strip())
     if not p and (lead or {}).get("cotiz_producto"):
