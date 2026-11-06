@@ -9,7 +9,7 @@
 
 | # | Mejora | Gravedad | Estado |
 |---|---|---|---|
-| 1 | Retorno automático tras la pausa del asesor | 🔴 Alta: el cliente queda sin respuesta | Propuesta |
+| 1 | Retorno automático tras la pausa del asesor | 🔴 Alta: el cliente queda sin respuesta | **Documentada como F4·45** (decisión 0035), sin construir |
 | 3 | Seguimiento automático después de la cotización | 🔴 Alta: ventas que se pierden | Propuesta |
 | 2 | Alarma de cola sin asesor | 🟠 Media | Propuesta |
 | 4 | Errores del Agente (Avi) y piloto | 🟠 Media | Propuesta |

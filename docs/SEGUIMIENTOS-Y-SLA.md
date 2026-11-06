@@ -10,7 +10,9 @@
 
 **RS-01 · Un seguimiento recuerda, no envía.** Es una tarea para una persona ("llamar a Juan el jueves
 por la cotización"): cuando vence, aparece como vencido en Seguimientos, en Inicio y en la ficha de la
-Bandeja. Ningún mensaje sale solo hacia el cliente (dueño, 30 sep 2026).
+Bandeja. Ningún mensaje sale solo hacia el cliente (dueño, 30 sep 2026). **Modificada por la
+[0035](decisiones/0035-retorno-del-bot-y-mensaje-automatico.md) (6 nov 2026):** sigue valiendo para los seguimientos manuales, pero
+el bot sí puede escribir solo en los dos casos de F4·45 (abajo), una vez y dentro de las 24 h.
 
 **RS-02 · Todo seguimiento tiene cliente, responsable y fecha.** Lo crea quien tiene
 `gestionar_oportunidades` sobre una conversación que puede ver; queda a su nombre. Asignárselo a otro pide
@@ -70,3 +72,90 @@ Meta puede recategorizar una plantilla de Utilidad como Marketing si la ve promo
 - **Inicio:** "Sin respuesta fuera de SLA" y "Seguimientos vencidos".
 - **Panel lateral:** número de conversaciones esperando respuesta junto a *Bandeja*, en rojo si alguna
   pasó el SLA.
+
+---
+
+## Retorno del bot y seguimiento automático (F4·45)
+
+> Decisión [0035](decisiones/0035-retorno-del-bot-y-mensaje-automatico.md), aceptada el 6 nov 2026. Origen: mejora 1 de
+> [MEJORAS-FLUJO.md](MEJORAS-FLUJO.md). **Estado: documentada, sin construir** (espera la orden del dueño).
+
+### Historia de usuario
+
+**Como** dueño de Ventas Virtuales Colombia, **quiero** que el bot le escriba una vez a un cliente que dejó de responder o al que
+el asesor no le contestó, y que vuelva a atender el chat cuando el asesor termina, **para** no perder clientes por chats callados y
+que el cliente sepa que seguimos interesados antes de que se cierren las 24 h de Meta. **Todo** (tiempos, textos, botones,
+disparadores y destino) se cambia desde el CRM, sin tocar código.
+
+### Reglas
+
+**RT-01 · Regla A: el cliente quedó callado.** Si el cliente escribió, el último mensaje del chat es nuestro (del bot o de un
+asesor) y el cliente no responde en **N horas** (5 por defecto, de 1 a 23), el bot le envía el *mensaje de seguimiento* (por
+defecto «¿Sigues necesitando ayuda? 🙌») con hasta 3 botones (por defecto *Sí, continuar* · *Hablar con asesor* · *Ya no,
+gracias*). Aplica tanto si el chat está con el bot como con un asesor.
+
+**RT-02 · Regla B: el asesor no respondió.** Si el chat está en cola o asignado, el cliente escribió y ninguna persona le contesta en
+**M horas hábiles** (2 por defecto, de 0,5 a 23, con el horario y los festivos del SLA), el bot le envía el *mensaje de demora*
+(por defecto «Disculpa la demora 🙏 ¿Te sigo ayudando yo mientras un asesor se desocupa?») con botones *Sí, sigue tú* · *Espero al
+asesor*. *Sí, sigue tú* devuelve el chat al bot (RT-05); *Espero al asesor* lo deja en la cola y no vuelve a preguntar.
+
+**RT-03 · Una sola vez por silencio.** Cada regla envía como máximo **un** mensaje entre dos mensajes del cliente. Si el cliente no
+responde, no se insiste. Cuando el cliente vuelve a escribir, el contador empieza de nuevo.
+
+**RT-04 · Siempre dentro de las 24 h de Meta.** Solo se envía si faltan al menos **30 min** para que se cumplan 24 h desde el último
+mensaje del cliente. Si no, no se envía y el cliente queda con la etiqueta *Recordatorio-no-enviado* (igual que RF-15). Así no hace
+falta plantilla ni tiene costo.
+
+**RT-05 · Volver al bot (disparadores configurables).** Un chat que está con asesor vuelve al bot (se quita la pausa y el chat pasa
+a «bot») por cualquiera de estos disparadores, cada uno con su casilla:
+1. El cliente toca *Sí, continuar* o *Sí, sigue tú* (o escribe la palabra configurada, por defecto «continuar»).
+2. El asesor pulsa **«Devolver al bot»** en la Bandeja (siempre disponible; no depende de las casillas).
+3. El asesor **cierra** el chat en la Bandeja.
+4. **Sin actividad**: nadie escribe en el chat (ni cliente ni asesor) en **P horas** (24 por defecto). Vuelve en silencio, sin
+   enviar nada; el próximo mensaje del cliente lo atiende el bot.
+`reiniciar` sigue funcionando como hoy.
+
+**RT-06 · A dónde vuelve.** Se elige el destino al volver al bot: *el inicio del bot principal* (por defecto), *otro bot* o *un
+cuadro* de un bot publicado. Para clientes en etapa de cierre ganada (**Vendido**) hay un destino aparte (por defecto: *se queda con
+el asesor*; puede ser un bot de postventa).
+
+**RT-07 · Cuándo no se envía nada.** Ningún mensaje automático sale si: el chat está **cerrado** o archivado; la oportunidad está en
+etapa de cierre (**Vendido** o **Perdido**); hay una compra en **pago por confirmar**; hay una **Pausa** del lienzo o el recordatorio
+de pago de la compra esperando (ya tienen su propio mensaje); el cliente tiene una **etiqueta excluida** (por defecto
+*No-Molestar*); el **chatbot está apagado** (Interruptores); el asesor escribió en los últimos **15 min** (no se le interrumpe); o el
+último mensaje del cliente fue *Ya no, gracias* (queda con la etiqueta *No-Interesado*).
+
+**RT-08 · Horario.** Con la casilla *Solo en horario de atención* (encendida por defecto), un mensaje que vence fuera de horario o en
+festivo se envía al abrir, si todavía cumple RT-04; si no, no se envía (RT-04).
+
+**RT-09 · Todo queda registrado.** Cada mensaje automático queda en el chat como del bot, con la marca *🤖 automático*, en el
+historial del cliente (`lead_eventos`) y con la etiqueta *Seguimiento-Enviado* o *Demora-Enviado*. Volver al bot queda en el historial
+con el disparador. El mensaje automático **no** cuenta como respuesta de un asesor en el SLA ni en las métricas.
+
+**RT-10 · Parametrización.** Pantalla **Configuración → Bot → Retorno y seguimiento** (permiso `administrar_bot`): interruptor
+general (**apagado** al instalar), Regla A (casilla, horas, texto ≤ 1.024, botones ≤ 20 caracteres), Regla B (casilla, horas
+hábiles, texto, botones), disparadores de RT-05 (casillas, palabra, horas de inactividad), destinos de RT-06, *Solo en horario*,
+etiquetas excluidas. Con vista previa como WhatsApp y marca `{nombre}`. Toma efecto en menos de 30 s, como el resto del bot.
+
+### Criterios de aceptación
+
+1. Con la Regla A encendida en 5 h, un cliente que no responde recibe el mensaje a las 5 h (±1 min) **una sola vez**.
+2. Con la Regla B en 2 h hábiles, un cliente que escribe a las 5:30 p. m. de un viernes y nadie le contesta recibe el mensaje de
+   demora el sábado a las 10:30 a. m. (la hora y media restante cuenta desde que abren a las 9:00), si sigue dentro de RT-04.
+3. «Devolver al bot» deja el chat en «bot», sin asignar, y el siguiente mensaje del cliente lo atiende el bot en el destino de RT-06.
+4. A un cliente en Vendido, en pago por confirmar, con el chat cerrado o con *No-Molestar* **no** le llega nada (RT-07).
+5. Si pasaron más de 23 h 30 min desde el último mensaje del cliente, no sale nada y queda *Recordatorio-no-enviado*.
+6. Con el interruptor general apagado, todo funciona como hoy.
+7. Cambiar tiempos o textos en la pantalla se refleja en el siguiente envío sin reiniciar nada.
+
+### Cómo se construye (resumen técnico)
+
+- **Migración 0049:** tabla `retorno_config` (una fila, con `grant` por columna como `agente_config`) con los ajustes de RT-10;
+  columnas en `leads`: `seguimiento_enviado_en`, `demora_enviada_en` (para RT-03); función `devolver_al_bot(lead)` con permiso
+  (quita `pausar_bot`; el disparador `leads_derivar_estado` ya pasa el chat a «bot») y registro en `lead_eventos`.
+- **Receptor:** el `reloj()` suma una revisión **cada minuto** (consulta de candidatos a la Regla A y B con las exclusiones de RT-07),
+  con el mismo candado por número que las Pausas. Las respuestas a los botones (`ret-si`, `ret-asesor`, `ret-no`) se atienden antes
+  que el menú.
+- **CRM:** pantalla Retorno y seguimiento; botón **Devolver al bot** en la Bandeja; marca *🤖 automático* en el chat.
+- **Pruebas:** `prueba_retorno.py` (reglas A y B, una vez por silencio, 24 h, exclusiones, horario, festivos, disparadores) y pruebas
+  SQL de la migración.

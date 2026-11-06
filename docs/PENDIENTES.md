@@ -8,6 +8,8 @@ de las Fases 1 y 2 abajo. **Código nuevo:** el bot de prueba sobre Supabase (`h
 
 0. **6 nov 2026 · Revisión crítica del flujo Menú + Agente + Asesor: 8 mejoras propuestas, sin construir ([MEJORAS-FLUJO.md](MEJORAS-FLUJO.md)).** Prioridad: 1) retorno tras la pausa del asesor, 3) seguimiento tras la cotización, 2) alarma de cola. Cada una se documenta como HU con la orden del dueño.
 
+0. **6 nov 2026 · F4·45 Retorno del bot y «¿Sigues necesitando ayuda?» documentada, sin construir ([SEGUIMIENTOS-Y-SLA.md](SEGUIMIENTOS-Y-SLA.md#retorno-del-bot-y-seguimiento-automático-f445), decisión [0035](decisiones/0035-retorno-del-bot-y-mensaje-automatico.md), RT-01 a RT-10):** Regla A (cliente callado 5 h) y Regla B (asesor sin responder 2 h hábiles), una vez y dentro de las 24 h; botón «Devolver al bot»; todo en Configuración → Bot → Retorno y seguimiento. Migración prevista 0049. Espera la orden del dueño.
+
 0. **6 nov 2026 · F4·44 Carrito de varios equipos construida 🔵 (migración 0048, falta la prueba del dueño, [AGENTE.md](AGENTE.md#4f-carrito-comprar-varios-equipos-en-un-pedido-f444), RAG-54 a RAG-62):** Agente → Compra → Carrito (casilla apagada por defecto, máximo y textos) y cuadro 🛒 Carrito en el lienzo; «¿otro equipo?», resumen en lista con Quitar y Cotizar (un PDF), cuentas y nota del asesor con todos. Pregunta abierta: la pausa del asesor no se levanta sola.
 
 0. **6 nov 2026 · F4·43 Acciones: enviar catálogos y archivos PDF construida 🔵 (migración 0047, falta la prueba del dueño, [AGENTE.md](AGENTE.md), RAG-49 a RAG-53):** pasos «Enviar catálogo» (uno de la lista, el de la marca del equipo o el Unificado) y «Enviar archivo» (PDF o imagen subido en la acción), y casilla «catálogo de la marca al final» en la ficha de F4·42.
