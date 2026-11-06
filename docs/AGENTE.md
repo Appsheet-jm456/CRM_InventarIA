@@ -365,6 +365,32 @@ Gracias por tu interés en nuestro Lenovo Legion 7.
 **Para probarlo (dueño):** recargar; Agente → Acciones → «Pregunta por un equipo»: revisar textos y vista previa, **activarla** y en «Probar con
 una frase» escribir «¿cuánto vale el X1 Yoga Gen 6?»; luego por WhatsApp. Con Avi encendido, esta acción le gana (responde sin IA).
 
+### 4e. Acciones: enviar catálogos y archivos PDF (F4·43)
+
+**Pedido el 6 nov 2026** al revisar F4·42: poder mandar desde una acción el **catálogo PDF** (o de Drive) y otros **PDF o imágenes**. Hoy
+una acción solo envía un archivo de forma indirecta: con una ficha de Conocimiento que tenga archivo y el paso «Responder con el conocimiento».
+Los catálogos (Inventario → Catálogos) ya existen y los usan el lienzo (cuadro Catálogos, F4·12) y Avi (catálogo al final, F4·40), pero
+no las Acciones.
+
+- RAG-49. **Paso nuevo «Enviar catálogo».** Se elige cuál: **un catálogo de la lista** (los activos de Inventario → Catálogos), **«el de la
+  marca del equipo»** (la marca del equipo que encontró el disparador de F4·42 o del último equipo que vio el cliente; si esa marca no tiene
+  catálogo, el Unificado, igual que Avi) o **«el Unificado»**. Texto antes editable, ej. `Te envío el catálogo de {marca} 📚`. Un PDF sale
+  como **documento adjunto**; uno de Drive, como enlace en el texto.
+- RAG-50. **Paso nuevo «Enviar archivo».** Se sube un **PDF** (hasta 16 MB) o una **imagen** (JPG, PNG o WEBP, hasta 5 MB) directo en la
+  acción, con su texto de pie (ej. ficha técnica del fabricante, promoción del mes). Se guarda en el bucket privado `conocimiento`
+  (carpeta `acciones/`) y se reemplaza o quita desde la misma acción.
+- RAG-51. **En la ficha del equipo (F4·42):** casilla **«Agregar el catálogo de la marca al final»**: después de la ficha (o de la lista si son
+  varios) sale el catálogo de esa marca, con la misma regla de RAG-49.
+- RAG-52. **Si el catálogo o el archivo ya no está** (apagado o borrado): ese paso no envía nada y los demás pasos siguen; la pantalla lo avisa
+  en el paso, como hoy con una categoría sin fichas activas. **Probar con una frase** muestra «📎 Catálogo Lenovo (Drive)» o «📎 Ficha HP.pdf».
+- RAG-53. Un catálogo o archivo enviado por una acción queda en la conversación de la Bandeja como cualquier documento del bot.
+
+Ejemplos de uso: acción **«Catálogo»** (cuando escribe «catálogo», «qué equipos tienen», «lista de precios» → Enviar catálogo: el Unificado);
+acción de F4·42 con la casilla de catálogo encendida (ficha del Legion 7 y después el catálogo Lenovo).
+
+**Fuera de alcance por ahora:** catálogos por categoría distinta de Portátiles (torres, partes) más allá de lo que ya permite la tabla de
+catálogos, y generar el catálogo PDF desde el inventario (hoy se sube hecho).
+
 ### 5. Herramientas (lo que el agente puede hacer)
 
 | Herramienta | Qué hace | Escribe en la base |

@@ -6,6 +6,8 @@ de las Fases 1 y 2 abajo. **Código nuevo:** el bot de prueba sobre Supabase (`h
 
 ## Dónde retomar (en este orden)
 
+0. **6 nov 2026 · F4·43 Acciones: enviar catálogos y archivos PDF (documentada, por construir, [AGENTE.md](AGENTE.md), RAG-49 a RAG-53):** pasos «Enviar catálogo» (uno de la lista, el de la marca del equipo o el Unificado) y «Enviar archivo» (PDF o imagen subido en la acción), y casilla «catálogo de la marca al final» en la ficha de F4·42.
+
 0. **6 nov 2026 · F4·42 Acción «Pregunta por un equipo» construida 🔵 ([AGENTE.md](AGENTE.md), migración 0046):** ficha del equipo con plantilla, precio de la base y foto, lista si son varios y aviso si está agotado. **Nace apagada:** el dueño la revisa, la activa y la prueba por WhatsApp.
 
 0. **6 nov 2026 · F4·41 Atributos del producto construida 🔵 ([INVENTARIO.md](INVENTARIO.md#atributos-del-producto-f441), migración 0045):** Inventario → Atributos, ficha del equipo, Excel con columnas por atributo y `{clave}` en la plantilla de Avi. **Falta la prueba del dueño** (pasos al final de la sección). Sigue F4·42. En `migrar.sh --probar` siguen en rojo pruebas ajenas a esto que dependen de datos vivos: 0010, 0011, 0012, 0014, 0015, 0024 y 0041.
