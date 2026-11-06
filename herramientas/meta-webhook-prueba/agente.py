@@ -548,6 +548,9 @@ def responder_cuadro(st, entrada, lead, cuadro, config=None, simulador=False, pr
     memoria["vueltas"] = int(memoria.get("vueltas") or 0) + 1
     salidas = cuadro.get("salidas") or {}
     if avi["flujo"] == "compra" and salidas.get("compra"):  # «Inició compra» unida: el dueño decide qué sigue (sin unir, el flujo de compra)
+        codigo = (st.get("compra") or {}).get("codigo") or ((st.get("compra") or {}).get("equipos") or [{}])[0].get("codigo")
+        if codigo:  # el equipo que Avi ya entendió pasa a lo que sigue (por ejemplo un cuadro 🛒 Carrito, F4·44) sin volver a pedirlo
+            st.setdefault("campos", {})["Código producto"] = codigo
         st.pop("compra", None)
         st.pop("espera_hasta", None)
         return {**avi, **ir("compra", lambda: []), "nota": avi["nota"]}
