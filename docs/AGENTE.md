@@ -297,7 +297,8 @@ mensajes con una pausa entre ellos, como escribe una persona y no como un muro d
 - RAG-40. **Plantilla por atributos.** Cada renglón es un atributo: un emoji y uno o varios datos del equipo, con texto libre si se quiere
   (ej. `⚙️ {procesador} · {ram} · {disco}`). Se puede **modificar** un renglón, **agregar** otro (botón «+ Agregar atributo» con la lista de
   datos), quitarlo y cambiarlo de orden. Datos: `{equipo}` (marca y modelo), `{codigo}`, `{marca}`, `{modelo}`, `{procesador}`, `{generacion}`,
-  `{ram}`, `{disco}`, `{estado}`, `{precio}`, `{stock}`, `{categoria}`, `{descripcion}`. Un renglón cuyo dato está vacío no sale.
+  `{ram}`, `{disco}`, `{estado}`, `{precio}`, `{stock}`, `{categoria}`, `{descripcion}`, más cada **atributo del producto** con su clave
+  (F4·41, por ejemplo `{grafica}`). Un renglón cuyo dato está vacío no sale.
 - RAG-41. **Máximo de equipos** (1 a 5, por defecto 3) y **cómo se envían**: todos en un mensaje, o un mensaje por equipo (con la pausa y el
   «escribiendo…» de F4·36). Vista previa con un equipo real del inventario.
 - RAG-42. Un código que no existe o que no tiene stock no sale (la lista se arma solo con lo que hay). Si no queda ninguno, Avi responde solo su

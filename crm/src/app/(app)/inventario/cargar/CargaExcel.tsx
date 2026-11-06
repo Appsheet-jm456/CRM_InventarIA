@@ -42,6 +42,7 @@ export function CargaExcel() {
           <p className="muted" style={{ margin: 0 }}>
             La hoja se empareja por <b>código</b>: crea los nuevos y actualiza los demás. Los equipos que no vienen en la
             hoja quedan con <b>stock 0</b> (no se borran). Una columna que no viene no se toca. Si hay un error, no se carga nada.
+            Los <b>atributos</b> (tarjeta gráfica, pantalla…) van en columnas con su nombre; una celda vacía borra el dato.
           </p>
           <div className="row">
             <input type="file" name="hoja" accept=".xlsx,.xlsm,.csv" required />

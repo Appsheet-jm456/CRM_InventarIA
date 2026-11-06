@@ -9,7 +9,7 @@ export default async function Cargar() {
   return (
     <>
       <Pestanas activa="/inventario/cargar" administra>
-        <a className="btn chico" href="/formato-inventario.csv" download>Descargar formato</a>
+        <a className="btn chico" href="/inventario/formato" download>Descargar formato</a>
       </Pestanas>
       <CargaExcel />
     </>

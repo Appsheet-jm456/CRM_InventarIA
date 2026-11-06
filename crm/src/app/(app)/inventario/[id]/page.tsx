@@ -2,17 +2,22 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { obtenerSesion, puede } from '@/lib/sesion'
 import { crearCliente } from '@/lib/supabase/server'
-import { COLUMNAS_PRODUCTO, fotoDe, pesos, titulo, type Producto } from '@/lib/inventario'
+import { COLUMNAS_ATRIBUTO, COLUMNAS_PRODUCTO, aplicaA, fotoDe, pesos, textoAtributo, titulo, type AtributoProducto, type Producto } from '@/lib/inventario'
 import { FormProducto } from '../FormProducto'
 
 export default async function FichaEquipo({ params, searchParams }: { params: { id: string }; searchParams: { editar?: string; creado?: string } }) {
   const sesion = (await obtenerSesion())!
   const administra = puede(sesion, ['administrar_inventario'])
-  const { data } = await crearCliente().from('productos').select(COLUMNAS_PRODUCTO).eq('id', Number(params.id)).maybeSingle()
+  const supabase = crearCliente()
+  const [{ data }, { data: defs }] = await Promise.all([
+    supabase.from('productos').select(COLUMNAS_PRODUCTO).eq('id', Number(params.id)).maybeSingle(),
+    supabase.from('producto_atributos').select(COLUMNAS_ATRIBUTO).is('archivado_en', null).order('orden').order('id'),
+  ])
   if (!data) notFound()
   const p = data as Producto
+  const atributos = (defs ?? []) as AtributoProducto[]
   const foto = fotoDe(p)
-  if (administra && searchParams.editar === '1') return <FormProducto producto={p} foto={foto} />
+  if (administra && searchParams.editar === '1') return <FormProducto producto={p} foto={foto} atributos={atributos} />
 
   // La misma ficha que arma el bot (flujo.r11): así la ve el cliente por WhatsApp.
   const ficha = `💻 *${p.marca} ${p.modelo}* · Código ${p.codigo}\n${p.procesador} · ${p.ram} · ${p.almacenamiento}` +
@@ -20,6 +25,8 @@ export default async function FichaEquipo({ params, searchParams }: { params: { 
   const datos: [string, string][] = [
     ['Código', p.codigo], ['Categoría', p.categoria], ['Marca', p.marca], ['Modelo', p.modelo],
     ['Procesador', p.procesador], ['Generación', p.generacion], ['RAM', p.ram], ['Disco', p.almacenamiento], ['Estado', p.estado],
+    // Atributos del producto (F4·41, RI-10): los activos que aplican a su categoría y tienen dato.
+    ...atributos.filter((a) => aplicaA(a, p.categoria)).map((a): [string, string] => [`${a.emoji ? `${a.emoji} ` : ''}${a.nombre}`, textoAtributo(p.atributos?.[a.clave])]),
   ]
 
   return (

@@ -24,7 +24,8 @@ export default async function Inventario({ searchParams }: {
     (verTodos || p.stock > 0) &&
     (!marca || p.marca === marca) &&
     (!cpu || cpuDe(p) === cpu) &&
-    (!q || sinTildes([p.codigo, p.marca, p.modelo, p.procesador, p.ram, p.almacenamiento, p.descripcion].join(' ')).includes(q)))
+    (!q || sinTildes([p.codigo, p.marca, p.modelo, p.procesador, p.ram, p.almacenamiento, p.descripcion,
+      ...Object.values(p.atributos ?? {}).map(String)].join(' ')).includes(q)))
   const marcas = [...new Set(todos.map((p) => p.marca).filter(Boolean))].sort()
   const cpus = [...new Set(todos.map(cpuDe).filter(Boolean))].sort()
   const conStock = todos.filter((p) => p.stock > 0)

@@ -195,8 +195,14 @@ def revisar(respuesta, permitido, texto_permitido="", texto_cuentas=""):
 # --------------------------------------------------------------------------- #
 
 def _resumen(p):
-    return {"codigo": p["cod"], "equipo": f"{p['marca']} {p['modelo']}".strip(), "procesador": p["cpu"], "ram": p["ram"],
-            "disco": p["disco"], "estado": p["estado"], "precio": p["precio"], "stock": p["stock"]}
+    r = {"codigo": p["cod"], "equipo": f"{p['marca']} {p['modelo']}".strip(), "procesador": p["cpu"], "ram": p["ram"],
+         "disco": p["disco"], "estado": p["estado"], "precio": p["precio"], "stock": p["stock"]}
+    # F4·41: los atributos del producto con su nombre («Tarjeta gráfica»: «RTX 3080»), para que Avi responda sobre ellos.
+    nombres = {a["clave"]: a["nombre"] for a in db.producto_atributos()}
+    extra = {nombres[k]: texto_atributo(v) for k, v in (p.get("atributos") or {}).items() if k in nombres and texto_atributo(v)}
+    if extra:
+        r["caracteristicas"] = extra
+    return r
 
 
 def usar(nombre, args, ctx):
@@ -334,10 +340,22 @@ PLANTILLA_EQUIPO = "💻 *{equipo}* · Código {codigo}\n⚙️ {procesador} · 
 _MARCA = re.compile(r"\{(\w+)\}")
 
 
+def texto_atributo(v):
+    """Cómo se muestra el valor de un atributo del producto (igual que textoAtributo de la app): sí/no en palabras."""
+    if v is None:
+        return ""
+    if isinstance(v, bool):
+        return "Sí" if v else "No"
+    if isinstance(v, (int, float)):
+        return f"{v:,.2f}".rstrip("0").rstrip(".").replace(",", "X").replace(".", ",").replace("X", ".")
+    return str(v).strip()
+
+
 def datos_equipo(p):
-    """Los datos que puede usar la plantilla, de un equipo de flujo.inventario()."""
+    """Los datos que puede usar la plantilla, de un equipo de flujo.inventario(). Los atributos del producto (F4·41) entran con su
+    clave ({grafica}); los datos fijos mandan si una clave se repitiera (la base no lo permite)."""
     gen = p.get("gen")
-    return {"equipo": f"{p.get('marca') or ''} {p.get('modelo') or ''}".strip(), "codigo": p.get("cod") or "", "marca": p.get("marca") or "",
+    return {**{k: texto_atributo(v) for k, v in (p.get("atributos") or {}).items()}, "equipo": f"{p.get('marca') or ''} {p.get('modelo') or ''}".strip(), "codigo": p.get("cod") or "", "marca": p.get("marca") or "",
             "modelo": p.get("modelo") or "", "procesador": p.get("cpu") or "", "generacion": f"{gen}.ª gen" if gen else "",
             "ram": p.get("ram") or "", "disco": p.get("disco") or "", "estado": p.get("estado") or "",
             "precio": flujo.cop(p["precio"]) if p.get("precio") is not None else "", "stock": str(p.get("stock") or ""),

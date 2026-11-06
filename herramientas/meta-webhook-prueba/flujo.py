@@ -187,6 +187,7 @@ def inventario():
         "gen": interprete.generacion(p["procesador"], p["generacion"]), "ram": p["ram"],
         "disco": p["almacenamiento"], "estado": p["estado"], "precio": int(float(p["precio"])),
         "stock": p["stock"], "foto": _foto_de(p), "categoria": p.get("categoria") or "", "descripcion": p.get("descripcion") or "",
+        "atributos": p.get("atributos") or {},  # F4·41: {clave: valor} de los atributos del producto
     } for p in db.productos_con_stock() if "portatil" in normalizar(p["categoria"])]
 
 

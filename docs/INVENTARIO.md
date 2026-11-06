@@ -58,6 +58,24 @@ que no viene no se toca.
 **RI-10 · Dónde se usan.** En la plantilla de la ficha (F4·42), en la lista de Avi (F4·37) como `{clave}`, en la ficha de Inventario y en
 la vista «cómo lo ve el cliente». `buscar_productos` de Avi los devuelve. Filtrar por atributo (ej. «con RTX») queda fuera por ahora.
 
+**Construida el 6 nov 2026 (migración 0045, 8 pruebas SQL y `prueba_atributos.py`).** Piezas:
+
+- `producto_atributos` (tipos: texto, número, sí/no y lista; la clave y el tipo no cambian, como en los del lead) y `productos.atributos`
+  (jsonb validado por el disparador `productos_validar_atributos`). Vienen sugeridos Tarjeta gráfica `{grafica}`, Pantalla `{pantalla}`,
+  Teclado `{teclado}`, Batería `{bateria}` y Estado estético `{estado_estetico}`, todos de texto.
+- Pantalla **Inventario → Atributos** (pestaña nueva, pide `administrar_inventario`): crear, emoji, nombre, opciones, categorías, ordenar,
+  archivar y restaurar, con cuántos equipos tienen dato.
+- Ficha del equipo: sección **Atributos** al crear o editar (solo los que aplican a su categoría; vacío borra) y en la ficha de solo lectura.
+  La búsqueda del inventario también encuentra por atributo.
+- Excel: el lector manda las columnas que no son campos fijos y `cargar_inventario` las busca por nombre o clave (sin tildes ni
+  mayúsculas), convierte por tipo («Sí», «15,6», una opción en cualquier mayúscula) y devuelve `columnas_ignoradas`. «Descargar formato»
+  (`/inventario/formato`) arma la hoja con una columna por atributo activo.
+- Bot: `flujo.inventario()` trae `atributos`; la plantilla de Avi (Agente → Avi → «Cómo muestra los equipos») ofrece cada atributo en
+  «+ dato» con su emoji; `buscar_productos` le pasa a Avi las `caracteristicas` con su nombre.
+
+**Para probarlo (dueño):** recargar la página; Inventario → Atributos; editar un equipo y llenar Tarjeta gráfica y Estado estético; en
+Agente → Avi agregar el renglón 🚀 Tarjeta gráfica y ver la vista previa; descargar el formato y cargar una hoja con esas columnas.
+
 ## Chat InventarIA
 
 La app llama a `POST /interno/buscar` del receptor (127.0.0.1:8095) con el token `CRM_INTERNO_TOKEN`

@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useState } from 'react'
 import { guardarAvi, type DatosAvi, type Resultado } from './acciones'
-import { PlantillaEquipos, type EquipoEjemplo } from './PlantillaEquipos'
+import { PlantillaEquipos, type DatoEquipo, type EquipoEjemplo } from './PlantillaEquipos'
 
 const HERRAMIENTAS: [string, string][] = [
   ['buscar_productos', 'Buscar equipos en el inventario'],
@@ -32,11 +32,12 @@ const ESTADOS: [DatosAvi['estado'], string, string][] = [
   ['todos', 'Todos los clientes', 'Avi atiende a todos los clientes, donde lo dejen los interruptores y los cuadros 🤖.'],
 ]
 
-export function Personalidad({ datos, listo, agenteEnTodo, ejemplo }: {
+export function Personalidad({ datos, listo, agenteEnTodo, ejemplo, atributos }: {
   datos: DatosAvi
   listo: boolean
   agenteEnTodo: boolean
   ejemplo: EquipoEjemplo | null
+  atributos: DatoEquipo[]
 }) {
   const [d, setD] = useState<DatosAvi>(datos)
   const [aviso, setAviso] = useState<Resultado>({})
@@ -186,7 +187,7 @@ export function Personalidad({ datos, listo, agenteEnTodo, ejemplo }: {
             </div>
           </div>
           <div className="panel-b">
-            <PlantillaEquipos plantilla={d.plantilla_equipo} maxEquipos={d.max_equipos} separados={d.equipos_separados} ejemplo={ejemplo} ocupado={ocupado}
+            <PlantillaEquipos plantilla={d.plantilla_equipo} maxEquipos={d.max_equipos} separados={d.equipos_separados} ejemplo={ejemplo} atributos={atributos} ocupado={ocupado}
               cambiar={(c) => setD({ ...d, ...c })} />
           </div>
         </section>

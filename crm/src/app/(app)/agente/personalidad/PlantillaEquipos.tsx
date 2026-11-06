@@ -31,14 +31,18 @@ export function armarEquipo(plantilla: string, datos: EquipoEjemplo) {
 }
 
 // Editor de la plantilla por atributos (renglones): modificar, agregar, quitar y ordenar (F4·37, RAG-40 y RAG-41).
-export function PlantillaEquipos({ plantilla, maxEquipos, separados, ejemplo, ocupado, cambiar }: {
+export type DatoEquipo = { clave: string; nombre: string; emoji: string }
+
+export function PlantillaEquipos({ plantilla, maxEquipos, separados, ejemplo, atributos = [], ocupado, cambiar }: {
   plantilla: string
+  atributos?: DatoEquipo[] // atributos del producto (F4·41): se ofrecen como datos, con su emoji
   maxEquipos: number
   separados: boolean
   ejemplo: EquipoEjemplo | null
   ocupado: boolean
   cambiar: (c: { plantilla_equipo?: string; max_equipos?: number; equipos_separados?: boolean }) => void
 }) {
+  const DATOS = [...DATOS_EQUIPO, ...atributos.map((a) => ({ ...a, emoji: a.emoji || '•' }))]
   const lineas = plantilla.split('\n')
   const poner = (nuevas: string[]) => cambiar({ plantilla_equipo: nuevas.join('\n') })
   const mover = (i: number, d: number) => {
@@ -46,7 +50,7 @@ export function PlantillaEquipos({ plantilla, maxEquipos, separados, ejemplo, oc
     ;[n[i], n[i + d]] = [n[i + d], n[i]]
     poner(n)
   }
-  const raras = [...new Set([...plantilla.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).filter((m) => !DATOS_EQUIPO.some((d) => d.clave === m)))]
+  const raras = [...new Set([...plantilla.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).filter((m) => !DATOS.some((d) => d.clave === m)))]
   const bloque = ejemplo ? armarEquipo(plantilla, ejemplo) : ''
   const vista = ejemplo
     ? (separados ? ['Te recomiendo estas opciones 👇', bloque, '¿Te mando la ficha?'] : [`Te recomiendo estas opciones 👇\n\n${bloque}\n\n¿Te mando la ficha?`])
@@ -62,7 +66,7 @@ export function PlantillaEquipos({ plantilla, maxEquipos, separados, ejemplo, oc
             <select value="" disabled={ocupado} aria-label={`Agregar un dato al atributo ${i + 1}`}
               onChange={(e) => { if (e.target.value) poner(lineas.map((x, j) => (j === i ? `${x}${x.trim() ? ' · ' : ''}{${e.target.value}}` : x))) }}>
               <option value="">+ dato</option>
-              {DATOS_EQUIPO.map((d) => <option key={d.clave} value={d.clave}>{d.nombre}</option>)}
+              {DATOS.map((d) => <option key={d.clave} value={d.clave}>{d.nombre}</option>)}
             </select>
             <button type="button" className="btn chico" disabled={ocupado || i === 0} aria-label="Subir" onClick={() => mover(i, -1)}>↑</button>
             <button type="button" className="btn chico" disabled={ocupado || i === lineas.length - 1} aria-label="Bajar" onClick={() => mover(i, 1)}>↓</button>
@@ -72,11 +76,11 @@ export function PlantillaEquipos({ plantilla, maxEquipos, separados, ejemplo, oc
         ))}
         <select value="" disabled={ocupado || lineas.length >= 15} aria-label="Agregar atributo" className="chico" style={{ justifySelf: 'start' }}
           onChange={(e) => {
-            const d = DATOS_EQUIPO.find((x) => x.clave === e.target.value)
+            const d = DATOS.find((x) => x.clave === e.target.value)
             if (d) poner([...lineas, `${d.emoji} {${d.clave}}`])
           }}>
           <option value="">+ Agregar atributo…</option>
-          {DATOS_EQUIPO.map((d) => <option key={d.clave} value={d.clave}>{d.emoji} {d.nombre}</option>)}
+          {DATOS.map((d) => <option key={d.clave} value={d.clave}>{d.emoji} {d.nombre}</option>)}
         </select>
       </div>
       <small className="muted">

@@ -19,6 +19,7 @@ const SIN_PERMISO = 'No tienes permiso para cambiar el inventario.'
 
 // El RLS decide (RI-01): si no devuelve la fila, es que no hubo permiso.
 function mensaje(error: { message: string; code?: string }) {
+  if (error.code === '22023') return error.message // la validación de atributos de la base (0045) ya dice cuál y por qué
   if (error.code === '42501' || /row-level security|permiso/i.test(error.message)) return SIN_PERMISO
   if (error.code === '23505') return 'Ya existe un equipo con ese código.'
   return error.message
@@ -50,9 +51,30 @@ export async function guardarProducto(_: Resultado, datos: FormData): Promise<Re
   if (!Number.isFinite(precio) || precio < 0) return { error: 'El precio tiene que ser un número (sin decimales raros).' }
   if (!Number.isInteger(stock) || stock < 0) return { error: 'El stock tiene que ser un número entero, 0 o más.' }
 
-  const fila: Record<string, string | number> = { precio, stock }
+  const fila: Record<string, unknown> = { precio, stock }
   for (const c of CAMPOS_TEXTO) fila[c] = String(datos.get(c) ?? '').trim()
   const supabase = crearCliente()
+
+  // Atributos del producto (F4·41, RI-08): solo los que mostró el formulario; los demás (archivados, otra categoría) se conservan.
+  const enFormulario = String(datos.get('atributos_formulario') ?? '').split(',').filter(Boolean)
+  if (enFormulario.length) {
+    const [{ data: defs }, { data: actual }] = await Promise.all([
+      supabase.from('producto_atributos').select('clave, nombre, tipo').in('clave', enFormulario),
+      id ? supabase.from('productos').select('atributos').eq('id', id).maybeSingle() : Promise.resolve({ data: null }),
+    ])
+    const atributos: Record<string, unknown> = { ...((actual?.atributos ?? {}) as Record<string, unknown>) }
+    for (const d of defs ?? []) {
+      const texto = String(datos.get(`atr_${d.clave}`) ?? '').trim()
+      if (!texto) { delete atributos[d.clave]; continue }
+      if (d.tipo === 'numero') {
+        const n = numero(texto)
+        if (!Number.isFinite(n)) return { error: `«${d.nombre}» tiene que ser un número.` }
+        atributos[d.clave] = n
+      } else if (d.tipo === 'si_no') atributos[d.clave] = texto === 'si'
+      else atributos[d.clave] = texto
+    }
+    fila.atributos = atributos
+  }
 
   let productoId = id
   let fotoAnterior = String(datos.get('foto_ruta_actual') ?? '')
@@ -88,13 +110,14 @@ export async function guardarProducto(_: Resultado, datos: FormData): Promise<Re
 // --------------------------------------------------------------------------- //
 // Carga del Excel (RI-04): el mismo lector de consola y las reglas de la base
 // --------------------------------------------------------------------------- //
-export type FilaCarga = Record<string, string | number>
+export type FilaCarga = Record<string, string | number | Record<string, string>> // atributos: {encabezado: celda} (F4·41)
 export type Previa = {
   error?: string
   productos?: FilaCarga[]
   ignoradas?: string[]
   resultado?: {
     aplicado: boolean
+    columnas_ignoradas?: string[]
     total: number
     errores: { fila?: string; codigo?: string; error: string }[]
     nuevos: { codigo: string; marca: string; modelo: string; precio: number; stock: number }[]
@@ -113,7 +136,7 @@ export async function previsualizarExcel(_: Previa, datos: FormData): Promise<Pr
   if (hoja.size > 10 * 1024 * 1024) return { error: 'La hoja pesa más de 10 MB.' }
 
   const carpeta = await mkdtemp(path.join(tmpdir(), 'crm-carga-'))
-  let leida: { productos?: FilaCarga[]; errores?: string[]; ignoradas?: string[]; error?: string }
+  let leida: { productos?: FilaCarga[]; errores?: string[]; error?: string }
   try {
     const archivo = path.join(carpeta, nombre.endsWith('.csv') ? 'hoja.csv' : 'hoja.xlsx')
     await writeFile(archivo, Buffer.from(await hoja.arrayBuffer()))
@@ -128,12 +151,13 @@ export async function previsualizarExcel(_: Previa, datos: FormData): Promise<Pr
   const productos = leida.productos ?? []
   // Los errores de lectura (sin código, repetido, precio que no es número) ya vienen con su fila.
   if (leida.errores?.length)
-    return { ignoradas: leida.ignoradas, resultado: { aplicado: false, total: productos.length, nuevos: [], cambian: [], sin_stock: [],
+    return { resultado: { aplicado: false, total: productos.length, nuevos: [], cambian: [], sin_stock: [],
       errores: leida.errores.map((e) => ({ error: e })) } }
 
   const { data, error } = await crearCliente().rpc('cargar_inventario', { p_productos: productos, p_aplicar: false })
   if (error) return { error: mensaje(error) }
-  return { productos, ignoradas: leida.ignoradas, resultado: data }
+  // Las columnas que no son campos ni atributos las dice la base (F4·41, RI-09).
+  return { productos, ignoradas: data?.columnas_ignoradas ?? [], resultado: data }
 }
 
 export async function aplicarExcel(productos: FilaCarga[]): Promise<Previa> {

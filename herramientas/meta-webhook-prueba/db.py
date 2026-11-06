@@ -74,6 +74,11 @@ def config_meta(forzar=False):
 _cache = {"t": 0, "filas": []}
 
 
+def producto_atributos():
+    """Atributos activos del producto (F4·41): clave, nombre, tipo y emoji. Cada 30 s, como el resto de la configuración."""
+    return _cacheado("producto_atributos", "producto_atributos?archivado_en=is.null&select=clave,nombre,tipo,emoji&order=orden,id") or []
+
+
 def productos_con_stock():
     """Productos con stock. Se refresca cada 30 s: un cambio de precio se ve casi en el acto."""
     if time.time() - _cache["t"] > 30:

@@ -15,7 +15,8 @@ Las reglas de la carga viven en la función cargar_inventario de la base (decisi
 Columnas que reconoce (en cualquier orden, con o sin tildes y mayúsculas; las demás se ignoran):
   código · categoría · descripción · marca · modelo · procesador · generación · ram · almacenamiento (disco)
   · estado (grado) · precio · stock (cantidad) · foto · video
-Solo código y precio son obligatorias. Sin lectura de .xlsx externa: usa la biblioteca estándar.
+Solo código y precio son obligatorias. Las demás columnas se mandan como atributos del producto (F4·41, RI-09): la base las busca
+por nombre o clave entre los atributos activos y avisa las que no usa. Sin lectura de .xlsx externa: usa la biblioteca estándar.
 """
 
 import csv
@@ -103,8 +104,9 @@ def leer_hoja(ruta):
     for i, fila in enumerate(filas):
         mapa = {j: COLUMNAS[_n(t)] for j, t in enumerate(fila) if _n(t) in COLUMNAS}
         if "codigo" in mapa.values():
-            ignoradas = [t for j, t in enumerate(fila) if t and j not in mapa]
-            return mapa, filas[i + 1:], ignoradas, i + 2
+            # Las columnas que no son campos fijos van como posibles atributos (la base decide cuáles existen).
+            extras = {j: str(t).strip() for j, t in enumerate(fila) if str(t).strip() and j not in mapa}
+            return mapa, filas[i + 1:], extras, i + 2
     sys.exit("✗ No encontré la columna de código en la hoja (Código, Referencia o SKU).")
 
 
@@ -122,13 +124,14 @@ def numero(valor, entero=False):
 
 
 def productos_de(ruta):
-    mapa, filas, ignoradas, primera = leer_hoja(ruta)
+    mapa, filas, extras, primera = leer_hoja(ruta)
     if "precio" not in mapa.values():
         sys.exit("✗ La hoja no tiene columna de precio.")
     productos, errores, vistos = [], [], {}
     for k, fila in enumerate(filas, start=primera):
         datos = {destino: (fila[j] if j < len(fila) else "") for j, destino in mapa.items()}
-        if not any(str(v).strip() for v in datos.values()):
+        atributos = {enc: str(fila[j] if j < len(fila) else "").strip() for j, enc in extras.items()}
+        if not any(str(v).strip() for v in [*datos.values(), *atributos.values()]):
             continue
         codigo = str(datos.get("codigo", "")).strip()
         if not codigo:
@@ -139,6 +142,8 @@ def productos_de(ruta):
             continue
         vistos[codigo.upper()] = k
         p = {"codigo": codigo, **{c: str(datos.get(c, "")).strip() for c in TEXTO if c in datos}}
+        if atributos:
+            p["atributos"] = atributos
         try:
             p["precio"] = numero(datos.get("precio"))
         except ValueError:
@@ -149,7 +154,7 @@ def productos_de(ruta):
             except ValueError:
                 errores.append(f"fila {k} ({codigo}): stock «{datos.get('stock')}» no es un número")
         productos.append(p)
-    return productos, errores, ignoradas
+    return productos, errores, list(extras.values())
 
 
 # --------------------------------------------------------------------------- #
@@ -183,16 +188,15 @@ def main():
     if "--json" in sys.argv:
         # Solo lee la hoja y la imprime: así la app usa el mismo lector (F3·9, decisión 0025).
         try:
-            hoja, errores, ignoradas = productos_de(ruta)
+            hoja, errores, _ = productos_de(ruta)
         except SystemExit as e:
             print(json.dumps({"error": str(e.code)}, ensure_ascii=False))
             return
-        print(json.dumps({"productos": hoja, "errores": errores, "ignoradas": ignoradas}, ensure_ascii=False))
+        # Las columnas que no se usan las dice la base (columnas_ignoradas): solo ella sabe qué atributos existen.
+        print(json.dumps({"productos": hoja, "errores": errores}, ensure_ascii=False))
         return
     aplicar = "--aplicar" in sys.argv
-    hoja, errores, ignoradas = productos_de(ruta)
-    if ignoradas:
-        print(f"· columnas que no se usan: {', '.join(ignoradas)}")
+    hoja, errores, _ = productos_de(ruta)
     if errores:
         print("✗ La hoja tiene errores; no se cargó nada:\n  " + "\n  ".join(errores))
         sys.exit(1)
@@ -203,6 +207,8 @@ def main():
         print("✗ La hoja tiene errores; no se cargó nada:\n  " +
               "\n  ".join(f"fila {e.get('fila')}: {e.get('codigo', '')} {e['error']}" for e in r["errores"]))
         sys.exit(1)
+    if r.get("columnas_ignoradas"):
+        print(f"· columnas que no se usan (no son campos ni atributos): {', '.join(r['columnas_ignoradas'])}")
     print(f"Hoja: {r['total']} productos · nuevos: {len(r['nuevos'])} · cambian: {len(r['cambian'])} · "
           f"quedan sin stock (no vienen en la hoja): {len(r['sin_stock'])}")
     for p in r["nuevos"][:15]:

@@ -3,6 +3,7 @@ import Link from 'next/link'
 const PESTANAS = [
   { ruta: '/inventario', texto: 'Equipos' },
   { ruta: '/inventario/cargar', texto: 'Cargar Excel', escribe: true },
+  { ruta: '/inventario/atributos', texto: 'Atributos', escribe: true },
   { ruta: '/inventario/catalogos', texto: 'Catálogos' },
 ]
 

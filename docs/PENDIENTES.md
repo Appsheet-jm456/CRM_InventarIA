@@ -6,6 +6,8 @@ de las Fases 1 y 2 abajo. **Código nuevo:** el bot de prueba sobre Supabase (`h
 
 ## Dónde retomar (en este orden)
 
+0. **6 nov 2026 · F4·41 Atributos del producto construida 🔵 ([INVENTARIO.md](INVENTARIO.md#atributos-del-producto-f441), migración 0045):** Inventario → Atributos, ficha del equipo, Excel con columnas por atributo y `{clave}` en la plantilla de Avi. **Falta la prueba del dueño** (pasos al final de la sección). Sigue F4·42. En `migrar.sh --probar` siguen en rojo pruebas ajenas a esto que dependen de datos vivos: 0010, 0011, 0012, 0014, 0015, 0024 y 0041.
+
 0. **6 nov 2026 · Pedido del cliente Ventas Tech: ficha al preguntar por un equipo (documentadas, por construir):** **F4·41** atributos del producto (gráfica, pantalla, teclado, estado estético; [INVENTARIO.md](INVENTARIO.md#atributos-del-producto-f441), RI-07 a RI-10) y después **F4·42** acción «Pregunta por un equipo» en Agente → Acciones: «¿cuánto vale el Lenovo Legion 7?» → ficha con emojis, precio de la base y cierre editables, sin IA ([AGENTE.md](AGENTE.md), RAG-43 a RAG-48). Decisiones del dueño del 6 nov: disparador en Acciones, con precio, atributos como HU aparte y lista si coinciden varios. El mismo día el dueño aprobó F4·34, F4·35 y F4·36.
 
 0. **3 nov 2026 · F4·40 Hasta 10 fichas de Avi con catálogo al final construida 🔵 ([FLUJO-DEL-BOT.md](FLUJO-DEL-BOT.md), migración 0044):** falta la prueba del dueño por WhatsApp. Los equipos no tienen foto: Avi ofrece «ficha con foto» y sale sin imagen hasta subirlas en Inventario.
