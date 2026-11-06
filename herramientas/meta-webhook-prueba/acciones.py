@@ -178,7 +178,7 @@ def _marca_de(accion, st):
     hallado = accion.get("_equipo") or {}
     marcas = {e["marca"].upper() for e in hallado.get("equipos") or [] if e.get("marca")} or set(hallado.get("marcas") or ())
     if not marcas:
-        cod = (st.get("campos") or {}).get("Código producto")
+        cod = ((st.get("campos") or {}).get("Código producto") or "").split(",")[0].strip()  # con carrito (F4·44) pueden ser varios
         p = next((x for x in flujo.inventario() if cod and x["cod"] == cod), None)
         marcas = {p["marca"].upper()} if p and p.get("marca") else set()
     return marcas.pop() if len(marcas) == 1 else ""

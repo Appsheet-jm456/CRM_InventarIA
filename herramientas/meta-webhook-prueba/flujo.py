@@ -464,6 +464,16 @@ def entrar_agente(st, c):
     return [m_texto(con_datos(st, c["texto"]))]
 
 
+def entrar_carrito(st, c):
+    """Cuadro 🛒 Carrito (F4·44, RAG-55): su mensaje de entrada y la compra con carrito, con el equipo de la última ficha si lo hay.
+    Sus flechas («Pedido pagado» y «Pidió asesor») las sigue compra.py."""
+    import compra  # aquí y no arriba: compra importa flujo
+    st["errores"] = 0
+    st["campos"].pop("Errores bot", None)
+    entrada = [m_texto(con_datos(st, c["texto"]))] if (c.get("texto") or "").strip() else []
+    return entrada + compra.iniciar(st, "", None, cuadro=c)
+
+
 def en_agente(st):
     """El cliente está en un cuadro Agente (lo pregunta el receptor antes de correr el motor)."""
     c = {} if st.get("pausa") else cuadro_actual(st)
@@ -563,6 +573,8 @@ def ir(st, clave):
         return preguntar(st, c)
     if c["tipo"] == "agente":
         return entrar_agente(st, c)
+    if c["tipo"] == "carrito":
+        return entrar_carrito(st, c)
     st["nodo"], st["errores"] = c["clave"], 0
     st["campos"].pop("Errores bot", None)
     aplicar(st, c["al_entrar"])

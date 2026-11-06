@@ -21,6 +21,7 @@ import { OtrasSalidas } from './OtrasSalidas'
 import { MAX_ESPERA, PanelPausa, textoEspera } from './PanelPausa'
 import { InsertarDato, PanelPregunta, conEjemplos, insertarEn } from './PanelPregunta'
 import { PanelAgente } from './PanelAgente'
+import { PanelCarrito } from './PanelCarrito'
 import { Simulador } from './Simulador'
 import { VistaWhatsApp } from './VistaWhatsApp'
 
@@ -30,7 +31,7 @@ import { VistaWhatsApp } from './VistaWhatsApp'
 export type OpcionFlujo = Opcion & { destino: string | null; palabras?: string[]; reconocer?: string; efectos?: Record<string, unknown> }
 export type Cuadro = {
   clave: string
-  tipo: 'mensaje' | 'presupuesto' | 'marca' | 'equipos' | 'ficha' | 'asesor' | 'aviso' | 'ir_bot' | 'condicion' | 'catalogo' | 'pausa' | 'pregunta' | 'agente'
+  tipo: 'mensaje' | 'presupuesto' | 'marca' | 'equipos' | 'ficha' | 'asesor' | 'aviso' | 'ir_bot' | 'condicion' | 'catalogo' | 'pausa' | 'pregunta' | 'agente' | 'carrito'
   nombre: string
   orden: number
   inicio: boolean
@@ -56,19 +57,20 @@ export type DatoFicha = { clave: string; nombre: string; tipo: string; opciones:
 const TIPOS: Record<Cuadro['tipo'], string> = {
   mensaje: 'Mensaje', presupuesto: 'Sistema · presupuesto', marca: 'Sistema · marcas con stock', equipos: 'Sistema · lista de equipos',
   ficha: 'Sistema · ficha del equipo', asesor: 'Sistema · pasa a asesor', aviso: 'Sistema · aviso',
-  ir_bot: 'Ir a otro bot', condicion: 'Condiciones', catalogo: 'Catálogos', pausa: 'Pausa', pregunta: 'Pregunta', agente: 'Agente',
+  ir_bot: 'Ir a otro bot', condicion: 'Condiciones', catalogo: 'Catálogos', pausa: 'Pausa', pregunta: 'Pregunta', agente: 'Agente', carrito: 'Carrito',
 }
 const SALIDAS: Record<string, string> = {
   siguiente: 'Luego', cambiar_presupuesto: 'Sin equipos → cambiar presupuesto', respuesta: 'Cuando el cliente responda',
   ninguna: 'Ninguna se cumple', respondio: 'El cliente respondió', tiempo: 'Pasó el tiempo',
   otra: 'Otra respuesta', sin_respuesta: 'Sin respuesta', error: 'Error al enviar el mensaje', no_logro: 'No logró responder',
   compra: 'Inició compra', asesor: 'Pidió asesor o no avanza', menu: 'Volvió al menú', falla: 'Error del cerebro',
+  listo: 'Pedido pagado (comprobante recibido)',
 }
 // Los cuadros que crea el dueño desde "+ Agregar" (RF-08): se editan, se unen y se borran. Los demás son del sistema.
-const DEL_DUENO: Cuadro['tipo'][] = ['mensaje', 'ir_bot', 'condicion', 'catalogo', 'pausa', 'pregunta', 'agente']
+const DEL_DUENO: Cuadro['tipo'][] = ['mensaje', 'ir_bot', 'condicion', 'catalogo', 'pausa', 'pregunta', 'agente', 'carrito']
 const delDueno = (c: Cuadro) => DEL_DUENO.includes(c.tipo)
 // A la ficha, la lista y los avisos no se llega con una flecha: los abre el bot (migración 0012).
-const DESTINOS: Cuadro['tipo'][] = ['mensaje', 'presupuesto', 'marca', 'asesor', 'ir_bot', 'condicion', 'catalogo', 'pausa', 'pregunta', 'agente']
+const DESTINOS: Cuadro['tipo'][] = ['mensaje', 'presupuesto', 'marca', 'asesor', 'ir_bot', 'condicion', 'catalogo', 'pausa', 'pregunta', 'agente', 'carrito']
 // Espejo de salidas_del_cuadro (migración 0016).
 function salidasDe(c: Pick<Cuadro, 'tipo' | 'opciones'>): string[] {
   if (c.tipo === 'mensaje') return c.opciones?.length ? [] : ['respuesta']
@@ -80,6 +82,7 @@ function salidasDe(c: Pick<Cuadro, 'tipo' | 'opciones'>): string[] {
 function opcionalesDe(c: Pick<Cuadro, 'tipo' | 'opciones'>): string[] {
   if (c.tipo === 'pregunta') return ['sin_respuesta', 'no_logro']
   if (c.tipo === 'agente') return ['compra', 'asesor', 'menu', 'falla'] // F4·35, RF-37
+  if (c.tipo === 'carrito') return ['listo', 'asesor'] // F4·44, RAG-55
   if (c.tipo !== 'mensaje') return []
   return c.opciones?.length ? ['otra', 'sin_respuesta', 'error'] : ['sin_respuesta', 'error']
 }
@@ -202,6 +205,7 @@ function NodoCuadro({ data, selected }: NodeProps<Node<DatosNodo>>) {
       {c.tipo === 'pausa' && <p className="nodo-bot-texto">⏳ Espera {textoEspera(Number(c.ajustes?.segundos ?? 0))}</p>}
       {c.tipo === 'pregunta' && <p className="nodo-bot-texto">❓ Guarda en: <b>{dato ?? 'elige el dato'}</b></p>}
       {c.tipo === 'agente' && <p className="nodo-bot-texto">🤖 {recorte(String(c.ajustes?.instruccion || 'Avi conversa desde aquí'), 90)} · {Number(c.ajustes?.max_vueltas ?? 8)} vueltas</p>}
+      {c.tipo === 'carrito' && <p className="nodo-bot-texto">🛒 Arma el pedido: «¿otro equipo?», resumen, cuentas y comprobante</p>}
       {c.tipo === 'catalogo' && <p className="nodo-bot-texto">📚 {catalogo ?? 'Elige el catálogo'}</p>}
       {c.tipo === 'ir_bot' && <p className="nodo-bot-texto">↪ {destinoBot ? <>Va al inicio de <b>{destinoBot}</b></> : 'Elige a qué bot lleva'}</p>}
       {c.tipo === 'presupuesto' && <small className="muted">Rangos de presupuesto o un monto escrito</small>}
@@ -523,6 +527,7 @@ const AGREGAR: { texto: string; tipo: string; detalle: string; deshabilitada?: b
   { texto: '📚 Catálogos', tipo: 'catalogo', detalle: 'Envía un catálogo de Inventario y sigue' },
   { texto: '❓ Pregunta', tipo: 'pregunta', detalle: 'Pregunta un dato (cédula, ciudad…) y lo guarda en la ficha' },
   { texto: '🤖 Agente', tipo: 'agente', detalle: 'Avi conversa desde aquí con su instrucción y sale por flechas' },
+  { texto: '🛒 Carrito', tipo: 'carrito', detalle: 'Compra de uno o varios equipos: resumen, cuentas y comprobante' },
   { texto: '⏳ Pausa', tipo: 'pausa', detalle: 'Espera; si el cliente no escribe, sigue al recordatorio' },
   { texto: '↪ Ir a otro bot', tipo: 'ir_bot', detalle: 'Lleva al cliente al inicio de otro bot' },
 ]
@@ -780,6 +785,13 @@ function LienzoInterno({ bot, bots, catalogos, datos, apagadasEnAvi = [], puedeS
           ) : elegidoCuadro?.tipo === 'agente' ? (
             <PanelAgente key={elegidoCuadro.clave + elegidoCuadro.actualizado_en} bot={bot.id} cuadro={elegidoCuadro} editable={editable} datos={datos}
               apagadasEnAvi={apagadasEnAvi} destinos={cuadros.filter((c) => DESTINOS.includes(c.tipo) && c.clave !== elegidoCuadro.clave)}
+              alTerminar={(r, borrado) => {
+                setAviso(r)
+                if (!r.error) { marcarPendiente(false); if (borrado) setElegido(null); router.refresh() }
+              }} />
+          ) : elegidoCuadro?.tipo === 'carrito' ? (
+            <PanelCarrito key={elegidoCuadro.clave + elegidoCuadro.actualizado_en} bot={bot.id} cuadro={elegidoCuadro} editable={editable}
+              destinos={cuadros.filter((c) => DESTINOS.includes(c.tipo) && c.clave !== elegidoCuadro.clave)}
               alTerminar={(r, borrado) => {
                 setAviso(r)
                 if (!r.error) { marcarPendiente(false); if (borrado) setElegido(null); router.refresh() }

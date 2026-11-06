@@ -6,7 +6,7 @@ export default async function PaginaCompra() {
   const supabase = crearCliente()
   const [{ data: config }, { data: etapas }, { data: accion }, { data: bots }, { data: publicados }] = await Promise.all([
     supabase.from('agente_config')
-      .select('texto_cuentas, texto_comprobante, texto_sigue_interesado, texto_cancelacion, horas_sin_respuesta, cargo_configuracion, compra_bot_despues')
+      .select('texto_cuentas, texto_comprobante, texto_sigue_interesado, texto_cancelacion, horas_sin_respuesta, cargo_configuracion, compra_bot_despues, carrito_activo, carrito_max, carrito_texto_otro, carrito_texto_pedir, carrito_texto_maximo, carrito_encabezado')
       .eq('id', 1).maybeSingle(),
     supabase.from('compra_etapas')
       .select('embudos(nombre), esperando:etapas!compra_etapas_esperando_pago_id_fkey(nombre), confirmar:etapas!compra_etapas_pago_por_confirmar_id_fkey(nombre)'),
@@ -25,6 +25,12 @@ export default async function PaginaCompra() {
         horas_sin_respuesta: config?.horas_sin_respuesta ?? 12,
         cargo_configuracion: Number(config?.cargo_configuracion ?? 80000),
         compra_bot_despues: config?.compra_bot_despues ?? null,
+        carrito_activo: config?.carrito_activo ?? false,
+        carrito_max: config?.carrito_max ?? 5,
+        carrito_texto_otro: config?.carrito_texto_otro ?? '',
+        carrito_texto_pedir: config?.carrito_texto_pedir ?? '',
+        carrito_texto_maximo: config?.carrito_texto_maximo ?? '',
+        carrito_encabezado: config?.carrito_encabezado ?? '',
       }}
       bots={(bots ?? []).map((b) => ({ id: b.id, nombre: b.nombre, archivado: b.archivado, publicado: !!publicados?.some((f) => f.bot_id === b.id) }))}
       etapas={(etapas ?? []).map((e) => ({

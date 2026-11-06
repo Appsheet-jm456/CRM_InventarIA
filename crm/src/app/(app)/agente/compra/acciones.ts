@@ -12,7 +12,16 @@ export type DatosCompra = {
   horas_sin_respuesta: number
   cargo_configuracion: number
   compra_bot_despues: number | null // F4·34, RF-28: bot del lienzo después del comprobante (null: al asesor como antes)
+  // F4·44 (RAG-54): carrito de varios equipos
+  carrito_activo: boolean
+  carrito_max: number
+  carrito_texto_otro: string
+  carrito_texto_pedir: string
+  carrito_texto_maximo: string
+  carrito_encabezado: string
 }
+
+const MARCAS_CARRITO = ['n', 'max', 'nombre']
 
 const MAX_WHATSAPP = 4096
 
@@ -29,6 +38,14 @@ export async function guardarCompra(d: DatosCompra): Promise<Resultado> {
   if (!Number.isInteger(d.horas_sin_respuesta) || d.horas_sin_respuesta < 1 || d.horas_sin_respuesta > 23)
     return { error: 'El recordatorio va entre 1 y 23 horas (WhatsApp solo deja escribir libre 24 h después del último mensaje del cliente).' }
   if (!(d.cargo_configuracion >= 0)) return { error: 'El cargo de configuración no puede ser negativo.' }
+  if (!Number.isInteger(d.carrito_max) || d.carrito_max < 2 || d.carrito_max > 10) return { error: 'El máximo de equipos por pedido va de 2 a 10.' }
+  for (const [campo, nombre, largo] of [['carrito_texto_otro', '¿otro equipo?', 1024], ['carrito_texto_pedir', 'pedir el equipo', 1024],
+    ['carrito_texto_maximo', 'máximo alcanzado', 1024], ['carrito_encabezado', 'encabezado del resumen', 300]] as const) {
+    if (!d[campo].trim()) return { error: `El texto de ${nombre} del carrito no puede quedar vacío.` }
+    if (d[campo].length > largo) return { error: `El texto de ${nombre} tiene máximo ${largo} caracteres.` }
+    const otras = [...d[campo].matchAll(/\{([^{}]*)\}/g)].map((m) => m[1]).filter((m) => !MARCAS_CARRITO.includes(m))
+    if (otras.length) return { error: `En «${nombre}» el bot solo reemplaza {n}, {max} y {nombre}; no {${otras.join('}, {')}}.` }
+  }
   const { data, error } = await crearCliente().from('agente_config').update({
     texto_cuentas: d.texto_cuentas.trim(),
     texto_comprobante: d.texto_comprobante.trim(),
@@ -37,6 +54,12 @@ export async function guardarCompra(d: DatosCompra): Promise<Resultado> {
     horas_sin_respuesta: d.horas_sin_respuesta,
     cargo_configuracion: Math.round(d.cargo_configuracion),
     compra_bot_despues: d.compra_bot_despues,
+    carrito_activo: d.carrito_activo,
+    carrito_max: d.carrito_max,
+    carrito_texto_otro: d.carrito_texto_otro.trim(),
+    carrito_texto_pedir: d.carrito_texto_pedir.trim(),
+    carrito_texto_maximo: d.carrito_texto_maximo.trim(),
+    carrito_encabezado: d.carrito_encabezado.trim(),
   }).eq('id', 1).select('id')
   if (error) return { error: error.message }
   if (!data?.length) return { error: 'No tienes permiso para cambiar la configuración de compra.' }

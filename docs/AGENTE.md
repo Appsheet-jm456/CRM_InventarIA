@@ -445,9 +445,22 @@ pagado y envíos separados por equipo.
 **Pregunta abierta (revisar con el dueño):** la pausa del asesor hoy no se levanta sola; si el asesor no atiende, el cliente queda sin respuesta.
 Se evalúa un aviso al asesor o un reinicio automático (otra tarea).
 
-**Por construir (con la orden del dueño):** migración con las columnas de Carrito en `agente_config` y el tipo de cuadro `carrito` (guardar, validar
-en `problemas_del_flujo`), `compra.py` con lista de equipos, el cuadro en el lienzo, la sección en Agente → Compra y pruebas (`prueba_carrito.py`,
-SQL de la migración).
+**Construida el 6 nov 2026 (migración 0048, 5 pruebas SQL; `prueba_carrito.py` 26/26).**
+- **Agente → Compra → 🛒 Carrito:** casilla «Permitir comprar varios equipos» (apagada), máximo (2 a 10, por defecto 5) y los cuatro textos
+  (`carrito_texto_otro`, `carrito_texto_pedir`, `carrito_texto_maximo`, `carrito_encabezado`; marcas `{n}`, `{max}`, `{nombre}`).
+- **Lienzo → + Agregar → 🛒 Carrito** (claves K1, K2…): mensaje de entrada opcional y dos flechas opcionales, **Pedido pagado (comprobante
+  recibido)** y **Pidió asesor**. Sin unir: lo de Agente → Compra (bot después del comprobante o asesor). El cuadro enciende el carrito aunque la
+  casilla esté apagada. El Simulador sigue la compra dentro del carrito (la cotización no se simula porque guarda un PDF).
+- **Motor** (`compra.py`): `st["compra"]["equipos"]`, `_preguntar_otro`, `_buscar_para_agregar` (detector de F4·42; si el modelo tiene uno libre,
+  su ficha con **Agregar este · Ver otro código · Ver mi pedido**; si son varios, la lista sin los que ya están en el pedido), `_confirmar` revisa
+  stock y precios de la base, `_responder_carrito` (otro, agregar, quitar, opciones del resumen por número). El resumen va en **lista** (WhatsApp
+  deja solo 3 botones): Confirmar pedido · Agregar otro equipo · Quitar un equipo · Cotizar este pedido · Hablar con asesor · Cancelar.
+- **Cotización del pedido** (`cotizacion.py`, `_generar_pedido`): no pregunta equipo ni cantidad; un renglón por equipo, configuración por equipo.
+- El dato «Código producto» de la oportunidad lleva los códigos separados por coma; quien lo lee toma el primero.
+
+**Para probarlo (dueño):** Agente → Compra → encender «Permitir comprar varios equipos» y Guardar; por WhatsApp ver una ficha, tocar **Lo
+quiero**, **Sí, agregar otro**, escribir otro código o modelo, **Agregar este**, **No, continuar** y revisar el resumen; probar Quitar, Cotizar
+y Confirmar. Para el lienzo: en un bot, + Agregar → 🛒 Carrito, unirlo desde un botón, publicar y probar en el Simulador.
 
 ### 5. Herramientas (lo que el agente puede hacer)
 

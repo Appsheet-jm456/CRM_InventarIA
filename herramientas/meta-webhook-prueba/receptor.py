@@ -815,6 +815,16 @@ def simular(pedido):
                     mensajes = r["mensajes"]
                 else:
                     avisos.append("🤖 Avi no respondió (cerebro apagado o con error): atiende el Híbrido.")
+            if r is None and compra.activa(st) and not st.get("pausa"):  # cuadro 🛒 Carrito (F4·44): la compra sigue en el simulador
+                rr = compra.responder(st, texto, "text", {"id": None, "telefono": "", "nombre": "", "etiquetas": []})
+                if rr is not None:
+                    r, mensajes = True, rr[0]
+                    if rr[3]:
+                        avisos.append(f"📝 Nota para el asesor: {rr[3]}")
+                    if cotizacion.activa(st):  # la cotización guarda un PDF en la base: no se simula
+                        st.pop("cotizacion", None)
+                        st["nodo"] = None
+                        avisos.append("📄 «Cotizar este pedido» genera y guarda un PDF: pruébalo por WhatsApp.")
             if r is None:
                 mensajes, st = flujo.responder(st, texto, avisos.append)
     for m in mensajes:

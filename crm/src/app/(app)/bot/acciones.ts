@@ -134,6 +134,12 @@ export async function guardarAgente(bot: number, clave: string, c: {
     p_max_vueltas: c.maxVueltas, p_compra: c.compra, p_asesor: c.asesor, p_menu: c.menu, p_falla: c.falla, p_bot: bot,
   }, 'Cuadro guardado en el borrador.')
 }
+// Carrito (F4·44, RAG-55): mensaje de entrada y sus dos salidas opcionales.
+export async function guardarCarrito(bot: number, clave: string, c: { nombre: string; texto: string; listo: string | null; asesor: string | null }) {
+  return rpc('borrador_guardar_carrito', {
+    p_clave: clave, p_nombre: c.nombre, p_texto: c.texto, p_listo: c.listo, p_asesor: c.asesor, p_bot: bot,
+  }, 'Cuadro guardado en el borrador.')
+}
 // Interruptores del bot (F4·35, RF-31 a RF-34): la base exige administrar_bot y deja el historial.
 export async function guardarInterruptores(i: { chatbot_activo: boolean; menu_activo: boolean; agente_en_todo: boolean; texto_apagado: string }) {
   const raras = [...new Set([...i.texto_apagado.matchAll(/\{([^{}]*)\}/g)].map((m) => m[1]).filter((m) => !['horario', 'proxima'].includes(m)))]

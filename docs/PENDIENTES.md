@@ -6,7 +6,7 @@ de las Fases 1 y 2 abajo. **Código nuevo:** el bot de prueba sobre Supabase (`h
 
 ## Dónde retomar (en este orden)
 
-0. **6 nov 2026 · F4·44 Carrito de varios equipos documentada ⚪ ([AGENTE.md](AGENTE.md#4f-carrito-comprar-varios-equipos-en-un-pedido-f444), RAG-54 a RAG-62), por construir con la orden del dueño:** «¿otro equipo?» tras «Lo quiero», resumen del pedido con total, un PDF de cotización; se parametriza en Agente → Compra → Carrito y se agrega al lienzo con el cuadro 🛒 Carrito. Pregunta abierta: la pausa del asesor no se levanta sola.
+0. **6 nov 2026 · F4·44 Carrito de varios equipos construida 🔵 (migración 0048, falta la prueba del dueño, [AGENTE.md](AGENTE.md#4f-carrito-comprar-varios-equipos-en-un-pedido-f444), RAG-54 a RAG-62):** Agente → Compra → Carrito (casilla apagada por defecto, máximo y textos) y cuadro 🛒 Carrito en el lienzo; «¿otro equipo?», resumen en lista con Quitar y Cotizar (un PDF), cuentas y nota del asesor con todos. Pregunta abierta: la pausa del asesor no se levanta sola.
 
 0. **6 nov 2026 · F4·43 Acciones: enviar catálogos y archivos PDF construida 🔵 (migración 0047, falta la prueba del dueño, [AGENTE.md](AGENTE.md), RAG-49 a RAG-53):** pasos «Enviar catálogo» (uno de la lista, el de la marca del equipo o el Unificado) y «Enviar archivo» (PDF o imagen subido en la acción), y casilla «catálogo de la marca al final» en la ficha de F4·42.
 

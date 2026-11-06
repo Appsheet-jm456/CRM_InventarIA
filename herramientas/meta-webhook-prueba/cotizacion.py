@@ -6,6 +6,9 @@ escrito, el de la última ficha o lo pide) → cantidad (hasta el stock) → dis
 reglas del negocio (precio de la base; cliente final + configuración por equipo; tarjeta + recargo como opción;
 validez) → se guarda en cotizaciones, se envía por WhatsApp y el cliente pasa a la etapa Cotización.
 
+Pedido del carrito (F4·44, RAG-60): «Cotizar este pedido» llega con la lista de códigos; no pregunta equipo ni cantidad y el PDF lleva
+un renglón por equipo (uno de cada uno).
+
 El estado va en st["cotizacion"] (leads.estado_bot). Mientras dura, st["nodo"] es "COTIZACION".
 """
 
@@ -82,14 +85,20 @@ def _siguiente(st, lead):
     return _generar(st, lead)
 
 
-def iniciar(st, texto, lead=None):
-    """Lo llama la acción de cotización. Devuelve los mensajes."""
+def iniciar(st, texto, lead=None, pedido=None, tipo=None):
+    """Lo llama la acción de cotización, o la compra con carrito con `pedido` (códigos) y el `tipo` de cliente si ya lo sabe.
+    Devuelve los mensajes."""
     st["cotizacion"] = {"paso": "nombre", "nombre": None, "cedula": None, "celular": None, "producto": None,
-                        "cantidad": None, "tipo": None, "celular_sugerido": _celular_de((lead or {}).get("telefono"))}
+                        "cantidad": None, "tipo": tipo, "celular_sugerido": _celular_de((lead or {}).get("telefono"))}
     st["nodo"] = NODO
+    if pedido:  # RAG-60: el pedido del carrito, uno de cada equipo
+        st["cotizacion"].update(pedido=list(pedido), producto="pedido", cantidad=1, equipo="tu pedido")
+        if "Interes-Distribuidor" in ((lead or {}).get("etiquetas") or []):
+            st["cotizacion"]["tipo"] = "distribuidor"
+        return _siguiente(st, lead)[0]
     p = flujo.buscar_codigo(texto)
     if not p and (st.get("campos") or {}).get("Código producto"):  # el de la última ficha
-        p = _producto_por_codigo(st["campos"]["Código producto"])
+        p = _producto_por_codigo(st["campos"]["Código producto"].split(",")[0].strip())
     if p:
         st["cotizacion"].update(producto=p["cod"], equipo=f"{p['marca']} {p['modelo']}".strip(), stock=int(p.get("stock") or 1))
     if "Interes-Distribuidor" in ((lead or {}).get("etiquetas") or []):
@@ -171,9 +180,62 @@ def _responder(st, entrada, tipo, lead):
     return _siguiente(st, lead)
 
 
+def _guardar_y_pdf(fila, valida, cfg):
+    """Guarda la cotización, arma el PDF y lo sube. Devuelve (ruta, número)."""
+    guardada = db.crear_cotizacion(fila)
+    apariencia, logo, mime = db.apariencia_para_pdf()
+    pdf = pdf_cotizacion.generar(dict(fila, consecutivo=guardada["consecutivo"],
+                                      valida_hasta=valida.astimezone(flujo.BOGOTA).replace(tzinfo=None)),
+                                 apariencia, logo, mime, float(cfg.get("recargo_tarjeta_pct") or 0))
+    ruta = f"cotizaciones/{guardada['consecutivo']}.pdf"
+    db.guardar_pdf_cotizacion(guardada["id"], ruta, pdf)
+    return ruta, pdf_cotizacion.numero(guardada["consecutivo"])
+
+
+def _generar_pedido(st, lead):
+    """RAG-60: un solo PDF con un renglón por equipo del carrito. Los que se agotaron no entran (RAG-28)."""
+    c = st["cotizacion"]
+    equipos = [p for p in (_producto_por_codigo(k) for k in c["pedido"]) if p]
+    if not equipos:
+        _limpiar(st)
+        return [flujo.m_botones("😕 Los equipos de tu pedido se acaban de agotar, así que no los puedo cotizar. ¿Te muestro otros o "
+                                "prefieres un asesor?", [("0", "Ver equipos"), ("9", "Hablar con asesor")])], [], None, None
+    cfg = _cfg()
+    items = [{"codigo": p["cod"], "nombre": f"{p['marca']} {p['modelo']}".strip(), "detalle": _detalle(p), "cantidad": 1,
+              "precio": int(p["precio"])} for p in equipos]
+    subtotal = sum(i["precio"] for i in items)
+    cargos = []
+    cargo = int(float(cfg.get("cargo_configuracion") or 0))
+    if c["tipo"] == "cliente_final" and cargo:
+        cargos.append({"concepto": f"Configuración ({len(items)} × {flujo.cop(cargo)})", "valor": cargo * len(items)})
+    total = subtotal + sum(x["valor"] for x in cargos)
+    valida = datetime.now(timezone.utc) + timedelta(hours=int(cfg.get("validez_cotizacion_h") or 24))
+    fila = {"lead_id": (lead or {}).get("id"), "nombre": c["nombre"], "cedula": c["cedula"], "celular": c["celular"],
+            "tipo_cliente": c["tipo"], "items": items, "subtotal": subtotal, "cargos": cargos, "total": total,
+            "valida_hasta": valida.isoformat()}
+    ruta, numero = _guardar_y_pdf(fila, valida, cfg)
+    faltan = [k for k in c["pedido"] if k not in {p["cod"] for p in equipos}]
+    _limpiar(st)
+    st["valor"] = total
+    st["campos"].update({"Código producto": ", ".join(i["codigo"] for i in items), "Valor estimado": flujo.cop(total)})
+    flujo.etapa(st, "Cotización")
+    nota = (f"📄 Cotización {numero} del pedido: " + " + ".join(f"{i['nombre']} ({i['codigo']})" for i in items)
+            + f" · {'distribuidor' if c['tipo'] == 'distribuidor' else 'cliente final'} · total {flujo.cop(total)} · "
+            f"{c['nombre']}, CC {c['cedula']}, cel {c['celular']}.")
+    aviso = f"\n\n😕 No incluí {', '.join(faltan)}: se agotó." if faltan else ""
+    mensajes = [{"_cotizacion": {"ruta": ruta, "numero": numero}},
+                flujo.m_texto(f"📄 Te envié la cotización *{numero}* de tu pedido ({len(items)} "
+                              f"{'equipo' if len(items) == 1 else 'equipos'}) por *{flujo.cop(total)}*, válida por "
+                              f"{int(cfg.get('validez_cotizacion_h') or 24)} horas o hasta agotar existencias.{aviso}\n\n"
+                              "Si quieres comprar, escribe *quiero comprar*. 🙌")]
+    return mensajes, ["Cotizacion-Enviada"], None, nota
+
+
 def _generar(st, lead):
     """RAG-27 y RAG-28: precio de la base al momento de cotizar; sin stock no se cotiza."""
     c = st["cotizacion"]
+    if c.get("pedido"):
+        return _generar_pedido(st, lead)
     p = _producto_por_codigo(c["producto"])
     if not p:
         _limpiar(st)
@@ -193,14 +255,7 @@ def _generar(st, lead):
             "tipo_cliente": c["tipo"], "items": [{"codigo": p["cod"], "nombre": f"{p['marca']} {p['modelo']}".strip(),
                                                     "detalle": _detalle(p), "cantidad": cantidad, "precio": precio}],
             "subtotal": subtotal, "cargos": cargos, "total": total, "valida_hasta": valida.isoformat()}
-    guardada = db.crear_cotizacion(fila)
-    apariencia, logo, mime = db.apariencia_para_pdf()
-    pdf = pdf_cotizacion.generar(dict(fila, consecutivo=guardada["consecutivo"],
-                                      valida_hasta=valida.astimezone(flujo.BOGOTA).replace(tzinfo=None)),
-                                 apariencia, logo, mime, float(cfg.get("recargo_tarjeta_pct") or 0))
-    ruta = f"cotizaciones/{guardada['consecutivo']}.pdf"
-    db.guardar_pdf_cotizacion(guardada["id"], ruta, pdf)
-    numero = pdf_cotizacion.numero(guardada["consecutivo"])
+    ruta, numero = _guardar_y_pdf(fila, valida, cfg)
 
     _limpiar(st)
     st["valor"] = total

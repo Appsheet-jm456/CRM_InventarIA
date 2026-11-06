@@ -534,6 +534,13 @@ de Avi desde el catálogo. El único problema para publicar son los catálogos s
 
 **Verificación:** `prueba_fichas.py` (21) y seis preguntas con DeepSeek en el simulador. **Falta la prueba del dueño** por WhatsApp.
 
+## Cuadro 🛒 Carrito (F4·44, migración 0048)
+
+«+ Agregar → 🛒 Carrito» (claves K1, K2…) empieza la compra con carrito desde un bot dibujado: toma el equipo de la última ficha (o lo pide),
+pregunta «¿otro equipo?», arma el resumen y sigue con cuentas y comprobante. Flechas opcionales: **Pedido pagado (comprobante recibido)** y
+**Pidió asesor**; sueltas, sigue lo de Agente → Compra. Textos y máximo en Agente → Compra → Carrito. Diseño completo en
+[AGENTE.md §4f](AGENTE.md#4f-carrito-comprar-varios-equipos-en-un-pedido-f444) (RAG-54 a RAG-62). Guardar: `borrador_guardar_carrito`.
+
 ## Arranques y pruebas (F4·14 y F4·15, decisión 0028)
 
 **Lienzo.** "+ Mensaje" pasa a **"+ Agregar ▾"** con los cinco cuadros (Ir a otro bot es el quinto: un desplegable con los bots y una sola flecha de entrada); cada uno se crea en el centro de la vista y
