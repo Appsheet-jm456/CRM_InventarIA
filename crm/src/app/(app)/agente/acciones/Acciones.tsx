@@ -4,13 +4,18 @@ import { useState } from 'react'
 import {
   activarAccion, borrarAccion, crearAccion, guardarAccion, moverAccion, probarFrase, type Prueba, type Resultado,
 } from './acciones'
-import { FORMAS, PASOS, pasoListo, pasoVacio, type Condicion, type Paso } from './tipos'
+import { CONDICION_EQUIPO, FORMAS, PASOS, pasoListo, pasoVacio, type Condicion, type CondicionFrase, type Paso } from './tipos'
+import { EditorCondicionEquipo, EditorFicha } from './EditorFicha'
+import type { DatoEquipo, EquipoEjemplo } from '../personalidad/PlantillaEquipos'
 
 type Accion = {
   id: number; nombre: string; prioridad: number; activa: boolean; sistema: boolean
   cuando: Condicion[]; hacer: Paso[]; actualizado_en: string
 }
-type Contexto = { categorias: Record<string, number>; bots: { id: number; nombre: string }[]; hayCuentas: boolean }
+type Contexto = {
+  categorias: Record<string, number>; bots: { id: number; nombre: string }[]; hayCuentas: boolean
+  atributos: DatoEquipo[]; ejemplo: EquipoEjemplo | null // para la ficha del equipo (F4·42)
+}
 type Correr = (a: () => Promise<Resultado>) => Promise<Resultado>
 
 // Aviso por paso: lo que hace que el paso no envíe nada aunque la acción esté activa.
@@ -59,6 +64,9 @@ function EditorPaso({ p, ctx, cambiar, quitar, disabled }: {
         <textarea rows={2} value={p.texto} disabled={disabled} maxLength={4096} aria-label="Texto"
           placeholder="Hola {nombre} 👋 Nuestro horario es {horario}" onChange={(e) => cambiar({ ...p, texto: e.target.value })} />
       )}
+      {p.tipo === 'ficha_equipo' && (
+        <EditorFicha p={p} cambiar={cambiar} disabled={disabled} atributos={ctx.atributos} ejemplo={ctx.ejemplo} />
+      )}
       {p.tipo === 'asesor' && (
         <input value={p.texto ?? ''} disabled={disabled} placeholder="Motivo que ve el cliente (opcional)" aria-label="Motivo"
           onChange={(e) => cambiar({ ...p, texto: e.target.value })} />
@@ -77,7 +85,7 @@ function TarjetaAccion({ a, posicion, total, usos, ctx, ocupado, correr }: {
   const [cuando, setCuando] = useState<Condicion[]>(a.cuando)
   const [hacer, setHacer] = useState<Paso[]>(a.hacer)
   const [frase, setFrase] = useState('')
-  const [forma, setForma] = useState<Condicion['forma']>('contiene')
+  const [forma, setForma] = useState<CondicionFrase['forma']>('contiene')
   const cambio = nombre !== a.nombre || JSON.stringify(cuando) !== JSON.stringify(a.cuando) || JSON.stringify(hacer) !== JSON.stringify(a.hacer)
   const lista = a.hacer.length > 0 && a.cuando.length > 0 && a.hacer.every(pasoListo)
   const agregarFrase = () => {
@@ -125,19 +133,27 @@ function TarjetaAccion({ a, posicion, total, usos, ctx, ocupado, correr }: {
             <div className="accion-frases">
               {cuando.map((c, i) => (
                 <span key={i} className="chip acc accion-frase">
-                  {c.forma !== 'contiene' && <em>{FORMAS.find((f) => f.valor === c.forma)?.texto} </em>}«{c.texto}»
+                  {c.forma === 'equipo' ? '🔎 nombra un equipo del inventario' : <>
+                    {c.forma !== 'contiene' && <em>{FORMAS.find((f) => f.valor === c.forma)?.texto} </em>}«{c.texto}»</>}
                   <button type="button" disabled={ocupado} aria-label={`Quitar «${c.texto}»`} onClick={() => setCuando(cuando.filter((_, j) => j !== i))}>✕</button>
                 </span>
               ))}
               {!cuando.length && <small className="muted">Sin frases todavía.</small>}
             </div>
+            {cuando.map((c, i) => c.forma === 'equipo' && (
+              <EditorCondicionEquipo key={`e${i}`} c={c} disabled={ocupado} cambiar={(nueva) => setCuando(cuando.map((x, j) => (j === i ? nueva : x)))} />
+            ))}
             <div className="inline" style={{ marginTop: 8 }}>
-              <select value={forma} disabled={ocupado} aria-label="Forma" onChange={(e) => setForma(e.target.value as Condicion['forma'])}>
+              <select value={forma} disabled={ocupado} aria-label="Forma" onChange={(e) => setForma(e.target.value as CondicionFrase['forma'])}>
                 {FORMAS.map((f) => <option key={f.valor} value={f.valor}>{f.texto}</option>)}
               </select>
               <input value={frase} disabled={ocupado} placeholder="dónde quedan" aria-label="Frase nueva"
                 onChange={(e) => setFrase(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); agregarFrase() } }} />
               <button type="button" className="btn chico" disabled={ocupado || !frase.trim()} onClick={agregarFrase}>Agregar frase</button>
+              {!cuando.some((c) => c.forma === 'equipo') && (
+                <button type="button" className="btn chico" disabled={ocupado} title="Dispara cuando el mensaje nombra un equipo del inventario (F4·42)"
+                  onClick={() => setCuando([...cuando, { ...CONDICION_EQUIPO }])}>+ Nombra un equipo</button>
+              )}
             </div>
             <small className="muted">No importan mayúsculas, tildes ni signos. «contiene» busca al inicio de una palabra: «devolución» también encuentra «devoluciones», pero «cambio» no se activa con «intercambio».</small>
           </div>
@@ -198,9 +214,15 @@ function Probar() {
           <div className="accion-prueba">
             <div className="aviso ok">Responde la acción <b>«{p.accion.nombre}»</b>{p.etiquetas?.length ? ` · etiqueta ${p.etiquetas.join(', ')}` : ''}.</div>
             {p.vacia && <div className="aviso bad">Pero no tiene nada que enviar (categoría sin fichas activas o sin texto de cuentas): el mensaje seguiría por el menú.</div>}
+            {p.equipo && (
+              <small className="muted">
+                {p.equipo.agotado ? `Encontró «${p.equipo.modelo}», pero está agotado o no existe.` : `Encontró «${p.equipo.modelo}»: ${p.equipo.codigos.join(', ')}.`}
+              </small>
+            )}
             {p.mensajes.map((m, i) => (
               <div key={i} className="accion-burbuja">
                 {m.type === 'text' ? String((m.text as { body: string }).body)
+                  : m.type === 'image' ? `🖼 [foto del equipo]\n${String((m.image as { caption?: string }).caption ?? '')}`
                   : m.type === 'archivo' ? `📎 ${String(m.titulo)} (${String(m.archivo).endsWith('.pdf') ? 'PDF' : 'imagen'})`
                     : m.type === 'interactive' ? String(((m.interactive as { body?: { text?: string } }).body?.text) ?? '[mensaje con botones]')
                       : `[${String(m.type)}]`}
@@ -213,14 +235,14 @@ function Probar() {
   )
 }
 
-export function Acciones({ acciones, usos, categorias, bots, hayCuentas }: {
+export function Acciones({ acciones, usos, categorias, bots, hayCuentas, atributos, ejemplo }: {
   acciones: Accion[]; usos: Record<number, number>; categorias: Record<string, number>
-  bots: { id: number; nombre: string }[]; hayCuentas: boolean
+  bots: { id: number; nombre: string }[]; hayCuentas: boolean; atributos: DatoEquipo[]; ejemplo: EquipoEjemplo | null
 }) {
   const [aviso, setAviso] = useState<Resultado>({})
   const [ocupado, setOcupado] = useState(false)
   const [nombre, setNombre] = useState('')
-  const ctx: Contexto = { categorias, bots, hayCuentas }
+  const ctx: Contexto = { categorias, bots, hayCuentas, atributos, ejemplo }
   const correr: Correr = async (accion) => {
     setOcupado(true)
     const r = await accion()
@@ -237,7 +259,7 @@ export function Acciones({ acciones, usos, categorias, bots, hayCuentas }: {
           <div>
             <h2>Acciones «Cuando → Hacer»</h2>
             <small>
-              Cuando el cliente escribe una de las frases, el bot hace los pasos al instante, sin IA y antes que el menú. Se revisan de arriba
+              Cuando el cliente escribe una de las frases (o nombra un equipo del inventario), el bot hace los pasos al instante, sin IA y antes que el menú. Se revisan de arriba
               abajo y gana la primera que coincide. No corren si el chat está con un asesor.
             </small>
           </div>

@@ -11,6 +11,7 @@ export type Prueba = {
   vacia?: boolean
   mensajes: Record<string, unknown>[]
   etiquetas?: string[]
+  equipo?: { modelo: string; codigos: string[]; agotado: boolean } | null // F4·42: lo que encontró el disparador
 }
 
 function listo(error: { code?: string; message: string } | null, filas: unknown[] | null, ok?: string): Resultado {
@@ -28,7 +29,9 @@ function listo(error: { code?: string; message: string } | null, filas: unknown[
 function limpiar(cuando: Condicion[], hacer: Paso[]) {
   const vistos = new Set<string>()
   const c = cuando
-    .map((x) => ({ forma: x.forma, texto: x.texto.trim() }))
+    .map((x): Condicion => (x.forma === 'equipo'
+      ? { ...x, texto: x.texto.trim() || 'un equipo del inventario', palabras: [...new Set(x.palabras.map((p) => p.trim()).filter(Boolean))] }
+      : { forma: x.forma, texto: x.texto.trim() }))
     .filter((x) => x.texto && !vistos.has(`${x.forma}:${x.texto.toLowerCase()}`) && vistos.add(`${x.forma}:${x.texto.toLowerCase()}`))
   const h = hacer.filter((p) => {
     if (p.tipo === 'texto') return !!p.texto?.trim()

@@ -245,6 +245,12 @@ def resolver(mensaje):
         except Exception as e:
             anotar(f"  ✗ no se pudo subir el catálogo {c['nombre']}: {e!r}")
             return None
+    if mensaje.get("type") == "image" and "_producto" in mensaje.get("image", {}):  # ficha con foto (F4·42)
+        try:
+            return {"type": "image", "image": {"id": subir_foto(mensaje["image"]["_producto"]), "caption": mensaje["image"].get("caption", "")}}
+        except Exception as e:  # sin foto, la ficha sale igual como texto
+            anotar(f"  ✗ no se pudo subir la foto: {e!r}")
+            return flujo.m_texto(mensaje["image"].get("caption", ""))
     imagen = mensaje.get("interactive", {}).get("header", {}).get("image", {})
     if "_producto" in imagen:
         try:

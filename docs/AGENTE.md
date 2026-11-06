@@ -350,6 +350,21 @@ Gracias por tu interés en nuestro Lenovo Legion 7.
   «Lo quiero» y «quiero comprar» funcionen sin repetir el código. No corre si el chat está con un asesor (RAG-25). Contador y **Probar con una
   frase**, como las demás acciones.
 
+**Construida el 6 nov 2026 (migración 0046, 3 pruebas SQL y `prueba_ficha_equipo.py` 21/21).** La acción **«Pregunta por un equipo»** nace
+**apagada** en el lugar 9 (prioridad 75, después de Horario). Detalles:
+
+- Cuando `{"forma": "equipo"}`: botón **«+ Nombra un equipo»** en la tarjeta de la acción; opciones «Solo si además escribe una de estas
+  palabras» (cuánto, vale, precio, info…) y «También con la marca sola». Detección en `acciones.detectar_equipo`: código con stock, código que
+  parece del inventario pero no está (agotado), modelo con stock o en stock 0 (gana el que coincide en más palabras: «latitude 5410» agotado no
+  se confunde con el 5420 con stock) y, si se pidió, la marca sola.
+- Hacer `{"tipo": "ficha_equipo"}`: encabezado, renglones (con «+ Agregar renglón» de datos y atributos), cierre, foto, textos para varios y
+  para agotado, y qué hacer después (parecidos de la marca, asesor o nada). **Vista previa** con el equipo real que más atributos tiene.
+- Con foto subida sale como imagen con la ficha de pie (máximo 1.024 caracteres; si la foto falla, sale el texto). «Probar con una frase»
+  dice qué equipo encontró.
+
+**Para probarlo (dueño):** recargar; Agente → Acciones → «Pregunta por un equipo»: revisar textos y vista previa, **activarla** y en «Probar con
+una frase» escribir «¿cuánto vale el X1 Yoga Gen 6?»; luego por WhatsApp. Con Avi encendido, esta acción le gana (responde sin IA).
+
 ### 5. Herramientas (lo que el agente puede hacer)
 
 | Herramienta | Qué hace | Escribe en la base |

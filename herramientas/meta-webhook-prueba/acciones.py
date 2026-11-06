@@ -6,17 +6,35 @@ Se revisan antes que el menú y que el agente, no usan IA y responden al instant
 coincide (por prioridad); «Pasar a asesor» es siempre la primera.
 
 Pasos que se ejecutan hoy: texto, conocimiento (fichas activas de una categoría), cuentas (texto aprobado), ir a otro
-bot, etiqueta, pasar a asesor e iniciar los flujos de compra (F4·25) y cotización (F4·26).
+bot, etiqueta, pasar a asesor, iniciar los flujos de compra (F4·25) y cotización (F4·26) y la ficha del equipo (F4·42).
+
+F4·42 (RAG-43 a RAG-48): el «Cuando» puede ser «el mensaje nombra un equipo del inventario» (código o modelo, sin IA) y el
+paso «ficha_equipo» responde con la ficha de ese equipo (encabezado, renglones por atributo y cierre editables), una lista si
+coinciden varios, o el aviso de agotado.
 """
 
 import re
 
+import agente
 import compra
+import interprete
 import cotizacion
 import db
 import flujo
 
-PASOS_LISTOS = {"texto", "conocimiento", "cuentas", "bot", "etiqueta", "asesor", "flujo"}
+PASOS_LISTOS = {"texto", "conocimiento", "cuentas", "bot", "etiqueta", "asesor", "flujo", "ficha_equipo"}
+
+# Textos por defecto de la ficha (F4·42). La pantalla los muestra y el dueño los cambia.
+FICHA = {
+    "encabezado": "¡Hola {nombre}! 👋🔥\nGracias por tu interés en nuestro *{equipo}*.",
+    "plantilla": "🎮 {procesador}\n🚀 {grafica}\n🧠 {ram}\n💾 {disco}\n🌈 {teclado}\n✨ Estado estético {estado_estetico}\n💰 *{precio}*",
+    "cierre": "¿Te lo separo? Escribe *quiero comprar {codigo}* o pregúntame lo que necesites.",
+    "varios": "Tenemos estas opciones de *{modelo}* 👇",
+    "cierre_varios": "¿Cuál te interesa? Escríbeme su *código*.",
+    "agotado": "😕 El *{modelo}* no está disponible en este momento.",
+    "si_agotado": "parecidos",  # parecidos | asesor | nada
+    "foto": True,
+}
 FLUJOS_LISTOS = {"compra", "cotizacion"}
 
 
@@ -39,6 +57,40 @@ def cumple(condicion, n):
     return re.search(rf"(?:^|\s){re.escape(texto)}\w*(?:\s|$)", n) is not None
 
 
+def detectar_equipo(texto, condicion=None):
+    """RAG-43: el equipo que nombra el mensaje, sin IA. Devuelve {"equipos": [...], "modelo": "…"} con los que tienen stock,
+    {"equipos": [], "agotado": "…", "marcas": {...}} si lo que nombra está en stock 0 o es un código que no existe, o None.
+    `condicion` puede exigir una palabra de interés («cuánto», «precio»…) y aceptar la marca sola («tienen Lenovo»)."""
+    c = condicion or {}
+    n = normalizar(texto)
+    if not n:
+        return None
+    if c.get("exigir") and not any(cumple({"texto": p}, n) for p in c.get("palabras") or []):
+        return None
+    p = flujo.buscar_codigo(texto)
+    if p:
+        return {"equipos": [p], "modelo": f"{p['marca']} {p['modelo']}".strip()}
+    falta = flujo.codigo_sin_stock(texto)
+    if falta:
+        return {"equipos": [], "agotado": falta, "marcas": set()}
+    inv = flujo.inventario()
+    m = interprete.por_modelo(texto, inv)
+    agotados = [{"cod": a["codigo"], "marca": a.get("marca") or "", "modelo": a.get("modelo") or ""} for a in db.productos_agotados()]
+    m0 = interprete.por_modelo(texto, agotados)
+    # «latitude 5410» nombra mejor al agotado LATITUDE 5410 que al LATITUDE 5420 con stock: gana el que coincide en más palabras.
+    if m0 and (not m or len(m0["modelo"].split()) > len(m["modelo"].split())):
+        return {"equipos": [], "agotado": m0["modelo"], "marcas": m0["marcas"]}
+    if m:
+        por_cod = {x["cod"]: x for x in inv}
+        cods = m["cods"] or m["parecidos"]
+        return {"equipos": [por_cod[k] for k in cods if k in por_cod], "modelo": m["modelo"]}
+    if c.get("marca"):
+        for marca in sorted({x["marca"] for x in inv if x.get("marca")}, key=len, reverse=True):
+            if re.search(rf"(?:^|\s){re.escape(normalizar(marca))}(?:\s|$)", n):
+                return {"equipos": [x for x in inv if x["marca"] == marca], "modelo": marca}
+    return None
+
+
 def lista(accion):
     """Una acción se ejecuta solo si todos sus pasos ya existen."""
     pasos = accion.get("hacer") or []
@@ -52,14 +104,65 @@ def ganadora(texto, acciones=None):
     if not n:
         return None
     for a in acciones if acciones is not None else db.acciones_activas():
-        if any(cumple(c, n) for c in a.get("cuando") or []) and lista(a):
-            return a
+        if not lista(a):
+            continue
+        for c in a.get("cuando") or []:
+            if c.get("forma") == "equipo":  # F4·42: lo que encontró viaja con la acción hasta el paso de la ficha
+                hallado = detectar_equipo(texto, c)
+                if hallado:
+                    return {**a, "_equipo": hallado}
+            elif cumple(c, n):
+                return a
     return None
 
 
 def _texto(plantilla, lead):
     nombre = ((lead or {}).get("nombre") or "").split(" ")[0]
     return plantilla.replace("{horario}", flujo.texto_horario()).replace("{nombre}", nombre or "").strip()
+
+
+def _limpio(s):
+    """Sin el nombre del cliente, «¡Hola !» queda «¡Hola!»."""
+    return re.sub(r"[ \t]+([!?,.])", r"\1", re.sub(r"[ \t]{2,}", " ", s)).strip()
+
+
+def ficha_equipo(paso, accion, st, lead, texto, fresco=False):
+    """RAG-44 a RAG-48: la ficha del equipo que nombró el cliente, la lista si son varios o el aviso de agotado."""
+    f = {**FICHA, **{k: v for k, v in paso.items() if v is not None and k != "tipo"}}
+    hallado = accion.get("_equipo") or detectar_equipo(texto)
+    if not hallado:
+        return []
+    nombre = ((lead or {}).get("nombre") or "").split(" ")[0]
+    extra = {"nombre": nombre, "modelo": hallado.get("modelo") or hallado.get("agotado") or ""}
+    equipos = hallado["equipos"]
+    config = db.agente_config(fresco)
+    if len(equipos) == 1:  # una ficha completa (RAG-44)
+        p = equipos[0]
+        # {nombre} se pone antes: sin nombre, «¡Hola {nombre}!» queda «¡Hola!» y no se borra el renglón entero.
+        partes = [agente.armar_equipo(f[k].replace("{nombre}", nombre), p, extra) for k in ("encabezado", "plantilla", "cierre")]
+        cuerpo = _limpio("\n\n".join(x for x in partes if x.strip()))
+        # RAG-48: queda como el último equipo que vio, para «Lo quiero» o «quiero comprar» sin repetir el código.
+        st.setdefault("campos", {}).update({"Código producto": p["cod"], "Valor estimado": flujo.cop(p["precio"])})
+        st["valor"] = p["precio"]
+        if f.get("foto") and p.get("foto") and len(cuerpo) <= 1024:
+            return [flujo.m_imagen(p["foto"], cuerpo)]
+        return [flujo.m_texto(cuerpo)]
+    if equipos:  # varios: la lista de Avi (F4·37 / F4·40) con su plantilla y su máximo (RAG-45)
+        maximo = int(config.get("max_equipos") or 3)
+        antes = _limpio(f["varios"].replace("{modelo}", extra["modelo"]).replace("{nombre}", nombre))
+        despues = _limpio(f["cierre_varios"].replace("{nombre}", nombre))
+        return [flujo.m_texto(t) for t in agente.textos_con_equipos(antes, equipos[:maximo], despues, config)]
+    # Agotado o código que no existe (RAG-46): nunca se ofrece un equipo sin stock.
+    mensajes = [flujo.m_texto(_limpio(f["agotado"].replace("{modelo}", extra["modelo"]).replace("{nombre}", nombre)))]
+    if f.get("si_agotado") == "asesor":
+        mensajes += flujo.asesor(st)
+    elif f.get("si_agotado") == "parecidos" and hallado.get("marcas"):
+        parecidos = [x for x in flujo.inventario() if x["marca"].upper() in hallado["marcas"]]
+        if parecidos:
+            maximo = int(config.get("max_equipos") or 3)
+            mensajes += [flujo.m_texto(t) for t in agente.textos_con_equipos(
+                "Te puede interesar uno de estos 👇", parecidos[:maximo], _limpio(f["cierre_varios"].replace("{nombre}", nombre)), config)]
+    return mensajes
 
 
 def ejecutar(accion, st, lead=None, fresco=False, texto=""):
@@ -102,6 +205,8 @@ def _ejecutar(accion, st, lead, fresco, texto):
             mensajes += compra.iniciar(st, texto, lead)
         elif tipo == "flujo" and paso.get("flujo") == "cotizacion":  # F4·26
             mensajes += cotizacion.iniciar(st, texto, lead)
+        elif tipo == "ficha_equipo":
+            mensajes += ficha_equipo(paso, accion, st, lead, texto, fresco)
         elif tipo == "asesor":
             mensajes += flujo.asesor(st, etiqueta="Escalado-Asesor", motivo=(paso.get("texto") or "").strip() or None)
     if not mensajes and not st.get("pausa"):
@@ -124,6 +229,13 @@ def responder(st, texto, lead=None):
     return a, mensajes, st, etiquetas
 
 
+def _resumen_hallado(h):
+    """Qué equipo encontró el disparador, para la pantalla de prueba."""
+    if not h:
+        return None
+    return {"modelo": h.get("modelo") or h.get("agotado") or "", "codigos": [e["cod"] for e in h["equipos"]], "agotado": not h["equipos"]}
+
+
 def probar(texto, acciones=None):
     """«Probar con una frase» de la pantalla (RAG-26): qué acción gana y qué se enviaría, sin escribir ni enviar.
     Revisa también las apagadas para decir cuál ganaría si estuviera activa."""
@@ -137,6 +249,7 @@ def probar(texto, acciones=None):
     r = ejecutar(a, st, None, fresco=True, texto=texto)
     mensajes = r[0] if r else []
     return {"accion": {"id": a["id"], "nombre": a["nombre"]}, "apagada": None, "vacia": r is None,
+            "equipo": _resumen_hallado(a.get("_equipo")),
             "mensajes": [m if "_conocimiento" not in m else {"type": "archivo", "archivo": m["_conocimiento"]["archivo"],
                                                               "titulo": m["_conocimiento"]["titulo"]} for m in mensajes],
             "etiquetas": r[2] if r else []}

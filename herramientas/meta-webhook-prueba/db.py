@@ -74,6 +74,11 @@ def config_meta(forzar=False):
 _cache = {"t": 0, "filas": []}
 
 
+def productos_agotados():
+    """Equipos en stock 0 (código, marca y modelo): para avisar que el que pidió el cliente ya no está (F4·42, RAG-46)."""
+    return _cacheado("agotados", "productos?stock=eq.0&select=codigo,marca,modelo,categoria", 60) or []
+
+
 def producto_atributos():
     """Atributos activos del producto (F4·41): clave, nombre, tipo y emoji. Cada 30 s, como el resto de la configuración."""
     return _cacheado("producto_atributos", "producto_atributos?archivado_en=is.null&select=clave,nombre,tipo,emoji&order=orden,id") or []

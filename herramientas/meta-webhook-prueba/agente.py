@@ -362,9 +362,10 @@ def datos_equipo(p):
             "categoria": p.get("categoria") or "", "descripcion": (p.get("descripcion") or "").strip()}
 
 
-def armar_equipo(plantilla, p):
-    """Un equipo con la plantilla: cada renglón con sus datos; un renglón cuyos datos están todos vacíos no sale (RAG-40)."""
-    datos = datos_equipo(p)
+def armar_equipo(plantilla, p, extra=None):
+    """Un equipo con la plantilla: cada renglón con sus datos; un renglón cuyos datos están todos vacíos no sale (RAG-40).
+    `extra` suma datos que no son del equipo (la ficha de F4·42 usa {nombre} del cliente y {modelo} pedido)."""
+    datos = {**datos_equipo(p), **(extra or {})}
     renglones = []
     for linea in (plantilla or PLANTILLA_EQUIPO).splitlines():
         marcas = _MARCA.findall(linea)

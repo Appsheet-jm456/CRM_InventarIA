@@ -255,6 +255,11 @@ def m_lista(texto, opciones, boton="Ver opciones"):
         "action": {"button": boton[:20], "sections": [{"title": "Opciones", "rows": filas}]}}}
 
 
+def m_imagen(imagen, texto):
+    """Foto con su texto (pie de foto, máximo 1.024 caracteres). `imagen`: enlace o {"_producto": …} que resuelve el receptor."""
+    return {"type": "image", "image": {**(imagen if isinstance(imagen, dict) else {"link": imagen}), "caption": texto[:1024]}}
+
+
 def m_botones(texto, opciones, imagen=None):
     """Hasta 3 botones de respuesta; título ≤ 20 caracteres. Imagen opcional en la cabecera."""
     interactivo = {"type": "button", "body": {"text": texto[:1024]}, "action": {"buttons": [
