@@ -402,6 +402,53 @@ que el receptor ya sabía subir a Meta.
 **Para probarlo (dueño):** recargar; en una acción (por ejemplo P17 o una nueva «Catálogo» con la frase «catálogo») agregar «Enviar
 catálogo» y «Enviar archivo» con un PDF; activarla, probar con una frase y por WhatsApp.
 
+### 4f. Carrito: comprar varios equipos en un pedido (F4·44)
+
+**Pedido el 6 nov 2026** al probar F4·42 por WhatsApp: después de la ficha («Lo quiero · Ver otro código · Menú principal») el cliente puede querer
+**más de un equipo**. Hoy la compra guarda **uno solo** (`st["compra"]` con un código, un precio y un total); la cotización admite varias unidades,
+pero del mismo equipo. «Pedir asesor» ya funciona: pausa **solo ese chat** y deja la compra anotada (RAG-04).
+
+**Recorrido que se quiere:** ficha del equipo → **Lo quiero** → «¿Quieres agregar otro equipo?» → **Sí** → el cliente escribe código o modelo →
+ficha del segundo con **Agregar este** → «¿Otro más?» → **No** → **resumen del pedido** con todos los equipos y el total → cuentas → comprobante →
+Pago por confirmar y asesor. En cualquier momento puede pedir **cotización** del pedido o **asesor**.
+
+- RAG-54. **Se parametriza desde el Agente.** En Configuración → Agente → **Compra**, sección nueva **Carrito**: casilla **«Permitir comprar varios
+  equipos»** (nace **apagada**; apagada, la compra funciona como hoy con un solo equipo), **máximo de equipos por pedido** (2 a 10, por defecto 5)
+  y los textos editables: la pregunta «¿Quieres agregar otro equipo?», lo que pide al decir Sí, el aviso de máximo alcanzado y el encabezado del
+  resumen. Marcas: `{n}` (equipos en el pedido) y `{nombre}`.
+- RAG-55. **Se agrega en el lienzo del bot.** Cuadro nuevo **🛒 Carrito** en «+ Agregar» (como Pregunta, Agente y Catálogos): hace el recorrido
+  «¿otro equipo? → resumen» dentro de un bot dibujado. Salidas: **Pedido listo** (sigue a la compra, cuentas y comprobante) y **Pidió asesor o no
+  avanza**. Usa los textos y el máximo de Agente → Compra; el cuadro solo decide dónde empieza y a dónde sigue.
+- RAG-56. **Agregar otro equipo reutiliza F4·42.** El cliente escribe código o modelo; el detector (sin IA) encuentra el equipo y sale la ficha con
+  un botón **Agregar este** (y **Ver otro código**). Un modelo con varios resultados muestra la lista de F4·37. Los botones de la ficha cambian solo
+  cuando hay un pedido abierto; sin pedido siguen siendo «Lo quiero · Ver otro código · Menú principal».
+- RAG-57. **Reglas del pedido.** Los precios salen **siempre de la base** al armar el resumen. **No se repite un código.** Cada equipo se valida con su
+  stock: si uno se agotó, el bot lo avisa y lo **quita** del pedido (con «¿Seguimos con los demás?»). Al llegar al máximo no pregunta más y pasa al
+  resumen.
+- RAG-58. **Resumen del pedido.** Un renglón por equipo (la misma plantilla de «Cómo muestra los equipos» de Avi), el **cargo de configuración por
+  equipo** si es cliente final (RAG-19), el total y los botones **Confirmar pedido · Agregar otro · Quitar uno**. «Quitar uno» muestra los equipos
+  numerados para elegir; si queda uno solo, vuelve al resumen de un equipo.
+- RAG-59. **Pago y asesor.** Las cuentas (texto aprobado por el dueño, RAG-20) llevan el **total del pedido**; el comprobante pasa el pedido a **Pago por
+  confirmar**; la nota para el asesor lista **todos los equipos** con código y precio. Pedir asesor en cualquier paso pausa solo ese chat y deja el
+  pedido anotado (RAG-04).
+- RAG-60. **Cotización del pedido.** Un botón **Cotizar este pedido** (y la acción «cotización») genera **un solo PDF** con todos los equipos como
+  renglones (el PDF ya recibe `items` con varias filas), con las reglas de RAG-27 (cliente final + configuración por equipo, tarjeta +6 %, validez).
+- RAG-61. **Seguimiento.** Si el cliente deja el pedido a medias, el recordatorio de 12 h («¿Sigues interesado?») incluye los equipos que tenía; «ya no
+  quiero» lo cancela completo (etiqueta `Compra-Cancelada`).
+- RAG-62. **Compatibilidad.** Con el carrito apagado, o con un pedido de un solo equipo, nada cambia: mismo resumen, mismas etapas del embudo y mismas
+  etiquetas. El estado pasa de un equipo a una **lista de equipos** (`st["compra"]["equipos"]`, con el primero como el de hoy), sin romper las
+  compras en curso.
+
+**Fuera de alcance por ahora:** cantidades de un mismo código en el carrito (la cotización ya lo hace), descuentos por volumen, editar un pedido ya
+pagado y envíos separados por equipo.
+
+**Pregunta abierta (revisar con el dueño):** la pausa del asesor hoy no se levanta sola; si el asesor no atiende, el cliente queda sin respuesta.
+Se evalúa un aviso al asesor o un reinicio automático (otra tarea).
+
+**Por construir (con la orden del dueño):** migración con las columnas de Carrito en `agente_config` y el tipo de cuadro `carrito` (guardar, validar
+en `problemas_del_flujo`), `compra.py` con lista de equipos, el cuadro en el lienzo, la sección en Agente → Compra y pruebas (`prueba_carrito.py`,
+SQL de la migración).
+
 ### 5. Herramientas (lo que el agente puede hacer)
 
 | Herramienta | Qué hace | Escribe en la base |
