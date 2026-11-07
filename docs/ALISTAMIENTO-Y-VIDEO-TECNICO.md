@@ -1,6 +1,6 @@
 # Alistamiento con servicio técnico, video de soporte y guía: campos que disparan el embudo (F4·50)
 
-> **Estado:** documentada el 7 nov 2026 con las respuestas y correcciones del dueño; **bloque A construido el 7 nov 2026** (falta la prueba del dueño); B, C y D por construir. Parte de F4·33 (etapas Alistamiento y
+> **Estado:** documentada el 7 nov 2026 con las respuestas y correcciones del dueño; **bloques A y B construidos el 7 nov 2026** (falta la prueba del dueño); C y D por construir. Parte de F4·33 (etapas Alistamiento y
 > Despachado, [LEADS.md §C](LEADS.md)) y de F4·46/F4·47 (el cliente ya recibe la política de despacho que promete el video).
 > **Corrección del dueño (7 nov 2026):** **no se crea otro embudo ni otras etapas.** El embudo de Cliente Final queda como está:
 > **Alistamiento → Despachado → Vendido → Perdido**. Lo nuevo son **campos y botones que actúan como disparadores** dentro de esas etapas.
@@ -127,6 +127,24 @@ quien hace cada cosa: por eso el «¿Quién eres?» de RAL-08.
   (OP o FVE) para el asesor.
 - **Falta para usarlo:** compilar y reiniciar la app; crear en Usuarios el usuario **«Servicio técnico»** con el rol **Técnico** y agregar su
   correo a la política `Equipo` de Cloudflare Access.
+
+## 5c. Cómo quedó construido el bloque B, video (7 nov 2026)
+
+- **Servidor:** `ffmpeg` 6.1 instalado con `apt`; el almacenamiento acepta archivos de hasta **100 MB** (`FILE_SIZE_LIMIT` en
+  `supabase/docker-compose.yml`; se recreó solo el contenedor `storage`).
+- **Migración 0056** (`supabase/pruebas/0056_videos_del_servicio_tecnico.sql`, 10 pruebas; la 0055 la usó otra tarea): bucket privado
+  `videos-tecnicos` (100 MB; MP4, MOV, 3GP, WebM, MKV), tabla `alistamiento_videos` (equipo, técnico, peso, estado `procesando`/`listo`/
+  `error`/`vencido`, `vence_en` a 6 meses), permisos del bucket (sube quien tiene `gestionar_alistamiento`; ven el técnico y el asesor que ve
+  al cliente) y `alistamiento_video_registrar` (solo quien tiene el pedido en revisión; comprueba que el archivo llegó y que el equipo es del
+  pedido; deja el evento «🎥 Josep subió el video de …»). **«Revisado, listo para despachar» exige ahora un video por cada equipo.**
+- **Receptor:** `videos.py`, que el reloj llama cada 30 s en su propio hilo: baja el original, lo comprime a 720p H.264 (≈ 12 MB por minuto en
+  la prueba), sube la copia, borra el original y deja el video «listo»; un archivo dañado queda en «error» con el motivo; los de más de 6 meses
+  se borran. Pruebas: `prueba_videos.py` 8/8 (ffmpeg de verdad con videos sintéticos: 36,7 MB → 3,9 MB en 20 s).
+- **Pantallas:** en Servicio técnico cada equipo tiene **🎥 Subir video** (se puede grabar o elegir de la galería del celular; sube directo al
+  almacenamiento con barra de avance, hasta 95 MB por el límite de Cloudflare) y la lista de sus videos con **▶ Ver**; el botón «listo» dice
+  cuántos videos faltan. En la ficha del cliente, la tarjeta 🛠 muestra los videos de cada equipo para que el asesor los vea.
+- **Probado sin navegador:** subida de 60 MB al bucket con la sesión del administrador (aceptada) y de un archivo que no es video (rechazado).
+- **Falta para usarlo:** compilar y reiniciar la app, y **reiniciar el receptor** (`crm-meta-receptor`) para que empiece a comprimir.
 
 ## 6. Decisiones del dueño (7 nov 2026)
 

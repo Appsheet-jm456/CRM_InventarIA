@@ -58,6 +58,11 @@ select alistamiento_documento(:a, 'FVE', ' FVE-1234 ');
 select case when (select doc_tipo = 'FVE' and doc_numero = 'FVE-1234' and doc_por = :'admin' from alistamientos where id = :a) then 'ok' else 'not ok' end
        || ' 12 - el asesor guarda el documento (recortado) y queda quién lo puso';
 
+-- Desde 0056 «listo» exige un video por equipo: se dejan hechos (los prueba 0056).
+reset role;
+insert into alistamiento_videos (alistamiento_id, equipo_codigo, original, tecnico) values (:a, '999-054-0001', 'x', 'Camilo Osorio'),
+  (:a, '999-054-9999', 'y', 'Camilo Osorio');
+set local role authenticated;
 select alistamiento_listo(:a, 'Camilo Osorio');
 select case when (select estado = 'listo' and listo_por = 'Camilo Osorio' from alistamientos where id = :a)
              and (select 'Listo-Para-Despachar' = any(etiquetas) from leads where id = :l)

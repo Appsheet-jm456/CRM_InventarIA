@@ -39,6 +39,7 @@ import cotizacion
 import flujo
 import interprete
 import retorno
+import videos
 import visor
 
 RAIZ = Path(__file__).resolve().parents[2]
@@ -520,9 +521,12 @@ def vaciar_papelera():
 def reloj():
     """Cada 5 s atiende las Pausas vencidas. Si el receptor estuvo apagado, al volver atiende las que siguen en ventana.
     Una vez por hora vacía la papelera de leads."""
-    ultima_papelera = ultimo_retorno = 0
+    ultima_papelera = ultimo_retorno = ultimo_video = 0
     while True:
         time.sleep(5)
+        if time.time() - ultimo_video > 30:  # F4·50: comprimir los videos del servicio técnico y borrar los de más de 6 meses
+            ultimo_video = time.time()
+            videos.revisar(anotar)
         if time.time() - ultimo_retorno > 60:  # F4·45: retorno del bot y «¿Sigues necesitando ayuda?»
             ultimo_retorno = time.time()
             try:

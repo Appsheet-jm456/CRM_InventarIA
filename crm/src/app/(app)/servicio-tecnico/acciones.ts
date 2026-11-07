@@ -25,6 +25,12 @@ export async function marcarListo(id: number, tecnico: string) {
   return llamar('alistamiento_listo', { p_id: id, p_tecnico: tecnico }, 'Listo para despachar. El asesor ya lo ve.')
 }
 
+// Bloque B (RAL-05): el video ya está en el bucket; la base comprueba que llegó, que el equipo es del pedido y quién lo subió.
+export async function registrarVideo(id: number, codigo: string, ruta: string, peso: number, tecnico: string) {
+  return llamar('alistamiento_video_registrar', { p_id: id, p_codigo: codigo, p_ruta: ruta, p_peso: peso, p_tecnico: tecnico },
+    'Video subido. Se está preparando (tarda uno o dos minutos).')
+}
+
 export async function reabrirPedido(id: number, tecnico: string) {
   return llamar('alistamiento_reabrir', { p_id: id, p_tecnico: tecnico }, 'Revisión abierta de nuevo.')
 }

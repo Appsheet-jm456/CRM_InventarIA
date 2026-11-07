@@ -4,9 +4,11 @@ import { useCallback, useEffect, useState } from 'react'
 import { clienteNavegador } from '@/lib/supabase/navegador'
 import { guardarDocumento, type Resultado } from '../../servicio-tecnico/acciones'
 import { CHECKLIST, ESTADO, hora, type Pedido } from '../../servicio-tecnico/ServicioTecnico'
+import { VideosEquipo, type Video } from '../../servicio-tecnico/VideosEquipo'
 
 type Fila = Pick<Pedido, 'id' | 'equipos' | 'doc_tipo' | 'doc_numero' | 'estado' | 'tecnico' | 'tomado_en' | 'listo_en' | 'listo_por' | 'checklist'> & {
   oportunidades: { estado: string; etapas: { nombre: string } | null } | null
+  alistamiento_videos: Video[]
 }
 
 // F4·50 bloque A (RAL-02, RAL-03): en la ficha del cliente el asesor ve el alistamiento y pone el OP o la FVE que le da contabilidad.
@@ -21,7 +23,8 @@ export function AlistamientoCliente({ lead, puedeDocumento, version, alCambiar }
 
   const cargar = useCallback(async () => {
     const { data } = await clienteNavegador().from('alistamientos')
-      .select('id, equipos, doc_tipo, doc_numero, estado, tecnico, tomado_en, listo_en, listo_por, checklist, oportunidades(estado, etapas(nombre))')
+      .select('id, equipos, doc_tipo, doc_numero, estado, tecnico, tomado_en, listo_en, listo_por, checklist, oportunidades(estado, etapas(nombre)), ' +
+        'alistamiento_videos(id, equipo_codigo, estado, tecnico, subido_en, ruta, peso, error)')
       .eq('lead_id', lead).order('creado_en', { ascending: false }).limit(1)
     const f = ((data ?? [])[0] as unknown as Fila | undefined) ?? null
     setFila(f)
@@ -50,9 +53,13 @@ export function AlistamientoCliente({ lead, puedeDocumento, version, alCambiar }
         <b>🛠 Alistamiento · servicio técnico</b>
         <span className={`chip ${enCurso ? ESTADO[fila.estado].clase : 'neu'}`}>{enCurso ? ESTADO[fila.estado].texto : etapa || 'Cerrado'}</span>
       </div>
-      <ul style={{ margin: 0, paddingLeft: 18 }}>
-        {fila.equipos.map((e) => <li key={e.codigo}>💻 {e.nombre} <small className="muted">· {e.codigo}</small></li>)}
-      </ul>
+      {(fila.equipos.length ? fila.equipos : [{ codigo: 'pedido', nombre: 'Equipo del pedido' }]).map((e) => (
+        <div key={e.codigo} style={{ display: 'grid', gap: 4, borderLeft: '3px solid var(--line)', paddingLeft: 10 }}>
+          <span>💻 {e.nombre} {e.codigo !== 'pedido' && <small className="muted">· {e.codigo}</small>}</span>
+          <VideosEquipo pedido={fila.id} codigo={e.codigo} puedeSubir={false} alTerminar={setAviso}
+            videos={(fila.alistamiento_videos ?? []).filter((v) => v.equipo_codigo === e.codigo && v.estado !== 'vencido')} />
+        </div>
+      ))}
       <small className="muted">
         {fila.tecnico ? <>Técnico: <b>{fila.tecnico}</b>{fila.tomado_en && ` · tomó ${hora(fila.tomado_en)}`}</> : 'Aún sin técnico.'}
         {fila.listo_en && <> · listo para despachar {hora(fila.listo_en)}{fila.listo_por && ` (${fila.listo_por})`}</>}

@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { marcarChecklist, marcarListo, reabrirPedido, tomarPedido, type Resultado } from './acciones'
+import { VideosEquipo, type Video } from './VideosEquipo'
 
 export type Pedido = {
   id: number
@@ -18,6 +19,7 @@ export type Pedido = {
   listo_por: string | null
   checklist: Record<string, { por: string; en: string }>
   entro_en: string
+  videos: Video[]
 }
 
 export const CHECKLIST: [string, string][] = [
@@ -91,6 +93,8 @@ export function ServicioTecnico({ pedidos, tecnicos, error }: { pedidos: Pedido[
         {lista.map((p) => {
           const mio = p.tecnico === quien
           const sinDoc = !p.doc_numero
+          const faltanVideos = (p.equipos.length ? p.equipos.map((e) => e.codigo) : ['pedido'])
+            .filter((c) => !(p.videos ?? []).some((v) => v.equipo_codigo === c && (v.estado === 'listo' || v.estado === 'procesando')))
           return (
             <article key={p.id} className="dato" style={{ display: 'grid', gap: 8 }}>
               <div className="row" style={{ justifyContent: 'space-between', gap: 8 }}>
@@ -100,10 +104,17 @@ export function ServicioTecnico({ pedidos, tecnicos, error }: { pedidos: Pedido[
                   <span className={`chip ${ESTADO[p.estado].clase}`}>{ESTADO[p.estado].texto}</span>
                 </span>
               </div>
-              <ul style={{ margin: 0, paddingLeft: 18 }}>
-                {p.equipos.length ? p.equipos.map((e) => <li key={e.codigo}>💻 {e.nombre} <small className="muted">· {e.codigo}</small></li>)
-                  : <li className="muted">Sin equipos registrados en la oportunidad: pregúntale al asesor.</li>}
-              </ul>
+              <div style={{ display: 'grid', gap: 8 }}>
+                {(p.equipos.length ? p.equipos : [{ codigo: 'pedido', nombre: 'Equipo del pedido (sin código en la oportunidad)' }]).map((e) => (
+                  <div key={e.codigo} style={{ display: 'grid', gap: 4, borderLeft: '3px solid var(--line)', paddingLeft: 10 }}>
+                    <span>💻 {e.nombre} {e.codigo !== 'pedido' && <small className="muted">· {e.codigo}</small>}</span>
+                    {p.estado !== 'por_revisar' && (
+                      <VideosEquipo pedido={p.id} codigo={e.codigo} videos={(p.videos ?? []).filter((v) => v.equipo_codigo === e.codigo)} quien={quien}
+                        puedeSubir={p.estado === 'en_revision' && mio} alTerminar={(r) => { setAviso({ ...r, pedido: p.id }); router.refresh() }} />
+                    )}
+                  </div>
+                ))}
+              </div>
               <small className="muted">
                 Entró {hora(p.entro_en)}
                 {p.tecnico && <> · {p.estado === 'listo' ? 'Revisó' : 'Lo tiene'} <b>{p.tecnico}</b>{p.tomado_en && ` desde ${hora(p.tomado_en)}`}</>}
@@ -133,8 +144,8 @@ export function ServicioTecnico({ pedidos, tecnicos, error }: { pedidos: Pedido[
                 )}
                 {p.estado === 'en_revision' && !mio && <small className="muted">Lo está revisando {p.tecnico}.</small>}
                 {p.estado === 'en_revision' && mio && (
-                  <button className="btn primary chico" disabled={ocupado === p.id || sinDoc}
-                    title={sinDoc ? 'Falta el documento (OP o FVE): lo pone el asesor' : undefined}
+                  <button className="btn primary chico" disabled={ocupado === p.id || sinDoc || faltanVideos.length > 0}
+                    title={sinDoc ? 'Falta el documento (OP o FVE): lo pone el asesor' : faltanVideos.length ? 'Falta un video por cada equipo' : undefined}
                     onClick={() => hacer(p.id, () => marcarListo(p.id, quien), '¿El equipo quedó revisado y funcional, listo para despachar?')}>
                     ✅ Revisado, listo para despachar
                   </button>
@@ -144,6 +155,9 @@ export function ServicioTecnico({ pedidos, tecnicos, error }: { pedidos: Pedido[
                     onClick={() => hacer(p.id, () => reabrirPedido(p.id, quien), '¿Volver a abrir la revisión de este pedido?')}>Volver a revisión</button>
                 )}
               </div>
+              {p.estado === 'en_revision' && mio && faltanVideos.length > 0 && (
+                <small className="muted">Para marcarlo listo falta {faltanVideos.length === 1 ? 'un video' : `${faltanVideos.length} videos`} (uno por equipo, de 1 a 2 minutos).</small>
+              )}
               {aviso.pedido === p.id && (aviso.error || aviso.ok) && (
                 <div className={`aviso ${aviso.error ? 'bad' : 'ok'}`} role="alert">{aviso.error ?? aviso.ok}</div>
               )}
