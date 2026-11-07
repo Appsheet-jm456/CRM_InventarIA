@@ -47,9 +47,11 @@ def _limpiar(st):
         st["nodo"] = None
 
 
-def _es_distribuidor(lead):
-    etiquetas = (lead or {}).get("etiquetas") or []
-    return "Interes-Distribuidor" in etiquetas
+def _aplicar_tipo(st, lead):
+    """F4·48: si ya se sabe si compra como distribuidor o como cliente final (menú, respuesta anterior o ficha), no se pregunta."""
+    tipo = flujo.tipo_cliente(st, lead)
+    if tipo:
+        st["compra"]["tipo"] = tipo
 
 
 def _producto_por_codigo(cod):
@@ -87,8 +89,8 @@ def _resumen(c):
         items = _items(c)
         cab = (_cfg().get("carrito_encabezado") or "🛒 *Resumen de tu pedido*").strip()
         lineas = [cab] + [f"{k}. 💻 {i['equipo']} · Código {i['codigo']}\n     💰 {flujo.cop(i['precio'])}" for k, i in enumerate(items, 1)]
-        if c["tipo"] == "cliente_final" and c["cargo"]:
-            lineas.append(f"🔧 Configuración: {len(items)} × {flujo.cop(c['cargo'])} = {flujo.cop(c['cargo'] * len(items))}")
+        if c["tipo"] == "cliente_final" and c["cargo"]:  # F4·48: una sola vez por pedido, sea cual sea el número de equipos
+            lineas.append(f"🔧 Configuración (Windows, programas base, navegadores y Office · 1 sola vez por pedido): {flujo.cop(c['cargo'])}")
         lineas += [f"*Total ({len(items)} {'equipo' if len(items) == 1 else 'equipos'}): {flujo.cop(c['total'])}*"]
         return "\n".join(lineas)
     lineas = [f"🛒 *Resumen de tu compra*", f"💻 {c['equipo']} · Código {c['codigo']}", f"💰 Precio: {flujo.cop(c['precio'])}"]
@@ -150,8 +152,9 @@ def _confirmar(st):
         c["equipos"] = vigentes
         c.update(codigo=vigentes[0]["codigo"], equipo=vigentes[0]["equipo"], precio=vigentes[0]["precio"])
     items = _items(c)
-    cargo = int(float(_cfg().get("cargo_configuracion") or 0)) if c["tipo"] == "cliente_final" else 0
-    c.update(cargo=cargo, total=sum(int(i["precio"]) for i in items) + cargo * len(items), paso="confirmar")
+    usados = any(flujo.lleva_configuracion((_producto_por_codigo(i["codigo"]) or {}).get("estado")) for i in items)
+    cargo = int(float(_cfg().get("cargo_configuracion") or 0)) if c["tipo"] == "cliente_final" and usados else 0
+    c.update(cargo=cargo, total=sum(int(i["precio"]) for i in items) + cargo, paso="confirmar")  # F4·48: una vez por pedido, solo si hay usados
     st["valor"] = c["total"]
     st["campos"].update({"Código producto": ", ".join(i["codigo"] for i in items), "Valor estimado": flujo.cop(c["total"])})
     if _carrito(c):
@@ -242,12 +245,10 @@ def _buscar_para_agregar(st, entrada, lead=None):
 def _con_equipo(st, p, lead):
     """Ya se sabe el equipo: comprueba stock y sigue con el tipo de cliente o el resumen (con carrito, «¿otro equipo?»)."""
     if _carrito(st["compra"]):
-        if _es_distribuidor(lead):
-            st["compra"]["tipo"] = "distribuidor"
+        _aplicar_tipo(st, lead)
         return _agregar(st, p, lead)
     st["compra"].update(codigo=p["cod"], equipo=f"{p['marca']} {p['modelo']}".strip(), precio=p["precio"])
-    if _es_distribuidor(lead):
-        st["compra"]["tipo"] = "distribuidor"
+    _aplicar_tipo(st, lead)
     if not st["compra"].get("tipo"):
         return _pedir_tipo(st)
     return _confirmar(st)
@@ -278,8 +279,7 @@ def iniciar(st, texto, lead=None, cuadro=None):
                                        for q in vigentes[:_maximo()]]
             first = st["compra"]["equipos"][0]
             st["compra"].update(codigo=first["codigo"], equipo=first["equipo"], precio=first["precio"])
-            if _es_distribuidor(lead):
-                st["compra"]["tipo"] = "distribuidor"
+            _aplicar_tipo(st, lead)
             return _seguir(st, lead)
     if not p and (st.get("campos") or {}).get("Código producto"):  # el de la última ficha que vio
         p = _producto_por_codigo(st["campos"]["Código producto"].split(",")[0].strip())
@@ -400,6 +400,7 @@ def _responder(st, entrada, tipo, lead):
             c["tipo"] = "cliente_final"
         else:
             return _pedir_tipo(st), [], None, None
+        flujo.recordar_tipo(st, c["tipo"])  # F4·48: no se vuelve a preguntar
         return _confirmar(st), [], None, None
 
     if paso == "confirmar":

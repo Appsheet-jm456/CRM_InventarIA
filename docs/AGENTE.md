@@ -537,6 +537,45 @@ compra, carrito y pregunta prueban el camino con la casilla apagada. CRM: `bande
 pestaña Oportunidades de la ficha (con «Avisar al cliente» si el receptor no respondió), y la sección 💳 en Agente → Compra. La plantilla
 `crm_pago_confirmado` de RAG-68 queda por crear: hoy, fuera de las 24 h, se registra y el CRM avisa que hay que escribirle con plantilla.
 
+### 4h. Tipo de cliente una sola vez y configuración una vez por pedido (F4·48)
+
+**Pedido del dueño, 7 nov 2026.** Un cliente cotizó, confirmó la compra y el bot le volvió a preguntar *«¿Compras como distribuidor o como
+cliente final?»*: la cotización y la compra tenían cada una su pregunta y ninguna guardaba la respuesta. Además, el cargo de
+configuración se multiplicaba por equipo, y el dueño pidió que se cobre **una sola vez por pedido**.
+
+- **RAG-71 · «Tipo de cliente» se guarda en la ficha** (dato `tipo_cliente`: Distribuidor o Cliente final). La cotización y la compra lo
+  leen primero (`flujo.tipo_cliente`): del dato de la ficha (lo marcó el menú, lo respondió el cliente o lo corrigió el asesor) y, sin él,
+  de la etiqueta `Interes-Distribuidor` de siempre. **Si ya se sabe, no se pregunta.** Si la ficha dice una cosa y la etiqueta otra,
+  manda la ficha.
+- **RAG-72 · Se pregunta una vez.** Solo si no hay dato (el cliente escribió directo un código o «cotízame un Dell» sin pasar por el
+  menú). Al responder, la respuesta se guarda en la ficha y ni la compra, ni la cotización, ni las visitas siguientes vuelven a preguntar.
+- **RAG-73 · El menú define el tipo.** En el bot «Avi Ventas»: **1 Productos** marca *Cliente final* **solo si el dato está vacío**
+  (no pisa a un distribuidor ya identificado; efecto `atributos_si_vacio` de la opción) y **2 Distribuidores** marca *Distribuidor*
+  (además de la etiqueta). Un distribuidor que entra por Productos y no tiene dato queda como cliente final; el asesor lo corrige en la
+  ficha.
+- **RAG-74 · La configuración se cobra una sola vez por pedido.** Cliente final con uno o varios equipos: **1 × $80.000** (el valor de
+  Agente → Cotización → Cargo de configuración), nunca por equipo. El resumen del pedido dice *«🔧 Configuración (Windows, programas
+  base, navegadores y Office · 1 sola vez por pedido): $80.000»* y la cotización PDF trae un solo renglón con el mismo concepto.
+- **RAG-75 · Solo en equipos usados.** La configuración (Windows, programas base, navegadores y paquete Office) se cobra a equipos
+  **usados** (grado A, grado B, «Usado» y «Semi nuevo»); un equipo **nuevo** ya la trae incluida. Si el pedido mezcla nuevos y usados, se
+  cobra una vez. Distribuidor: el precio ya es sin configuración. La regla mira que el estado del producto no empiece por «Nuevo»
+  (`flujo.lleva_configuracion`).
+- **RAG-76 · Descuentos.** Los autoriza la gerencia: el bot y Avi nunca los aplican ni los prometen; el precio sale de la base y lo
+  demás lo ve un asesor.
+- **RAG-77 · Ficha de Conocimiento «Precios, configuración y descuentos».** Categoría Precios, **activa**: reglas de configuración, un
+  solo cobro por pedido, equipos nuevos, distribuidores, descuentos por cantidad y precios negociables, ampliaciones de RAM y disco.
+
+**Criterios de aceptación:** (1) un cliente que cotiza y luego compra no vuelve a ver la pregunta de tipo; (2) quien entra por «1.
+Productos» no la ve nunca; (3) con dos equipos usados a cliente final el total lleva $80.000 una vez; (4) un equipo nuevo no cobra
+configuración; (5) el distribuidor nunca paga configuración; (6) el asesor puede cambiar «Tipo de cliente» en la ficha y el bot lo respeta.
+
+**Cómo está construida (7 nov 2026).** Sin migración. `flujo.py` (`tipo_cliente`, `recordar_tipo`, `lleva_configuracion`,
+`marcar_datos(..., solo_vacios)` y el efecto `atributos_si_vacio` en `seguir()`), `compra.py` (`_aplicar_tipo`, cargo único en `_confirmar`,
+resumen) y `cotizacion.py` (tipo conocido, un solo cargo, `CONCEPTO_CONFIGURACION`). `prueba_tipo_cliente.py` 17/17; las pruebas de
+compra, carrito y cotización cambiaron de «por equipo» a «una vez». Datos: efecto del menú en el **borrador versión 2** de «Avi Ventas»
+(solo difiere de la publicada en `compra: null` del cuadro Agente) y la ficha de Conocimiento. **Al publicar** ese borrador queda activo el
+menú; el lienzo todavía no muestra `atributos_si_vacio` (lo conserva al guardar).
+
 ### 5. Herramientas (lo que el agente puede hacer)
 
 | Herramienta | Qué hace | Escribe en la base |

@@ -340,12 +340,38 @@ def con_datos(st, texto):
     return texto
 
 
-def marcar_datos(st, valores):
+TIPOS_CLIENTE = {"Distribuidor": "distribuidor", "Cliente final": "cliente_final"}
+
+
+def tipo_cliente(st, lead=None):
+    """F4·48: 'distribuidor', 'cliente_final' o None si aún no se sabe. Se lee del dato «Tipo de cliente» de la ficha (lo que marcó el
+    menú, respondió el cliente o corrigió el asesor) y, sin él, de la etiqueta Interes-Distribuidor de siempre."""
+    valor = (st.get("atributos") or {}).get("tipo_cliente") or ((lead or {}).get("atributos") or {}).get("tipo_cliente")
+    if valor in TIPOS_CLIENTE:
+        return TIPOS_CLIENTE[valor]
+    if "Interes-Distribuidor" in ((lead or {}).get("etiquetas") or []):
+        return "distribuidor"
+    return None
+
+
+def recordar_tipo(st, tipo):
+    """F4·48: guarda en la ficha lo que el cliente respondió, para no volver a preguntarlo (en la cotización, la compra ni después)."""
+    if tipo in ("distribuidor", "cliente_final") and "tipo_cliente" in db.atributos():
+        st.setdefault("atributos", {})["tipo_cliente"] = "Distribuidor" if tipo == "distribuidor" else "Cliente final"
+
+
+def lleva_configuracion(estado):
+    """F4·48: la configuración (Windows, programas base, navegadores y Office) se cobra en equipos usados, de cualquier grado;
+    el equipo nuevo ya la trae incluida."""
+    return not normalizar(estado or "").startswith("nuevo")
+
+
+def marcar_datos(st, valores, solo_vacios=False):
     """RF-27: lo que marca una opción (efectos.atributos). Un atributo que ya no existe se ignora."""
     definidos = db.atributos()
     datos = st.setdefault("atributos", {})
     for clave, valor in (valores or {}).items():
-        if clave in definidos:
+        if clave in definidos and not (solo_vacios and datos.get(clave)):
             datos[clave] = valor
 
 
@@ -586,6 +612,7 @@ def seguir(st, op):
     efectos = op.get("efectos") or {}
     aplicar(st, {"campos": efectos.get("campos"), "etapa": efectos.get("etapa")})
     marcar_datos(st, efectos.get("atributos"))
+    marcar_datos(st, efectos.get("atributos_si_vacio"), solo_vacios=True)  # F4·48: «Productos» marca Cliente final sin pisar un dato ya puesto
     destino = cuadros().get(op["destino"])
     if destino and destino["tipo"] == "asesor":
         return asesor(st, efectos.get("etiqueta") or "Escalado-Asesor", efectos.get("motivo"), de_flecha=True)

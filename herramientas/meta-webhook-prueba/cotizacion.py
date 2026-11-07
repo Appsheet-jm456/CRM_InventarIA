@@ -3,7 +3,7 @@ Flujo de cotización sin IA (F4·26, docs/AGENTE.md, RAG-27 y RAG-28).
 
 Acción con el paso «Iniciar flujo de cotización» → nombre → cédula → celular (por defecto el de WhatsApp) → equipo (el
 escrito, el de la última ficha o lo pide) → cantidad (hasta el stock) → distribuidor o cliente final → PDF con las
-reglas del negocio (precio de la base; cliente final + configuración por equipo; tarjeta + recargo como opción;
+reglas del negocio (precio de la base; cliente final + configuración una sola vez por pedido y solo en equipos usados; tarjeta + recargo como opción;
 validez) → se guarda en cotizaciones, se envía por WhatsApp y el cliente pasa a la etapa Cotización.
 
 Pedido del carrito (F4·44, RAG-60): «Cotizar este pedido» llega con la lista de códigos; no pregunta equipo ni cantidad y el PDF lleva
@@ -93,16 +93,14 @@ def iniciar(st, texto, lead=None, pedido=None, tipo=None):
     st["nodo"] = NODO
     if pedido:  # RAG-60: el pedido del carrito, uno de cada equipo
         st["cotizacion"].update(pedido=list(pedido), producto="pedido", cantidad=1, equipo="tu pedido")
-        if "Interes-Distribuidor" in ((lead or {}).get("etiquetas") or []):
-            st["cotizacion"]["tipo"] = "distribuidor"
+        st["cotizacion"]["tipo"] = flujo.tipo_cliente(st, lead) or st["cotizacion"]["tipo"]  # F4·48
         return _siguiente(st, lead)[0]
     p = flujo.buscar_codigo(texto)
     if not p and (st.get("campos") or {}).get("Código producto"):  # el de la última ficha
         p = _producto_por_codigo(st["campos"]["Código producto"].split(",")[0].strip())
     if p:
         st["cotizacion"].update(producto=p["cod"], equipo=f"{p['marca']} {p['modelo']}".strip(), stock=int(p.get("stock") or 1))
-    if "Interes-Distribuidor" in ((lead or {}).get("etiquetas") or []):
-        st["cotizacion"]["tipo"] = "distribuidor"
+    st["cotizacion"]["tipo"] = flujo.tipo_cliente(st, lead) or st["cotizacion"]["tipo"]  # F4·48: ya se sabe: no se pregunta
     return _siguiente(st, lead)[0]
 
 
@@ -177,6 +175,7 @@ def _responder(st, entrada, tipo, lead):
             c["tipo"] = "cliente_final"
         else:
             return _pregunta(st), [], None, None
+        flujo.recordar_tipo(st, c["tipo"])  # F4·48: la compra y las próximas cotizaciones no vuelven a preguntar
     return _siguiente(st, lead)
 
 
@@ -190,6 +189,9 @@ def _guardar_y_pdf(fila, valida, cfg):
     ruta = f"cotizaciones/{guardada['consecutivo']}.pdf"
     db.guardar_pdf_cotizacion(guardada["id"], ruta, pdf)
     return ruta, pdf_cotizacion.numero(guardada["consecutivo"])
+
+
+CONCEPTO_CONFIGURACION = "Configuración: Windows, programas base, navegadores y Office (1 sola vez por pedido)"
 
 
 def _generar_pedido(st, lead):
@@ -206,8 +208,8 @@ def _generar_pedido(st, lead):
     subtotal = sum(i["precio"] for i in items)
     cargos = []
     cargo = int(float(cfg.get("cargo_configuracion") or 0))
-    if c["tipo"] == "cliente_final" and cargo:
-        cargos.append({"concepto": f"Configuración ({len(items)} × {flujo.cop(cargo)})", "valor": cargo * len(items)})
+    if c["tipo"] == "cliente_final" and cargo and any(flujo.lleva_configuracion(p.get("estado")) for p in equipos):
+        cargos.append({"concepto": CONCEPTO_CONFIGURACION, "valor": cargo})  # F4·48: una sola vez por pedido
     total = subtotal + sum(x["valor"] for x in cargos)
     valida = datetime.now(timezone.utc) + timedelta(hours=int(cfg.get("validez_cotizacion_h") or 24))
     fila = {"lead_id": (lead or {}).get("id"), "nombre": c["nombre"], "cedula": c["cedula"], "celular": c["celular"],
@@ -247,8 +249,8 @@ def _generar(st, lead):
     subtotal = precio * cantidad
     cargos = []
     cargo = int(float(cfg.get("cargo_configuracion") or 0))
-    if c["tipo"] == "cliente_final" and cargo:
-        cargos.append({"concepto": f"Configuración ({cantidad} × {flujo.cop(cargo)})", "valor": cargo * cantidad})
+    if c["tipo"] == "cliente_final" and cargo and flujo.lleva_configuracion(p.get("estado")):
+        cargos.append({"concepto": CONCEPTO_CONFIGURACION, "valor": cargo})  # F4·48: una sola vez, aunque sean varios equipos
     total = subtotal + sum(x["valor"] for x in cargos)
     valida = datetime.now(timezone.utc) + timedelta(hours=int(cfg.get("validez_cotizacion_h") or 24))
     fila = {"lead_id": (lead or {}).get("id"), "nombre": c["nombre"], "cedula": c["cedula"], "celular": c["celular"],

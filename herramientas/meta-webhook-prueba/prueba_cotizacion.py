@@ -84,14 +84,14 @@ decir(st, "2")
 ok(paso(st) == "tipo", "pregunta distribuidor o cliente final")
 m, etq, _, nota = decir(st, "cot-final", "interactive")
 g = GUARDADAS[-1]
-ok(g["subtotal"] == 1600000 and g["cargos"][0]["valor"] == 160000 and g["total"] == 1760000,
-   "cliente final: 2 × $800.000 + 2 × $80.000 de configuración = $1.760.000")
+ok(g["subtotal"] == 1600000 and g["cargos"][0]["valor"] == 80000 and g["total"] == 1680000,
+   "cliente final: 2 × $800.000 + $80.000 de configuración UNA sola vez = $1.680.000 (F4·48)")
 ok(g["lead_id"] == 7 and g["cedula"] == "1234567890" and g["celular"] == "3001234567" and g["items"][0]["codigo"] == "100-102-1069",
    "guarda cliente, cédula, celular y equipo")
 ok(m[0] == {"_cotizacion": {"ruta": "cotizaciones/101.pdf", "numero": "COT-000101"}} and "quiero comprar" in cuerpo(m[1]),
    "envía el PDF y el mensaje que invita a comprar")
 ok(PDFS["cotizaciones/101.pdf"].startswith(b"%PDF"), "el PDF se generó de verdad")
-ok("cotizacion" not in st and st["etapa"] == "Cotización" and st["valor"] == 1760000 and st["campos"]["Código producto"] == "100-102-1069",
+ok("cotizacion" not in st and st["etapa"] == "Cotización" and st["valor"] == 1680000 and st["campos"]["Código producto"] == "100-102-1069",
    "termina: etapa Cotización, valor y código para una compra después")
 ok("Cotizacion-Enviada" in etq and "COT-000101" in nota and "CC 1234567890" in nota, "etiqueta y nota para el asesor")
 

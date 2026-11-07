@@ -107,11 +107,12 @@ m, *_ = responder(st, "compra-resumen")
 ok(st["compra"]["paso"] == "tipo", "«Ver mi pedido» pregunta distribuidor o cliente final")
 m, *_ = responder(st, "compra-final")
 r = cuerpo(m[0])
-ok(st["compra"]["total"] == 3200000 + 3000000 + 2 * 80000 and "Resumen de tu pedido" in r and "100-101-1113" in r and "100-101-1050-1" in r
-   and "2 × $80.000" in r and "$6.360.000" in r, "resumen: los dos equipos, configuración por equipo y total (RAG-58)")
+ok(st["compra"]["total"] == 3200000 + 3000000 + 80000 and "Resumen de tu pedido" in r and "100-101-1113" in r and "100-101-1050-1" in r
+   and "1 sola vez por pedido" in r and "$80.000" in r and "2 ×" not in r and "$6.280.000" in r,
+   "resumen: los dos equipos, configuración UNA sola vez y total (RAG-58, F4·48)")
 ok(botones(m[0]) == ["compra-si", "compra-agregar", "compra-quitar", "compra-cotizar", "compra-asesor", "compra-cancelar"],
    "opciones del resumen: confirmar, agregar, quitar, cotizar, asesor y cancelar")
-ok(st["campos"]["Código producto"] == "100-101-1113, 100-101-1050-1" and st["valor"] == 6360000, "la oportunidad lleva los códigos y el total")
+ok(st["campos"]["Código producto"] == "100-101-1113, 100-101-1050-1" and st["valor"] == 6280000, "la oportunidad lleva los códigos y el total")
 
 # 7. Quitar uno → vuelve el resumen con uno
 st_q = dict(st, compra={**st["compra"], "equipos": list(st["compra"]["equipos"])}, campos=dict(st["campos"]))
@@ -140,7 +141,7 @@ VIVO[:] = list(INVENTARIO)
 # 10. Confirmar → cuentas con el total del pedido; comprobante → nota con todos los equipos (RAG-59)
 m, etq, paso, nota = responder(st, "compra-si")
 ok(cuerpo(m[0]) == CONFIG["texto_cuentas"] and paso == "esperando_pago" and "P16S GEN 2 (100-101-1113) + LENOVO P16S (100-101-1050-1)" in nota
-   and "6.360.000" in nota, "confirmar envía las cuentas y la nota lleva los dos equipos y el total")
+   and "6.280.000" in nota, "confirmar envía las cuentas y la nota lleva los dos equipos y el total")
 m, etq, paso, nota = responder(st, "ya pagué", "text")
 ok(paso == "pago_por_confirmar" and "100-101-1113" in nota and "100-101-1050-1" in nota and st["pausa"],
    "el comprobante pasa a Pago por confirmar con la nota de todos los equipos")
@@ -161,8 +162,8 @@ for dato in ("Jhonatan Pérez", "1020304050", "3001234567"):
     r = cotizacion.responder(st_c, dato, "text", {"etiquetas": []})
 m, etq, paso, nota = r
 f = GUARDADAS[-1]
-ok(len(f["items"]) == 3 and all(i["cantidad"] == 1 for i in f["items"]) and f["total"] == 3200000 + 3000000 + 1500000 + 3 * 80000
-   and "Cotizacion-Enviada" in etq and "3 equipos" in cuerpo(m[1]), "un solo PDF con los 3 equipos, configuración por equipo y total")
+ok(len(f["items"]) == 3 and all(i["cantidad"] == 1 for i in f["items"]) and f["total"] == 3200000 + 3000000 + 1500000 + 80000
+   and "Cotizacion-Enviada" in etq and "3 equipos" in cuerpo(m[1]), "un solo PDF con los 3 equipos, configuración una sola vez y total")
 
 # 13. «asesor» en el carrito: nota con el pedido; con el cuadro Carrito unido, sigue su flecha (RAG-55)
 st_s = nuevo(campos={"Código producto": "100-101-1113"})
