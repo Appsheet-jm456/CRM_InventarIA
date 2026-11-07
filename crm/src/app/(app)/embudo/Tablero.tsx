@@ -48,9 +48,13 @@ export function Tablero({ etapas, oportunidades, nombres, yo }: {
       if (!vigente) return
       canal = supabase
         .channel('embudo')
+        // F4·31: como mucho un refresco por segundo; con muchos cambios seguidos, posponerlo lo dejaría sin correr.
         .on('postgres_changes', { event: '*', schema: 'public', table: 'oportunidades' }, () => {
-          clearTimeout(espera)
-          espera = setTimeout(() => router.refresh(), 300)
+          if (espera) return
+          espera = setTimeout(() => {
+            espera = undefined
+            router.refresh()
+          }, 1000)
         })
         .subscribe()
     })

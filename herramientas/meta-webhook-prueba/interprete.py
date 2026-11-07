@@ -252,11 +252,13 @@ contexto = threading.local()
 PRECIO_GEMINI = (0.30, 2.50)
 
 
-def _registrar(proveedor, modelo, resultado, t0, ent=0, sal=0, costo=0.0, filtros=None, error=None, simulador=False):
+def _registrar(proveedor, modelo, resultado, t0, ent=0, sal=0, costo=0.0, filtros=None, error=None, simulador=False, respaldo=False):
     """Deja la llamada del buscador en agente_turnos (Configuración → Agente → Registro). Nunca lanza."""
     try:
         import db  # aquí para que el intérprete siga funcionando sin base (pruebas)
         detalle = {"buscador": True}
+        if respaldo:
+            detalle["respaldo"] = True
         if filtros is not None:
             detalle["filtros"] = filtros
         if error:
@@ -270,8 +272,42 @@ def _registrar(proveedor, modelo, resultado, t0, ent=0, sal=0, costo=0.0, filtro
         pass
 
 
+ESPERA_NUBE = 15  # segundos por modelo de la nube; el cliente está esperando
+
+
+def _con_cerebro(texto, simulador=False):
+    """F4·31: los modelos en la nube del Cerebro (Configuración → Agente → Cerebro; p. ej. OpenRouter), principal y luego respaldo.
+    Atienden muchas búsquedas a la vez; el modelo local responde de a una (~2,3 s cada una) y en un pico deja a los clientes sin
+    respuesta. Se saltan los modelos locales y, si se acabó el presupuesto del mes, la nube. None si ninguno respondió."""
+    try:
+        import cerebro  # aquí para que el intérprete siga funcionando sin base (pruebas)
+        config, llaves = cerebro.cargar()
+        if not config or config["proveedor"] == "local" and config.get("proveedor_respaldo") in (None, "local"):
+            return None
+        if not simulador and cerebro.tope().get("agotado"):
+            return None
+    except Exception:
+        return None
+    for respaldo in (False, True):
+        m = cerebro.modelo(config, llaves, respaldo)
+        if m is None or m["proveedor"] == "local":
+            continue
+        t0 = time.time()
+        try:
+            r = cerebro._llamar(m, [{"role": "user", "content": texto}], INSTRUCCION, 0.0,
+                                max(int(config["tokens_max"]), 1000), ESPERA_NUBE)
+            f = _limpiar(r["texto"])
+            _registrar(m["proveedor"], m["modelo"], "respondido", t0, r["tokens_entrada"], r["tokens_salida"], r["costo_usd"],
+                       filtros=f, simulador=simulador, respaldo=respaldo)
+            return f
+        except Exception as e:
+            _registrar(m["proveedor"], m["modelo"], "error", t0, error=f"buscador: {e}"[:200], simulador=simulador, respaldo=respaldo)
+    return None
+
+
 def con_ia(texto, simulador=False):
-    """Gemini si hay clave de AI Studio (empieza por AIza); si falla, qwen3 local. {} si nada entiende.
+    """Gemini si hay clave de AI Studio (empieza por AIza); si no, los modelos en la nube del Cerebro; al final qwen3 local.
+    {} si nada entiende.
     Cada intento queda en el Registro de IA (detalle.buscador); `simulador` para el Chat InventarIA, que no es un cliente."""
     env = _env()
     clave = env.get("GEMINI_API_KEY", "")
@@ -293,6 +329,9 @@ def con_ia(texto, simulador=False):
             return f
         except Exception as e:
             _registrar("gemini", modelo, "error", t0, error=f"buscador: {type(e).__name__}", simulador=simulador)
+    f = _con_cerebro(texto, simulador)
+    if f is not None:
+        return f
     modelo = env.get("OPENAI_MODEL") or "qwen3"
     t0 = time.time()
     try:

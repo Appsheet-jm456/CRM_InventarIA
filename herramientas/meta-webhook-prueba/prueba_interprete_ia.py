@@ -30,5 +30,50 @@ ok(interprete._limpiar('{"procesador": "Ryzen 7", "ram_gb": [], "uso": null}') =
 ok(interprete._limpiar('{"precio_max": {"min": 1}, "generacion": true}') == {}, "objetos y verdadero/falso se descartan")
 ok(interprete._limpiar("no entendí") == {}, "sin JSON, sin filtros")
 
+# F4·31: el buscador usa los modelos en la nube del Cerebro (OpenRouter), principal y respaldo; nunca el local por esta vía.
+import types  # noqa: E402
+
+registro = []
+sys.modules["db"] = types.SimpleNamespace(pedir=lambda ruta, metodo="GET", cuerpo=None, prefer=None: registro.append(cuerpo))
+falso = types.ModuleType("cerebro")
+estado = {"config": None, "agotado": False, "falla": set(), "llamados": []}
+falso.cargar = lambda: (estado["config"], {"llave": "x", "llave_respaldo": "x"})
+falso.tope = lambda: {"agotado": estado["agotado"]}
+falso.modelo = lambda c, ll, respaldo=False: (None if respaldo and not c.get("proveedor_respaldo") else
+                                              {"proveedor": c["proveedor_respaldo" if respaldo else "proveedor"],
+                                               "modelo": c["modelo_respaldo" if respaldo else "modelo"]})
+
+
+def _llamar(m, mensajes, sistema, temperatura, tokens_max, espera):
+    estado["llamados"].append(m["modelo"])
+    if m["modelo"] in estado["falla"]:
+        raise Exception("respondió 503")
+    return {"texto": '{"marca": "lenovo", "ram_gb": 16}', "tokens_entrada": 100, "tokens_salida": 10, "costo_usd": 0.00001}
+
+
+falso._llamar = _llamar
+sys.modules["cerebro"] = falso
+NUBE = {"proveedor": "openrouter", "modelo": "deepseek/deepseek-v4-flash", "proveedor_respaldo": "openrouter",
+        "modelo_respaldo": "google/gemini-2.5-flash-lite", "tokens_max": 1000}
+
+estado.update(config=NUBE)
+ok(interprete._con_cerebro("lenovo de 16") == {"marca": "LENOVO", "ram_gb": 16} and estado["llamados"] == ["deepseek/deepseek-v4-flash"],
+   "el buscador usa el modelo principal en la nube")
+ok(registro[-1]["detalle"]["buscador"] and registro[-1]["proveedor"] == "openrouter", "queda en el Registro de IA como buscador")
+estado.update(falla={"deepseek/deepseek-v4-flash"}, llamados=[])
+ok(interprete._con_cerebro("lenovo de 16") == {"marca": "LENOVO", "ram_gb": 16}
+   and estado["llamados"] == ["deepseek/deepseek-v4-flash", "google/gemini-2.5-flash-lite"], "si el principal falla, responde el respaldo")
+ok(registro[-1]["detalle"].get("respaldo") is True, "el Registro marca que respondió el respaldo")
+estado.update(falla={"deepseek/deepseek-v4-flash", "google/gemini-2.5-flash-lite"})
+ok(interprete._con_cerebro("lenovo") is None, "si fallan los dos, None (sigue el modelo local)")
+estado.update(config={**NUBE, "proveedor_respaldo": "local", "modelo_respaldo": "llama3.1"}, falla={"deepseek/deepseek-v4-flash"}, llamados=[])
+ok(interprete._con_cerebro("lenovo") is None and estado["llamados"] == ["deepseek/deepseek-v4-flash"],
+   "un respaldo local no se llama por esta vía (atiende de a uno)")
+estado.update(config=NUBE, falla=set(), agotado=True, llamados=[])
+ok(interprete._con_cerebro("lenovo") is None and estado["llamados"] == [], "con el presupuesto agotado no se usa la nube")
+ok(interprete._con_cerebro("lenovo", simulador=True) is not None, "el Chat InventarIA (simulador) no cuenta para el tope")
+estado.update(config={**NUBE, "proveedor": "local", "proveedor_respaldo": None}, agotado=False, llamados=[])
+ok(interprete._con_cerebro("lenovo") is None and estado["llamados"] == [], "con el Cerebro solo local, el buscador no cambia")
+
 print(f"\n{n - fallos}/{n} en verde" if not fallos else f"\n{fallos} de {n} fallaron")
 sys.exit(1 if fallos else 0)

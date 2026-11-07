@@ -88,9 +88,13 @@ export function useAvisosBandeja(activo: boolean) {
       avisados.current = ahora
     }
 
+    // F4·31: como mucho una revisión cada 400 ms; con muchos clientes a la vez, posponerla con cada cambio la dejaría sin correr.
     const programar = () => {
-      clearTimeout(espera)
-      espera = setTimeout(revisar, 400)
+      if (espera) return
+      espera = setTimeout(() => {
+        espera = undefined
+        revisar()
+      }, 400)
     }
     revisar()
     let canal: ReturnType<ReturnType<typeof clienteNavegador>['channel']> | null = null

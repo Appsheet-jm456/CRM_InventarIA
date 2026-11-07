@@ -1,7 +1,7 @@
 // Proveedores de IA del Cerebro (F4·27, RAG-10). Valores de partida editables en la pantalla: los precios cambian,
 // hay que confirmarlos en la página del proveedor. Sirve a la pantalla (navegador) y al servidor.
 export type Protocolo = 'openai' | 'anthropic'
-export type Proveedor = 'deepseek' | 'openai' | 'gemini' | 'anthropic' | 'local' | 'otro'
+export type Proveedor = 'deepseek' | 'openrouter' | 'openai' | 'gemini' | 'anthropic' | 'local' | 'otro'
 
 export type Modelo = {
   proveedor: Proveedor
@@ -15,6 +15,10 @@ export type Modelo = {
 export const PROVEEDORES: { id: Proveedor; nombre: string; ayuda: string; base: Omit<Modelo, 'proveedor'> }[] = [
   { id: 'deepseek', nombre: 'DeepSeek', ayuda: 'Muy barato y bueno con herramientas.',
     base: { modelo: 'deepseek-chat', url_base: 'https://api.deepseek.com', protocolo: 'openai', precio_entrada_usd: 0.28, precio_salida_usd: 0.42 } },
+  // F4·31 (8 nov 2026): una sola llave para DeepSeek de principal y otro modelo barato de respaldo, los dos en la nube y en paralelo.
+  // Precios de openrouter.ai/api/v1/models del 8 nov 2026. Respaldo sugerido: google/gemini-2.5-flash-lite (0,10 / 0,40).
+  { id: 'openrouter', nombre: 'OpenRouter', ayuda: 'Una llave para muchos modelos. Principal: deepseek/deepseek-v4-flash; respaldo de otra empresa: google/gemini-2.5-flash-lite (pega la misma llave en los dos).',
+    base: { modelo: 'deepseek/deepseek-v4-flash', url_base: 'https://openrouter.ai/api/v1', protocolo: 'openai', precio_entrada_usd: 0.091, precio_salida_usd: 0.182 } },
   { id: 'openai', nombre: 'OpenAI (GPT)', ayuda: 'Alternativa o respaldo.',
     base: { modelo: 'gpt-4o-mini', url_base: 'https://api.openai.com/v1', protocolo: 'openai', precio_entrada_usd: 0.15, precio_salida_usd: 0.6 } },
   // gemini-2.5-flash ya no se ofrece a usuarios nuevos (31 oct 2026); 3.5-flash-lite responde en ~1 s y sin «pensar», que en los

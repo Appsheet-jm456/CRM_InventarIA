@@ -151,6 +151,30 @@ export function Bandeja({ yo, usuarios, asesores, embudos, etapas, rapidas, inic
     setCargado(true)
   }, [])
 
+  // F4·31: con muchos clientes a la vez, cada cambio trae solo los chats que cambiaron (no los 300). La lista completa se
+  // recarga cada 30 s como respaldo (y para el contador de espera, que calcula la base).
+  const actualizarLeads = useCallback(async (ids: number[]) => {
+    if (!ids.length) return
+    const sb = clienteNavegador()
+    const [{ data }, { data: ops }] = await Promise.all([
+      sb.from('leads').select(COLUMNAS).in('id', ids).is('archivado_en', null).is('eliminado_en', null),
+      sb.from('oportunidades').select('lead_id, embudos(nombre), etapas(nombre)').eq('estado', 'abierta').in('lead_id', ids),
+    ])
+    const nuevos = new Map(((data ?? []) as unknown as Lead[]).map((l) => [l.id, l]))
+    const fecha = (l: Lead) => (l.fecha_ultimo_contacto ? Date.parse(l.fecha_ultimo_contacto) : 0)
+    setLeads((ls) => {
+      const resto = ls.filter((l) => !ids.includes(l.id))  // un chat que ya no llega (archivado o sin permiso) sale de la lista
+      return [...resto, ...nuevos.values()].sort((a, b) => fecha(b) - fecha(a)).slice(0, 300)
+    })
+    setAbiertas((m) => {
+      const mapa = new Map(m)
+      for (const id of ids) mapa.delete(id)
+      for (const o of (ops ?? []) as unknown as { lead_id: number; embudos: { nombre: string }; etapas: { nombre: string } }[])
+        mapa.set(o.lead_id, [...(mapa.get(o.lead_id) ?? []), `${o.embudos.nombre} · ${o.etapas.nombre}`])
+      return mapa
+    })
+  }, [])
+
   const cargarMensajes = useCallback(async (id: number) => {
     const { data } = await clienteNavegador()
       .from('mensajes')
@@ -161,13 +185,21 @@ export function Bandeja({ yo, usuarios, asesores, embudos, etapas, rapidas, inic
     if (selRef.current === id) setMensajes((data ?? []) as Mensaje[])
   }, [])
 
-  // Tiempo real: cada cambio en leads recarga la lista (el RLS decide qué llega); un mensaje nuevo de la
-  // conversación abierta se agrega al chat. Cada 30 s se recarga igual, por si la conexión se cayó.
+  // Tiempo real: cada cambio en leads trae solo ese chat (el RLS decide qué llega); los cambios de 250 ms se juntan en una
+  // consulta. Un mensaje nuevo de la conversación abierta se agrega al chat. Cada 30 s se recarga todo, por si la conexión se cayó.
   useEffect(() => {
     let espera: ReturnType<typeof setTimeout> | undefined
-    const programar = () => {
-      clearTimeout(espera)
-      espera = setTimeout(cargarLista, 250)
+    const pendientes = new Set<number>()
+    const programar = (p?: { new?: Record<string, unknown>; old?: Record<string, unknown> }, campo = 'id') => {
+      const id = Number(p?.new?.[campo] ?? p?.old?.[campo])
+      if (id) pendientes.add(id)
+      if (espera) return  // ya hay una consulta programada: con mensajes seguidos no se pospone sin fin
+      espera = setTimeout(() => {
+        espera = undefined
+        const ids = [...pendientes]
+        pendientes.clear()
+        actualizarLeads(ids)
+      }, 250)
     }
     cargarLista()
     let canal: ReturnType<ReturnType<typeof clienteNavegador>['channel']> | null = null
@@ -176,16 +208,16 @@ export function Bandeja({ yo, usuarios, asesores, embudos, etapas, rapidas, inic
       if (!vigente) return
       canal = supabase
       .channel('bandeja')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'leads' }, programar)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'oportunidades' }, () => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'leads' }, (p: { new?: Record<string, unknown>; old?: Record<string, unknown> }) => programar(p))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'oportunidades' }, (p: { new?: Record<string, unknown>; old?: Record<string, unknown> }) => {
         setVersionOps((v) => v + 1)
-        programar()
+        programar(p, 'lead_id')
       })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'mensajes' }, (p: { new: Record<string, unknown> }) => {
         const nuevo = p.new as unknown as Mensaje & { lead_id: number }
         if (nuevo.lead_id === selRef.current)
           setMensajes((ms) => (ms.some((m) => m.id === nuevo.id) ? ms : [...ms, nuevo]))
-        programar()
+        programar(p, 'lead_id')
       })
       // El estado de entrega llega después, como una actualización del mensaje (RM-07).
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'mensajes' }, (p: { new: Record<string, unknown> }) => {
@@ -208,7 +240,7 @@ export function Bandeja({ yo, usuarios, asesores, embudos, etapas, rapidas, inic
       vigente = false
       if (canal) clienteNavegador().removeChannel(canal)
     }
-  }, [cargarLista, cargarMensajes])
+  }, [cargarLista, cargarMensajes, actualizarLeads])
 
   useEffect(() => {
     selRef.current = sel

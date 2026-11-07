@@ -97,6 +97,26 @@ class Entorno:
 ENV = Entorno()
 
 
+def esperar_base(limite=300, pausa=3, dormir=time.sleep):
+    """F5·8: al encender el servidor la base tarda en subir (~2 min). Se espera aquí en vez de salir y que systemd reinicie el
+    receptor decenas de veces. True cuando la base respondió; False si pasó el límite (sigue con .env.meta, si lo hay)."""
+    inicio = time.monotonic()
+    avisado = False
+    while True:
+        db.config_meta(forzar=True)
+        if db.config_meta()[1]:
+            if avisado:
+                anotar(f"✓ la base respondió tras {int(time.monotonic() - inicio)} s")
+            return True
+        if time.monotonic() - inicio >= limite:
+            anotar(f"✗ la base no respondió en {limite} s")
+            return False
+        if not avisado:
+            anotar("⏳ esperando a que la base de datos responda…")
+            avisado = True
+        dormir(pausa)
+
+
 def anotar(texto):
     linea = f"{datetime.now():%Y-%m-%d %H:%M:%S}  {texto}"
     print(linea, flush=True)
@@ -967,6 +987,7 @@ def probar_agente(pedido):
 
 
 if __name__ == "__main__":
+    esperar_base()
     if not ENV.get("META_TOKEN") or not ENV.get("META_PHONE_NUMBER_ID") or not ENV.get("META_VERIFY_TOKEN"):
         sys.exit("✗ No hay conexión con Meta: ni en la base (Configuración → Meta) ni en .env.meta")
     if not ENV.get("META_APP_SECRET"):
