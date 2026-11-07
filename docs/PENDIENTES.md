@@ -6,6 +6,8 @@ de las Fases 1 y 2 abajo. **Código nuevo:** el bot de prueba sobre Supabase (`h
 
 ## Dónde retomar (en este orden)
 
+0. **7 nov 2026 · Webhook fijo ✅ (F2·10 hecha; F2·17 reemplazada).** `https://bot.ventasvirtualcolombia.shop/webhook` (dominio `.shop` en Hostinger con el DNS en Cloudflare; túnel con nombre `crm-inventaria`, servicio `crm-meta-tunel-fijo`, config en `~/.cloudflared/`, fuera de git). Solo publica `/webhook`; lo demás da 404. Registrado en Meta y probado con un «hola» real; el túnel rápido `crm-meta-tunel` quedó apagado y deshabilitado (si el bot deja de responder: `systemctl --user status crm-meta-tunel-fijo`; la vuelta atrás es `enable --now crm-meta-tunel`). **Siguen para producción:** respaldos del CRM (F5·2), pantalla del CRM para el equipo de 3 o 4 personas (Tailscale hoy; `crm.<dominio>` con Cloudflare Access pide un cambio de código), tarjeta de pago y verificación del negocio en Meta, plantilla `crm_pago_confirmado`. Renovación del `.shop`: revisar su precio de 2027.
+
 0. **7 nov 2026 · F4·46 El asesor valida el comprobante antes de confirmar el pago, construida 🔵 y encendida, falta la prueba del dueño ([AGENTE.md](AGENTE.md#4g-validación-del-comprobante-por-el-asesor-f446), decisión [0036](decisiones/0036-validacion-del-comprobante.md), RAG-63 a RAG-70):** el bot solo acusa recibo del soporte; en la Bandeja «✅ Comprobante validado» envía «Recibimos tu comprobante» y arranca Datos de despacho; «❌ No es válido» con motivo. Permiso `validar_pagos` (darlo en Roles a quien valide). Migración 0050, prueba_validacion.py 15/15. Falta crear la plantilla `crm_pago_confirmado` (fuera de 24 h).
 
 0. **6 nov 2026 · Revisión crítica del flujo Menú + Agente + Asesor: 8 mejoras propuestas, sin construir ([MEJORAS-FLUJO.md](MEJORAS-FLUJO.md)).** Prioridad: 1) retorno tras la pausa del asesor, 3) seguimiento tras la cotización, 2) alarma de cola. Cada una se documenta como HU con la orden del dueño.
@@ -91,7 +93,7 @@ de las Fases 1 y 2 abajo. **Código nuevo:** el bot de prueba sobre Supabase (`h
    **Pruebas del bot frágiles:** `0012_borrador`, `0014_publicar` y `0015_varios_bots` dependen de los borradores y versiones vivos (fallan
    cuando el dueño tiene un borrador abierto); hay que aislarlas con datos propios dentro de cada prueba.
    Pendiente del dueño: textos de ubicación, garantía, devoluciones, envíos y pagos, y confirmar el texto de cuentas del Salesbot «Compra».
-   **Webhook fijo (F2·17 / F2·10):** puede esperar, pero es requisito del piloto F4·29 y de la Fase 5.
+   **Webhook fijo (F2·17 / F2·10):** ✅ hecho el 7 nov 2026 (ver arriba).
 0. **31 oct 2026 · F4·19 Apariencia (✅ probada por el dueño) y F4·20 panel lateral como Futur Green (✅ aprobado, [APARIENCIA.md](APARIENCIA.md#panel-lateral-como-futur-green-f420)):** quitar el verde, módulo Configuración → Apariencia con tres
    colores y paletas, modo oscuro por usuario y fuente más amigable ([APARIENCIA.md](APARIENCIA.md), decisión 0031, migración 0023).
    Incluye **logo personalizable** (bucket `marca`). El dueño probó todo con sesión y quedó OK. F4·20 y F4·21 (lienzo del bot con los colores de la app) aprobados el mismo día. Lo que sigue en la lista: F4·14

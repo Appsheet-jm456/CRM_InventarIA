@@ -1,5 +1,7 @@
 # Webhook de Meta con dirección fija: opciones A y B (F2·10 y F2·17)
 
+> **Hecho el 7 nov 2026 (opción B):** `https://bot.ventasvirtualcolombia.shop/webhook`. El dominio es `ventasvirtualcolombia.shop` (Hostinger, nameservers de Cloudflare); túnel `crm-inventaria` con `~/.cloudflared/config.yml` (ingress solo `^/webhook$`, lo demás 404) y servicio `crm-meta-tunel-fijo` (copia en `herramientas/meta-webhook-prueba/systemd/`). Registrado en Meta con `tunel.registrar_en_meta`; `crm-meta-tunel` apagado. Lección: el nombre de dominio nuevo tardó ~1 h en publicarse en el registro de `.shop` y el certificado HTTPS de Cloudflare ~15 min más; mientras tanto Cloudflare mostró «Invalid nameservers».
+
 > Por qué: el 1 oct 2026 el bot dejó de responder desde el 30 sep a las 14:44. El túnel rápido de prueba
 > (`trycloudflare`) **lo borró Cloudflare** («Tunnel not found») y el servicio `crm-meta-tunel` siguió reintentando sobre
 > una dirección muerta, sin avisar: Meta enviaba los mensajes a una URL que ya no existía. Se arregló con
