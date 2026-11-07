@@ -24,6 +24,7 @@
 | ✅ **F4·18** Salidas del Mensaje (3 oct, decisión 0030, migración 0021) | «Otra respuesta», «Sin respuesta» (con tiempo) y «Error al enviar el mensaje», como en Kommo |
 | 🔵 **F4·34** Cuadro Pregunta, datos en los mensajes y datos de despacho tras el pago (construida 1 nov 2026, migraciones 0038 y 0039; falta la prueba del dueño) | Cuadro ❓ Pregunta que guarda la respuesta en un dato de la ficha y la valida; marcas `{dato}` en los mensajes; efecto «Marcar un dato» en los botones; la compra sigue en un bot del lienzo después del comprobante; bot de ejemplo «Datos de despacho» |
 | 🔵 **F4·35** Interruptores del bot y cuadro 🤖 Agente (construida 1 nov 2026, decisión 0034, migración 0040; falta la prueba del dueño) | Chatbot, Menú guiado y Avi en texto libre en todo el bot, con mensaje fijo opcional; cuadro 🤖 Agente con instrucción, herramientas, límite y salidas; se retira el modo por bot |
+| 🟡 **F4·47** Cierre de la compra: políticas de despacho y datos de envío más cortos (documentada 7 nov 2026; por construir) | Mensajes del bot «Datos de despacho» reescritos con emojis, 5 preguntas en vez de 6, política de despacho propia para envío y para recojo en tienda, y el cuadro 🔒 Asesor puede pasar el chat a la cola «sin aviso» |
 | **F4·15** Simulador y pruebas | Probar los cuadros y bots nuevos en el simulador (la Pausa con "Simular que pasó el tiempo"), pruebas de la base y del motor |
 
 ## Reglas
@@ -540,6 +541,43 @@ de Avi desde el catálogo. El único problema para publicar son los catálogos s
 pregunta «¿otro equipo?», arma el resumen y sigue con cuentas y comprobante. Flechas opcionales: **Pedido pagado (comprobante recibido)** y
 **Pidió asesor**; sueltas, sigue lo de Agente → Compra. Textos y máximo en Agente → Compra → Carrito. Diseño completo en
 [AGENTE.md §4f](AGENTE.md#4f-carrito-comprar-varios-equipos-en-un-pedido-f444) (RAG-54 a RAG-62). Guardar: `borrador_guardar_carrito`.
+
+## Cierre de la compra: políticas de despacho (F4·47)
+
+**Pedido del dueño, 7 nov 2026.** Tras «✅ Comprobante validado» (F4·46) el cliente veía dos veces «Recibimos tu comprobante», seis preguntas de
+envío y un cierre de «fuera de horario» que no dice qué sigue con su equipo. Se mejora el bot «Datos de despacho» (id 462) sin cambiar la
+compra ni la validación del pago.
+
+- **RF-40 · Un solo acuse de pago.** El texto de pago confirmado (Agente → Compra) es *«✅ ¡Pago confirmado! Recibimos tu comprobante y el
+  dinero ya está en nuestra cuenta. 🎉 Gracias por tu compra en Ventas Virtuales Colombia.»*; el primer cuadro del bot **ya no repite** el acuse
+  y solo pregunta *«📦 ¿Cómo quieres recibir tu equipo? 1️⃣ 🚚 Envío a domicilio o por transportadora · 2️⃣ 🏬 Recojo en tienda»*
+  (botones «Envío transportadora» y «Recojo en tienda»; el límite de Meta es 20 caracteres).
+- **RF-41 · Datos de envío en 5 preguntas** (antes 6): nombre completo, cédula, celular, correo y **dirección de entrega con ciudad y
+  departamento** (se junta «Ciudad y departamento» con la dirección). Cada una con su emoji (👤 🪪 📱 ✉️ 📍). La confirmación (📋) muestra los 5
+  datos y los botones «Sí, correctos» y «Corregir». El atributo `ciudad` deja de preguntarse; no se borra.
+- **RF-42 · Cierre propio por camino, en vez del aviso de horario.**
+  - *Envío:* «🚚 *Política de despacho* · 1️⃣ ✅ Pago confirmado · 2️⃣ 🛠️ Tu equipo entra a *alistamiento* · 3️⃣ 🎥 Te enviamos un *video* del equipo
+    (soporte técnico) y lo *despachamos* 📦. Un asesor te escribe por aquí si necesita algo más. 🙌»
+  - *Tienda* (no pide datos, va directo): «🏬 *Recojo en tienda* · 1️⃣ ✅ Pago confirmado · 2️⃣ 🛠️ alistamiento · 3️⃣ 🔔 Te *avisamos por aquí* cuando
+    esté listo para recoger. ¡Gracias por tu compra! 🙌»
+  - El paso 1 va como «✅ Pago confirmado» porque a esa altura el asesor ya validó el comprobante (F4·46).
+- **RF-43 · Cuadro 🔒 Asesor «sin aviso».** Ajuste nuevo del cuadro Asesor (`ajustes.sin_aviso`): pasa el chat a la cola, pone la etiqueta y
+  pausa el bot **sin enviar** el mensaje de dentro ni de fuera de horario. Apagado por defecto: los demás bots no cambian. Los dos cierres
+  de RF-42 terminan en un Asesor «sin aviso». Si el cliente no termina las preguntas (Sin respuesta), el chat igual pasa a la cola como hoy.
+- **RF-44 · Entra al embudo.** El cierre coincide con las etapas **Alistamiento** y **Despachado** de F4·33: el asesor mueve la oportunidad
+  cuando alista y despacha; el aviso de «listo para recoger» lo escribe el asesor.
+- **RF-45 · Se arma en borrador.** Los textos se cargan en el borrador del bot 462; el dueño lo prueba en el simulador y por WhatsApp y lo
+  publica. El bot publicado no se toca hasta entonces.
+
+**Cómo probarlo (dueño).** Compra de prueba → «✅ Comprobante validado» → ver el acuse único y la pregunta de entrega → recorrer *Envío* (5
+preguntas, confirmar, política) y *Tienda* (política directa) → comprobar que el chat queda en la cola de la Bandeja y que no llega el
+mensaje de «fuera de horario».
+
+**Modelo.** Cambia solo `ajustes.sin_aviso` del tipo `asesor` (`borrador_guardar_cuadro`, `problemas_del_flujo`) y la función `asesor()` de
+`flujo.py`. Migración prevista **0052**. Textos y cuadros: datos del bot 462, no código.
+
+**Fuera de esta tarea:** usar el número de WhatsApp como celular y leer los datos de una foto de la cédula (simplificaciones futuras), y la
+plantilla de Meta para clientes fuera de las 24 h (F4·46).
 
 ## Arranques y pruebas (F4·14 y F4·15, decisión 0028)
 
