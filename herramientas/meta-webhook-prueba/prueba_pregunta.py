@@ -44,7 +44,8 @@ DESPACHO = {
     "M2": dict(cuadro("M2", "mensaje", "Te esperamos en la tienda"), opciones=[{"id": "1", "titulo": "Listo", "destino": "B-ASESOR"}]),
     "B-ASESOR": cuadro("B-ASESOR", "asesor", "Un asesor te atiende {motivo}{horario}", marcas=["motivo", "horario"]),
 }
-CONFIG = {"texto_cuentas": "💳 Bancolombia 123", "horas_sin_respuesta": 12, "texto_comprobante": "✅ Recibimos tu comprobante.",
+CONFIG = {"validar_comprobante": False,  # el camino de antes de F4·46 (casilla apagada); el nuevo, en prueba_validacion.py
+          "texto_cuentas": "💳 Bancolombia 123", "horas_sin_respuesta": 12, "texto_comprobante": "✅ Recibimos tu comprobante.",
           "compra_bot_despues": None}
 
 db.atributos = lambda: ATRIBUTOS

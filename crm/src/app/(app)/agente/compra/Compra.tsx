@@ -76,9 +76,38 @@ export function Compra({ datos, etapas, disparo, bots }: {
         <form className="panel-b" style={{ display: 'grid', gap: 14 }}
           onSubmit={async (e) => { e.preventDefault(); setOcupado(true); setAviso(await guardarCompra(d)); setOcupado(false) }}>
           {texto('texto_cuentas', 'Cuentas para pagar', 'Titular, bancos, números, llave, recargo con tarjeta, tiempo para pagar y qué datos de envío mandar', 12)}
-          {texto('texto_comprobante', 'Comprobante recibido', 'Se envía al recibir la foto, el PDF o «ya pagué», antes de pasar al asesor. Puede llevar {horario} (los días y franjas) y {proxima} («en breve» si hay atención, o «mañana a las 8:00 am»)')}
+          <fieldset className="f-seccion" disabled={ocupado}>
+            <legend>💳 Validación del pago (contra estafas)</legend>
+            <label className="inline">
+              <input type="checkbox" checked={d.validar_comprobante} onChange={(e) => poner('validar_comprobante', e.target.checked)} />
+              Un asesor valida el comprobante en la cuenta bancaria antes de confirmar el pago
+            </label>
+            <small className="muted">
+              Encendido: al llegar la foto o el PDF el bot solo acusa recibo y el chat pasa a la Bandeja con la tarjeta «💳 Comprobante por validar».
+              Quien tiene el permiso <b>Validar pagos</b> revisa el banco y pulsa <b>✅ Comprobante validado</b> (el cliente recibe la confirmación y sigue
+              el bot de abajo) o <b>❌ No es válido</b> (recibe el motivo y puede mandar otro; al segundo rechazo queda «Revisar-Posible-Fraude»).
+              «Ya pagué» sin archivo pide la foto. Apagado: como antes, el bot confirma y sigue al recibir el soporte.
+            </small>
+            {([
+              ['texto_soporte', 'Soporte recibido (no confirma el pago)', '{proxima} = «en breve» o «mañana a las 8:00 am», {horario}, {total} = total de la compra'],
+              ['texto_validado', 'Pago confirmado (al validar)', 'Después sale el bot de abajo («¿Cómo recibes tu equipo?»). {total}'],
+              ['texto_rechazado', 'Comprobante no válido', '{motivo} = el que elija el asesor, {total}'],
+            ] as const).map(([k, titulo, ayuda]) => (
+              <label key={k} className="field">
+                {titulo}
+                <textarea rows={2} value={d[k]} maxLength={1024} onChange={(e) => poner(k, e.target.value)} />
+                <small className="muted">{ayuda}</small>
+              </label>
+            ))}
+            <label className="field">
+              Motivos para rechazar (uno por línea)
+              <textarea rows={3} value={d.motivos_rechazo.join('\n')} onChange={(e) => poner('motivos_rechazo', e.target.value.split('\n'))} />
+              <small className="muted">El asesor elige uno o escribe otro.</small>
+            </label>
+          </fieldset>
+          {!d.validar_comprobante && texto('texto_comprobante', 'Comprobante recibido', 'Se envía al recibir la foto, el PDF o «ya pagué», antes de pasar al asesor. Puede llevar {horario} (los días y franjas) y {proxima} («en breve» si hay atención, o «mañana a las 8:00 am»)')}
           <label className="field">
-            Después del comprobante, ir al bot
+            {d.validar_comprobante ? 'Después de validar el pago, ir al bot' : 'Después del comprobante, ir al bot'}
             <select value={d.compra_bot_despues ?? ''} disabled={ocupado}
               onChange={(e) => poner('compra_bot_despues', e.target.value ? Number(e.target.value) : null)}>
               <option value="">Ninguno: el texto de comprobante recibido y pasa al asesor</option>

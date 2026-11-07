@@ -454,6 +454,38 @@ def revisar_retorno():
             anotar(f"  ✗ no se pudo enviar el mensaje automático a {candidato.get('telefono')}: {e!r}")
 
 
+def resolver_comprobante(pedido):
+    """F4·46 (/interno/comprobante): una persona pulsó «Comprobante validado» o «No es válido» en la Bandeja y la base ya lo
+    registró. Le escribe al cliente y sigue el despacho (o vuelve a esperar el pago). Con el candado del cliente."""
+    lead_id = int(pedido["lead"])
+    numero = db.telefono_de(lead_id)
+    if not numero:
+        raise LookupError(lead_id)
+    with _candados.setdefault(numero, threading.Lock()):
+        lead = db.lead(numero)
+        if not lead or lead["id"] != lead_id:
+            raise LookupError(lead_id)
+        st = cargar_estado(lead)
+        r = compra.resolver_validacion(st, lead)
+        if r is None:
+            return {"ok": False, "error": "Este cliente no tiene una validación pendiente."}
+        mensajes, resultado = r
+        ultimo = db.ultimo_del_cliente(lead_id)
+        fuera = not ultimo or datetime.now(timezone.utc) - ultimo > VENTANA
+        if fuera:  # RAG-68: sin las 24 h no se le puede escribir libre; queda registrado y con el asesor
+            st["pausa"] = True
+            anotar(f"💳 {numero}: comprobante {resultado} fuera de las 24 h; no se le escribió")
+        else:
+            rechazado = enviar_mensajes(numero, lead, mensajes)
+            if rechazado:
+                st = seguir_error_de_envio(numero, lead, st, rechazado)
+            anotar(f"💳 {numero}: comprobante {resultado} → {len(mensajes)} mensaje(s) · nodo {st['nodo']}")
+        guardar_estado(lead, st, "", None, del_cliente=False)
+        aviso = ("Pasaron más de 24 h desde el último mensaje del cliente: no se le escribió. Escríbele con una plantilla desde la Bandeja."
+                 if fuera else None)
+        return {"ok": True, "resultado": resultado, "enviados": 0 if fuera else len(mensajes), "aviso": aviso}
+
+
 def vaciar_papelera():
     """Leads con más de 30 días en la papelera: se borran con sus mensajes y sus archivos (F4·30 E, 0035)."""
     r = db.vaciar_papelera()
@@ -619,7 +651,9 @@ def _contestar(numero, entrada, visible, nombre, tipo, meta_id, media=None, guar
                     anotar(f"  ✗ la respuesta al mensaje automático falló: {e!r}")
             # Una compra (F4·25) o una cotización (F4·26) en curso atienden primero: botones, datos, comprobante, cancelar.
             for nombre_flujo, modulo, icono in (("compra", compra, "🛒"), ("cotizacion", cotizacion, "📄")):
-                if mensajes is not None or not modulo.activa(st) or st["pausa"]:
+                if mensajes is not None or not modulo.activa(st):
+                    continue
+                if st["pausa"] and not (modulo is compra and compra.espera_soporte(st, tipo)):  # F4·46: el soporte llega aun con asesor
                     continue
                 try:
                     r = modulo.responder(st, entrada, tipo if tipo in ("text", "button", "interactive") else "media", lead)
@@ -795,6 +829,8 @@ class Webhook(BaseHTTPRequestHandler):
             return self.interno(simular)
         if ruta == "/interno/agente":  # «Probar» el agente (F4·28): sin escribir en la base ni enviar a WhatsApp
             return self.interno(probar_agente)
+        if ruta == "/interno/comprobante":  # F4·46: validar o rechazar el comprobante (lo registró la base)
+            return self.interno(resolver_comprobante)
         if ruta == "/interno/acciones":  # «Probar con una frase» (F4·24, RAG-26)
             return self.interno(lambda p: acciones.probar(str(p["texto"])[:500]))
         if urlparse(self.path).path != "/webhook":

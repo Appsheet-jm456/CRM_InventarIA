@@ -94,3 +94,46 @@ export async function responderConPlantilla(lead: number, nombre: string, idioma
   if (error) return { error: `Se envió, pero no se pudo registrar: ${error.message}` }
   return {}
 }
+
+// F4·46 (RAG-65, RAG-66): la base exige validar_pagos y lo registra; luego el receptor le escribe al cliente y sigue el despacho.
+async function avisarReceptor(lead: number): Promise<{ error?: string; aviso?: string | null }> {
+  if (!process.env.CRM_INTERNO_URL || !process.env.CRM_INTERNO_TOKEN) return { error: 'Falta la conexión con el receptor del bot.' }
+  try {
+    const r = await fetch(`${process.env.CRM_INTERNO_URL}/interno/comprobante`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Interno-Token': process.env.CRM_INTERNO_TOKEN },
+      body: JSON.stringify({ lead }),
+      cache: 'no-store',
+      signal: AbortSignal.timeout(60000),
+    })
+    if (!r.ok) return { error: `El receptor del bot respondió ${r.status}.` }
+    const d = (await r.json()) as { ok: boolean; error?: string; aviso?: string | null }
+    return d.ok ? { aviso: d.aviso ?? null } : { error: d.error ?? 'El receptor no pudo avisar al cliente.' }
+  } catch {
+    return { error: 'El receptor del bot no responde.' }
+  }
+}
+
+export async function validarComprobante(lead: number): Promise<Resultado> {
+  const { error } = await crearCliente().rpc('validar_comprobante', { p_lead: lead })
+  if (error) return { error: error.message }
+  const r = await avisarReceptor(lead)
+  if (r.error) return { error: `Quedó validado, pero no se le pudo escribir al cliente: ${r.error} Pulsa de nuevo «Avisar al cliente».` }
+  return { ok: r.aviso ?? 'Pago validado: el cliente recibió la confirmación y sigue con los datos de despacho.' }
+}
+
+export async function rechazarComprobante(lead: number, motivo: string): Promise<Resultado> {
+  const limpio = motivo.trim()
+  if (!limpio) return { error: 'Elige o escribe el motivo.' }
+  const { error } = await crearCliente().rpc('rechazar_comprobante', { p_lead: lead, p_motivo: limpio })
+  if (error) return { error: error.message }
+  const r = await avisarReceptor(lead)
+  if (r.error) return { error: `Quedó rechazado, pero no se le pudo escribir al cliente: ${r.error} Pulsa de nuevo «Avisar al cliente».` }
+  return { ok: r.aviso ?? 'Comprobante rechazado: el cliente recibió el motivo y puede mandar otro.' }
+}
+
+// Si el receptor no respondió al validar o rechazar: reintenta solo el aviso (la decisión ya quedó en la base).
+export async function reintentarAviso(lead: number): Promise<Resultado> {
+  const r = await avisarReceptor(lead)
+  return r.error ? { error: r.error } : { ok: r.aviso ?? 'Listo: se le escribió al cliente.' }
+}

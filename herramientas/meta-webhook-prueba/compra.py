@@ -344,6 +344,9 @@ def _responder(st, entrada, tipo, lead):
         _limpiar(st)
         return _asesor(st), [], None, nota
 
+    if paso == "esperando_pago" and cfg.get("validar_comprobante", True) and (tipo == "media" or PAGO.search(n)):
+        return _soporte_recibido(st, c, tipo, cfg)
+
     if paso == "esperando_pago":
         # RAG-20: comprobante → Pago por confirmar y al asesor (sin IA, nadie confirma el pago solo).
         if tipo == "media" or PAGO.search(n):
@@ -475,6 +478,91 @@ def _responder_carrito(st, c, paso, entrada, n, lead):
             return [flujo.m_texto(f"🗑 Quité el *{quitado['equipo']}* ({quitado['codigo']}) de tu pedido.")] + _confirmar(st)
         return _confirmar(st)
     return None
+
+
+# --------------------------------------------------------------------------- #
+# F4·46: el asesor valida el comprobante (decisión 0036, RAG-63 a RAG-70)
+# --------------------------------------------------------------------------- #
+
+def espera_soporte(st, tipo):
+    """El cliente manda un archivo con la compra esperando el pago: lo atiende la compra aunque el chat esté con un asesor (tras dos
+    rechazos el chat queda con él y el siguiente soporte también debe llegar a la tarjeta de la Bandeja)."""
+    return (st.get("compra") or {}).get("paso") == "esperando_pago" and tipo not in ("text", "button", "interactive")
+
+
+def _con_total(texto, c):
+    return texto.replace("{total}", flujo.cop(c.get("total") or 0))
+
+
+def _soporte_recibido(st, c, tipo, cfg):
+    """RAG-63: solo acusa recibo (no confirma el pago), deja la compra en «pago por confirmar» y el chat en la cola. «Ya pagué» sin
+    foto ni PDF pide el soporte."""
+    if tipo != "media":
+        return [flujo.m_texto("📎 Envíanos la *foto o el PDF* del comprobante para que un asesor valide el pago.")], [], None, None
+    ahora = datetime.now(flujo.BOGOTA)
+    c.update(paso="pago_por_confirmar", comprobante_en=datetime.now(timezone.utc).isoformat())
+    c.pop("validacion", None)
+    c.pop("motivo", None)
+    st.pop("espera_hasta", None)
+    st["pausa"], st["nodo"] = True, flujo.del_tipo("asesor")
+    st["campos"]["Etiqueta"] = "Comprobante-Por-Validar"
+    nota = (f"💳 Comprobante por validar: {_que_lleva(c)} · "
+            f"{'distribuidor' if c.get('tipo') == 'distribuidor' else 'cliente final'} · total {flujo.cop(c.get('total', 0))} · "
+            f"llegó {ahora:%d/%m %H:%M}. Revisa la cuenta bancaria y pulsa ✅ Comprobante validado o ❌ No es válido en la Bandeja.")
+    texto = flujo.con_horario(_con_total((cfg.get("texto_soporte") or "📄 Recibimos tu soporte. Un asesor está validando el pago "
+                                                                    "y te confirma por aquí {proxima}.").strip(), c))
+    return [flujo.m_texto(texto)], ["Pago-Por-Confirmar", "Comprobante-Por-Validar"], "pago_por_confirmar", nota
+
+
+def resolver_validacion(st, lead=None):
+    """Lo llama el receptor cuando una persona pulsó «Comprobante validado» o «No es válido» (la base ya lo registró).
+    Devuelve (mensajes, resultado) o None si no hay una validación pendiente. Con el bot del cliente en el hilo."""
+    c = st.get("compra") or {}
+    v = c.get("validacion")
+    if c.get("paso") != "pago_por_confirmar" or v not in ("validado", "rechazado"):
+        return None
+    st.setdefault("bot", None)
+    if st["bot"] is None:
+        st["bot"] = db.principal()
+    flujo._hilo.bot, flujo._hilo.saltos = st["bot"], 0
+    try:
+        return (_validado(st, c) if v == "validado" else _rechazado(st, c)), v
+    finally:
+        flujo._hilo.bot, flujo._hilo.saltos = None, 0
+
+
+def _validado(st, c):
+    """RAG-65: «✅ Recibimos tu comprobante.» y sigue el despacho: la flecha «Pedido pagado» del cuadro Carrito, el bot de después
+    del comprobante (Agente → Compra) o, sin ninguno, el asesor."""
+    cfg = _cfg()
+    primero = [flujo.m_texto(_con_total((cfg.get("texto_validado") or "✅ Recibimos tu comprobante.").strip(), c))]
+    _limpiar(st)
+    st["pausa"] = False
+    st["campos"]["Etiqueta"] = "Pago-Validado"
+    listo = _salida(st, c, "listo")
+    if listo:
+        return primero + _ir_a_salida(st, c, listo)
+    despues = cfg.get("compra_bot_despues")
+    if despues and db.flujo(despues):
+        return primero + flujo.cambiar_de_bot(st, despues)
+    st["pausa"], st["nodo"] = True, flujo.del_tipo("asesor")  # sin bot de despacho: sigue el asesor
+    return primero
+
+
+def _rechazado(st, c):
+    """RAG-66: el motivo al cliente y la compra vuelve a esperar el pago. Tras el segundo rechazo el chat se queda con el asesor."""
+    cfg = _cfg()
+    texto = _con_total((cfg.get("texto_rechazado") or "😕 No pudimos validar tu pago: {motivo}. Envíanos de nuevo el comprobante.")
+                       .strip(), c).replace("{motivo}", (c.get("motivo") or "no lo pudimos verificar").rstrip(". ").lower())
+    c["paso"] = "esperando_pago"
+    for k in ("validacion", "comprobante_en"):
+        c.pop(k, None)
+    if int(c.get("rechazos") or 0) >= 2:
+        st["pausa"], st["nodo"] = True, flujo.del_tipo("asesor")
+    else:
+        st["pausa"], st["nodo"] = False, NODO
+        st["espera_hasta"] = (datetime.now(timezone.utc) + timedelta(hours=int(cfg.get("horas_sin_respuesta") or 12))).isoformat()
+    return [flujo.m_texto(texto)]
 
 
 def tiempo_cumplido(st):

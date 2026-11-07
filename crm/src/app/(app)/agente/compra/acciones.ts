@@ -19,6 +19,12 @@ export type DatosCompra = {
   carrito_texto_pedir: string
   carrito_texto_maximo: string
   carrito_encabezado: string
+  // F4·46 (RAG-70): el asesor valida el comprobante
+  validar_comprobante: boolean
+  texto_soporte: string
+  texto_validado: string
+  texto_rechazado: string
+  motivos_rechazo: string[]
 }
 
 const MARCAS_CARRITO = ['n', 'max', 'nombre']
@@ -46,6 +52,16 @@ export async function guardarCompra(d: DatosCompra): Promise<Resultado> {
     const otras = [...d[campo].matchAll(/\{([^{}]*)\}/g)].map((m) => m[1]).filter((m) => !MARCAS_CARRITO.includes(m))
     if (otras.length) return { error: `En «${nombre}» el bot solo reemplaza {n}, {max} y {nombre}; no {${otras.join('}, {')}}.` }
   }
+  for (const [campo, nombre, marcas] of [['texto_soporte', 'soporte recibido', ['proxima', 'horario', 'total']],
+    ['texto_validado', 'pago confirmado', ['total']], ['texto_rechazado', 'comprobante no válido', ['motivo', 'total']]] as const) {
+    if (!d[campo].trim()) return { error: `El texto de ${nombre} no puede quedar vacío.` }
+    if (d[campo].length > 1024) return { error: `El texto de ${nombre} tiene máximo 1.024 caracteres.` }
+    const otras = [...d[campo].matchAll(/\{([^{}]*)\}/g)].map((m) => m[1]).filter((m) => !(marcas as readonly string[]).includes(m))
+    if (otras.length) return { error: `En «${nombre}» el bot solo reemplaza {${marcas.join('}, {')}}; no {${otras.join('}, {')}}.` }
+  }
+  const motivos = [...new Set(d.motivos_rechazo.map((m) => m.trim()).filter(Boolean))]
+  if (!motivos.length) return { error: 'Deja al menos un motivo para rechazar un comprobante.' }
+  if (motivos.some((m) => m.length > 200)) return { error: 'Cada motivo tiene máximo 200 caracteres.' }
   const { data, error } = await crearCliente().from('agente_config').update({
     texto_cuentas: d.texto_cuentas.trim(),
     texto_comprobante: d.texto_comprobante.trim(),
@@ -60,6 +76,11 @@ export async function guardarCompra(d: DatosCompra): Promise<Resultado> {
     carrito_texto_pedir: d.carrito_texto_pedir.trim(),
     carrito_texto_maximo: d.carrito_texto_maximo.trim(),
     carrito_encabezado: d.carrito_encabezado.trim(),
+    validar_comprobante: d.validar_comprobante,
+    texto_soporte: d.texto_soporte.trim(),
+    texto_validado: d.texto_validado.trim(),
+    texto_rechazado: d.texto_rechazado.trim(),
+    motivos_rechazo: motivos,
   }).eq('id', 1).select('id')
   if (error) return { error: error.message }
   if (!data?.length) return { error: 'No tienes permiso para cambiar la configuración de compra.' }

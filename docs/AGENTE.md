@@ -466,7 +466,14 @@ y Confirmar. Para el lienzo: en un bot, + Agregar → 🛒 Carrito, unirlo desde
 ### 4g. Validación del comprobante por el asesor (F4·46)
 
 > Pedida por el dueño el 6 nov 2026 al probar la compra completa (nuevo → quiero comprar → pagar → datos de despacho). Decisión
-> [0036](decisiones/0036-validacion-del-comprobante.md), que **modifica RAG-20** y la F4·34. **Estado: documentada, sin construir.**
+> [0036](decisiones/0036-validacion-del-comprobante.md), que **modifica RAG-20** y la F4·34. **Estado: construida el 7 nov 2026, falta la
+> prueba del dueño** (migración 0050, **encendida**: desde ya el comprobante espera la validación).
+>
+> **Para probarlo (dueño):** compra un equipo por WhatsApp hasta las cuentas y manda una foto: debe llegar «📄 Recibimos tu soporte…» y
+> **no** «¿Cómo recibes tu equipo?». En la Bandeja, abre el chat → panel del cliente → tarjeta **💳 Comprobante por validar** → **✅
+> Comprobante validado** → confirmar: en el celular llegan «✅ Recibimos tu comprobante.» y «¿Cómo recibes tu equipo?». Prueba también
+> **❌ No es válido** con un motivo y manda otra foto. Los textos y motivos están en Agente → Compra → 💳 Validación del pago; para que un
+> asesor valide, dale el permiso **Validar pagos** en Roles.
 
 **Historia de usuario.** **Como** dueño, **quiero** que todo comprobante lo valide un asesor contra la cuenta bancaria antes de que el
 bot le confirme el pago al cliente y siga con el despacho, **para** evitar estafas con comprobantes falsos o pagos que no entraron.
@@ -518,11 +525,17 @@ despacho» (*¿Cómo recibes tu equipo?*). El cliente cree que su pago ya está 
 5. Con la casilla apagada, todo funciona como hoy.
 6. Funciona igual para una compra de un equipo y para un pedido del carrito (F4·44).
 
-**Cómo se construye (resumen técnico).** Migración 0050: ajustes en `agente_config`, permiso `validar_pagos`, funciones
-`validar_comprobante(lead)` y `rechazar_comprobante(lead, motivo)` (exigen el permiso, mueven la oportunidad y dejan historial) y un aviso al
-receptor (como el envío desde la Bandeja) para que mande los mensajes y arranque el bot de despacho. Receptor: `compra.py` deja la compra en
-`pago_por_confirmar` sin seguir; un punto interno `/interno/comprobante` atiende validado o rechazado. CRM: tarjeta en Bandeja y ficha,
-sección en Agente → Compra. Pruebas: `prueba_validacion.py` y pruebas SQL.
+**Cómo está construida (7 nov 2026).** Migración 0050: permiso `validar_pagos` (administrador), ajustes en `agente_config`
+(`validar_comprobante`, `texto_soporte`, `texto_validado`, `texto_rechazado`, `motivos_rechazo`), `compra_etapas.pago_validado_id` (la etapa
+que sigue a Pago por confirmar: Alistamiento en Cliente Final, Primer pedido en Distribuidor), tipo `pago` en el historial y las funciones
+`validar_comprobante(lead)` y `rechazar_comprobante(lead, motivo)`: exigen el permiso, marcan la compra (`validacion`, quién, monto o motivo y
+número de rechazos), cambian etiquetas, mueven la oportunidad (el rechazo la regresa a Esperando pago porque lo decide una persona) y dejan
+historial. Pruebas: `supabase/pruebas/0050_validacion_del_comprobante.sql` (10). Receptor: `compra.py` (`_soporte_recibido`,
+`resolver_validacion`) y la ruta `/interno/comprobante` (`resolver_comprobante`), que con el candado del cliente le escribe y sigue el despacho
+o vuelve a esperar el pago; un soporte llega a la tarjeta aunque el chat esté con un asesor. Pruebas: `prueba_validacion.py` (15); las de
+compra, carrito y pregunta prueban el camino con la casilla apagada. CRM: `bandeja/ComprobanteCliente.tsx` en el panel de la Bandeja y en la
+pestaña Oportunidades de la ficha (con «Avisar al cliente» si el receptor no respondió), y la sección 💳 en Agente → Compra. La plantilla
+`crm_pago_confirmado` de RAG-68 queda por crear: hoy, fuera de las 24 h, se registra y el CRM avisa que hay que escribirle con plantilla.
 
 ### 5. Herramientas (lo que el agente puede hacer)
 

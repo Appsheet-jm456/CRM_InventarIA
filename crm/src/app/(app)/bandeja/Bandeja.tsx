@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { clienteNavegador, prepararTiempoReal } from '@/lib/supabase/navegador'
 import { asignar, cerrar, liberar, reanudarBot, responder, tomar, type Resultado } from './acciones'
+import { ComprobanteCliente } from './ComprobanteCliente'
 import { OportunidadesCliente, type Embudo, type Etapa } from './OportunidadesCliente'
 import { ComponerPlantilla } from './Plantilla'
 import { SeguimientosCliente } from './SeguimientosCliente'
@@ -101,7 +102,7 @@ export function Media({ m }: { m: Mensaje }) {
 }
 
 export function Bandeja({ yo, usuarios, asesores, embudos, etapas, rapidas, inicial }: {
-  yo: { id: string; verTodas: boolean; moverEtapas: boolean }
+  yo: { id: string; verTodas: boolean; moverEtapas: boolean; validarPagos: boolean }
   usuarios: Persona[]
   asesores: Persona[]
   embudos: Embudo[]
@@ -459,6 +460,7 @@ export function Bandeja({ yo, usuarios, asesores, embudos, etapas, rapidas, inic
                 </select>
               </label>
             )}
+            {yo.validarPagos && <ComprobanteCliente key={`pago-${lead.id}`} lead={lead.id} version={versionOps} alCambiar={cargarLista} />}
             <OportunidadesCliente key={`op-${lead.id}`} lead={lead.id} embudos={embudos} etapas={etapas} puede={yo.moverEtapas}
               version={versionOps} alCambiar={cargarLista} />
             <Dato titulo="Busca" valor={lead.categoria_interes} />

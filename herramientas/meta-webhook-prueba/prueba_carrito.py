@@ -23,7 +23,8 @@ INVENTARIO = [
      "disco": "512GB", "estado": "Grado A", "precio": 1500000, "stock": 1, "foto": None},
 ]
 VIVO = list(INVENTARIO)
-CONFIG = {"texto_cuentas": "💳 Bancolombia 123", "cargo_configuracion": 80000, "horas_sin_respuesta": 12,
+CONFIG = {"validar_comprobante": False,  # el camino de antes de F4·46 (casilla apagada); el nuevo, en prueba_validacion.py
+          "texto_cuentas": "💳 Bancolombia 123", "cargo_configuracion": 80000, "horas_sin_respuesta": 12,
           "texto_comprobante": "✅ Recibimos tu comprobante.", "texto_cancelacion": "😊 Entendido.",
           "texto_sigue_interesado": "👋 ¿Sigues interesado?", "carrito_activo": True, "carrito_max": 3,
           "carrito_texto_otro": "¿Quieres agregar otro equipo? Llevas {n}.",

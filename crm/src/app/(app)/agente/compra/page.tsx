@@ -6,7 +6,7 @@ export default async function PaginaCompra() {
   const supabase = crearCliente()
   const [{ data: config }, { data: etapas }, { data: accion }, { data: bots }, { data: publicados }] = await Promise.all([
     supabase.from('agente_config')
-      .select('texto_cuentas, texto_comprobante, texto_sigue_interesado, texto_cancelacion, horas_sin_respuesta, cargo_configuracion, compra_bot_despues, carrito_activo, carrito_max, carrito_texto_otro, carrito_texto_pedir, carrito_texto_maximo, carrito_encabezado')
+      .select('texto_cuentas, texto_comprobante, texto_sigue_interesado, texto_cancelacion, horas_sin_respuesta, cargo_configuracion, compra_bot_despues, carrito_activo, carrito_max, carrito_texto_otro, carrito_texto_pedir, carrito_texto_maximo, carrito_encabezado, validar_comprobante, texto_soporte, texto_validado, texto_rechazado, motivos_rechazo')
       .eq('id', 1).maybeSingle(),
     supabase.from('compra_etapas')
       .select('embudos(nombre), esperando:etapas!compra_etapas_esperando_pago_id_fkey(nombre), confirmar:etapas!compra_etapas_pago_por_confirmar_id_fkey(nombre)'),
@@ -31,6 +31,11 @@ export default async function PaginaCompra() {
         carrito_texto_pedir: config?.carrito_texto_pedir ?? '',
         carrito_texto_maximo: config?.carrito_texto_maximo ?? '',
         carrito_encabezado: config?.carrito_encabezado ?? '',
+        validar_comprobante: config?.validar_comprobante ?? true,
+        texto_soporte: config?.texto_soporte ?? '',
+        texto_validado: config?.texto_validado ?? '',
+        texto_rechazado: config?.texto_rechazado ?? '',
+        motivos_rechazo: config?.motivos_rechazo ?? [],
       }}
       bots={(bots ?? []).map((b) => ({ id: b.id, nombre: b.nombre, archivado: b.archivado, publicado: !!publicados?.some((f) => f.bot_id === b.id) }))}
       etapas={(etapas ?? []).map((e) => ({

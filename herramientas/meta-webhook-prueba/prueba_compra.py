@@ -17,7 +17,8 @@ INVENTARIO = [
     {"cod": "100-102-1030-1", "marca": "Dell", "modelo": "Latitude 5420", "cpu": "i5", "gen": 11, "ram": "16GB", "disco": "512GB",
      "estado": "Grado A", "precio": 1500000, "stock": 1, "foto": None},
 ]
-CONFIG = {"texto_cuentas": "💳 Bancolombia 123 · Davivienda 456", "cargo_configuracion": 80000, "horas_sin_respuesta": 12,
+CONFIG = {"validar_comprobante": False,  # el camino de antes de F4·46 (casilla apagada); el nuevo, en prueba_validacion.py
+          "texto_cuentas": "💳 Bancolombia 123 · Davivienda 456", "cargo_configuracion": 80000, "horas_sin_respuesta": 12,
           "texto_comprobante": "✅ Recibimos tu comprobante.", "texto_cancelacion": "😊 Entendido.",
           "texto_sigue_interesado": "👋 ¿Sigues interesado?"}
 ACCIONES = [

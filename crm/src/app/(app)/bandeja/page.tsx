@@ -19,7 +19,7 @@ export default async function PaginaBandeja({ searchParams }: { searchParams: { 
 
   return (
     <Bandeja
-      yo={{ id: sesion.id, verTodas: puede(sesion, ['ver_todas_conversaciones']), moverEtapas: puede(sesion, ['gestionar_oportunidades']) }}
+      yo={{ id: sesion.id, verTodas: puede(sesion, ['ver_todas_conversaciones']), moverEtapas: puede(sesion, ['gestionar_oportunidades']), validarPagos: puede(sesion, ['validar_pagos']) }}
       usuarios={(usuarios ?? []).map((u) => ({ id: u.id, nombre: u.nombre }))}
       asesores={(usuarios ?? []).filter((u) => u.activo && rolesQueAtienden.has(u.rol_id)).map((u) => ({ id: u.id, nombre: u.nombre }))}
       embudos={embudos ?? []}

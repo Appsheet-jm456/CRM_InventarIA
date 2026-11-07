@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { clienteNavegador } from '@/lib/supabase/navegador'
 import { asignar, cerrar, liberar, reanudarBot, responder, tomar } from '../../bandeja/acciones'
 import { Entrega, Media, hora, iniciales, partirOpciones, type Mensaje } from '../../bandeja/Bandeja'
+import { ComprobanteCliente } from '../../bandeja/ComprobanteCliente'
 import { OportunidadesCliente, type Embudo, type Etapa } from '../../bandeja/OportunidadesCliente'
 import { ComponerPlantilla } from '../../bandeja/Plantilla'
 import { archivoLead, borrarYa, crearTarea, cumplirTarea, etiquetaLead, guardarFicha, notaLead, type Resultado } from './acciones'
@@ -123,7 +124,7 @@ function CampoAtributo({ a, valor, cambiar, ocupado, error }: { a: Atributo; val
 // ---------------------------------------------------------------------------------------------------------------------- //
 export function Ficha({ lead: inicial, yo, usuarios, asesores, embudos, etapas, rapidas, atributos, tiposTarea, etiquetas, cotizaciones }: {
   lead: LeadFicha
-  yo: { id: string; verTodas: boolean; moverEtapas: boolean; eliminar: boolean }
+  yo: { id: string; verTodas: boolean; moverEtapas: boolean; eliminar: boolean; validarPagos: boolean }
   usuarios: Persona[]
   asesores: Persona[]
   embudos: Embudo[]
@@ -462,8 +463,11 @@ export function Ficha({ lead: inicial, yo, usuarios, asesores, embudos, etapas, 
           )}
 
           {pestana === 'oportunidades' && (
-            <OportunidadesCliente lead={lead.id} embudos={embudos} etapas={etapas} puede={yo.moverEtapas} version={version}
-              alCambiar={() => { cargar(); router.refresh() }} />
+            <>
+              {yo.validarPagos && <ComprobanteCliente lead={lead.id} version={version} alCambiar={() => { cargar(); router.refresh() }} />}
+              <OportunidadesCliente lead={lead.id} embudos={embudos} etapas={etapas} puede={yo.moverEtapas} version={version}
+                alCambiar={() => { cargar(); router.refresh() }} />
+            </>
           )}
 
           {pestana === 'tareas' && (
