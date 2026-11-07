@@ -1,0 +1,12 @@
+[Unit]
+Description=CRM InventarIA · túnel fijo de Cloudflare (bot.ventasvirtualcolombia.shop/webhook → receptor 8095)
+After=network-online.target crm-meta-receptor.service
+Wants=crm-meta-receptor.service
+
+[Service]
+ExecStart=/home/atlasjm/.local/bin/cloudflared tunnel --no-autoupdate --config /home/atlasjm/.cloudflared/config.yml run crm-inventaria
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=default.target
