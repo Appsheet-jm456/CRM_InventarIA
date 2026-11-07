@@ -138,6 +138,8 @@ Se construye en tres bloques: **A** ficha (incluye el botón Guardar), **B** dat
 
 ### C. Alistamiento y despacho (cuando el cliente paga)
 
+> **Ampliación propuesta (F4·50, 7 nov 2026):** embudo propio para el servicio técnico, video de soporte y guía: [ALISTAMIENTO-Y-VIDEO-TECNICO.md](ALISTAMIENTO-Y-VIDEO-TECNICO.md).
+
 - RL-21. **Todas las ventas pasan por Alistamiento**, que es la **revisión del técnico** (ajuste del dueño, 1 nov 2026). Cuando el asesor confirma el pago,
   mueve la oportunidad a **Alistamiento**. El embudo de Cliente Final gana dos etapas entre *Pago por confirmar* y *Vendido*: **Alistamiento** y
   **Despachado**. La venta online sigue Alistamiento → Despachado → Vendido; la de tienda, Alistamiento → Vendido (el embudo solo avanza).
