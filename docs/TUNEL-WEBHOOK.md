@@ -8,6 +8,12 @@
 > `systemctl --user restart crm-meta-tunel`, que crea otra URL y la registra sola en Meta. Para que la prueba no se
 > detenga hace falta una **dirección fija**. Decisión de base: 0010 (webhook directo a la app por un túnel con dominio propio).
 
+> **Pantalla del CRM por internet (7 nov 2026):** `https://crm.ventasvirtualcolombia.shop`, detrás de **Cloudflare Access** (Zero Trust, plan Free; aplicación `crm`,
+> política `Equipo` = lista de correos, login con código por correo, sesión de 24 h). El mismo túnel envía `/auth/v1`, `/rest/v1`, `/realtime/v1` y `/storage/v1`
+> a la base (8020) y todo lo demás a la pantalla (8096); `crm/src/lib/supabase/navegador.ts` usa esa misma dirección cuando el host empieza por `crm.`.
+> Comprobado desde afuera: sin sesión, todas las rutas dan 302 al login de Access; el webhook de `bot.` sigue dando 403 (sin Access, a propósito).
+> Config en `~/.cloudflared/config.yml` (copia anterior en `config.yml.bak`). Para dar o quitar acceso: Zero Trust → Access controls → Policies → `Equipo`.
+
 ---
 
 ## Mientras tanto (hoy)
