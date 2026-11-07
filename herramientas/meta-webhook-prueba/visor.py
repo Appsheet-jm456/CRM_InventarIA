@@ -27,6 +27,8 @@ def texto_saliente(mensaje):
         return mensaje["text"]["body"]
     if mensaje.get("type") == "image":
         return f"🖼️ {mensaje['image'].get('caption') or 'Imagen'}"
+    if mensaje.get("type") == "video":  # F4·50: video del servicio técnico
+        return f"🎬 {mensaje['video'].get('caption') or 'Video'}"
     if mensaje.get("type") == "document":
         return f"📄 {mensaje['document'].get('caption') or mensaje['document'].get('filename', 'Documento')}"
     i = mensaje.get("interactive", {})

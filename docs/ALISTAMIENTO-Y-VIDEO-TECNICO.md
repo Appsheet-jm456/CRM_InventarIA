@@ -1,6 +1,6 @@
 # Alistamiento con servicio técnico, video de soporte y guía: campos que disparan el embudo (F4·50)
 
-> **Estado:** documentada el 7 nov 2026 con las respuestas y correcciones del dueño; **bloques A y B construidos el 7 nov 2026** (falta la prueba del dueño); C y D por construir. Parte de F4·33 (etapas Alistamiento y
+> **Estado:** documentada el 7 nov 2026 con las respuestas y correcciones del dueño; **bloques A, B, C y D construidos el 7 nov 2026** (falta la prueba del dueño). Parte de F4·33 (etapas Alistamiento y
 > Despachado, [LEADS.md §C](LEADS.md)) y de F4·46/F4·47 (el cliente ya recibe la política de despacho que promete el video).
 > **Corrección del dueño (7 nov 2026):** **no se crea otro embudo ni otras etapas.** El embudo de Cliente Final queda como está:
 > **Alistamiento → Despachado → Vendido → Perdido**. Lo nuevo son **campos y botones que actúan como disparadores** dentro de esas etapas.
@@ -145,6 +145,27 @@ quien hace cada cosa: por eso el «¿Quién eres?» de RAL-08.
   cuántos videos faltan. En la ficha del cliente, la tarjeta 🛠 muestra los videos de cada equipo para que el asesor los vea.
 - **Probado sin navegador:** subida de 60 MB al bucket con la sesión del administrador (aceptada) y de un archivo que no es video (rechazado).
 - **Falta para usarlo:** compilar y reiniciar la app, y **reiniciar el receptor** (`crm-meta-receptor`) para que empiece a comprimir.
+
+## 5d. Cómo quedaron construidos los bloques C (envíos y cierre) y D (reporte) (7 nov 2026)
+
+- **Migración 0057** (`supabase/pruebas/0057_envios_y_reporte_del_alistamiento.sql`, 13 pruebas): columnas de envío en `alistamientos` (guía,
+  transportadora, número, horas de cada envío y de entrega), bucket privado `guias` (JPG o PNG hasta 5 MB, lo que WhatsApp acepta),
+  `alistamiento_para_enviar` (permiso del asesor y condiciones de cada envío), `alistamiento_guia` (exige el «listo» del técnico, la foto en el
+  bucket, transportadora y número; los copia a la ficha, quita `Listo-Para-Despachar` y pasa la oportunidad por **Despachado** y la deja en
+  **Vendido** con `mover_oportunidad`, que respeta los datos obligatorios de la etapa), `alistamiento_entregado` (tienda → Vendido) y
+  `alistamiento_reporte` (D).
+- **Receptor:** ruta `/interno/alistamiento` (`resolver_alistamiento`) y `alistamiento.py` (textos): **video** (un texto y el último video listo
+  de cada equipo; si pesa más de 16 MB va como documento), **OP o FVE** (número), **guía** (la foto con transportadora, número y documento en el
+  pie) y **listo para recoger** (dirección de la tienda y horario). Fuera de las 24 h de Meta no envía nada y lo dice. Anota la hora de cada
+  envío. Pruebas: `prueba_envios_alistamiento.py` 11/11.
+- **Ficha del cliente (tarjeta 🛠), asesor:** «🎥 Enviar video», «🧾 Enviar FVE/OP», y según la entrega: **📦 Enviar guía** (transportadora de
+  la lista o «Otra», número y foto; al enviarla queda Despachado y Vendido; luego «Reenviar guía») o **🔔 Avisar: listo para recoger** y
+  **✅ Entregado en tienda**. Cada botón muestra cuándo se envió.
+- **Reporte (D):** pestaña **Reporte** en Servicio técnico: últimos 30 días, pedidos, listos, despachados, entregados en tienda, horas de
+  entrada a listo y de listo a guía, y por técnico: pedidos tomados, listos, videos y tiempo de revisión.
+- **Nota:** los datos de despacho y la transportadora y el número de guía ya eran obligatorios para la etapa Despachado (F4·33): si faltan,
+  la guía no se registra y el mensaje dice qué falta. Los textos al cliente están en `alistamiento.py` (aún no se editan desde la pantalla).
+- **Falta para usarlo:** compilar y reiniciar la app y reiniciar el receptor.
 
 ## 6. Decisiones del dueño (7 nov 2026)
 

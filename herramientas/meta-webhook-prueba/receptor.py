@@ -33,6 +33,7 @@ from urllib.parse import parse_qs, urlparse
 
 import db
 import acciones
+import alistamiento
 import agente
 import compra
 import cotizacion
@@ -509,6 +510,57 @@ def resolver_comprobante(pedido):
         return {"ok": True, "resultado": resultado, "enviados": 0 if fuera else len(mensajes), "aviso": aviso}
 
 
+def resolver_alistamiento(pedido):
+    """F4·50 bloque C (/interno/alistamiento): el asesor pulsó «Enviar video», «Enviar OP o FVE», «Enviar guía» o «Avisar: listo para
+    recoger» y la base ya lo permitió y registró. Arma los mensajes, los envía al cliente y anota la hora del envío. No toca el bot."""
+    lead_id, a_id, que = int(pedido["lead"]), int(pedido["alistamiento"]), str(pedido["que"])
+    a = (db.pedir(f"alistamientos?id=eq.{a_id}&lead_id=eq.{lead_id}&select=*") or [None])[0]
+    numero = db.telefono_de(lead_id)
+    if not a or not numero or que not in alistamiento.CAMPO:
+        raise LookupError(lead_id)
+    ultimo = db.ultimo_del_cliente(lead_id)
+    if not ultimo or datetime.now(timezone.utc) - ultimo > VENTANA:  # sin las 24 h de Meta no se puede escribir libre
+        return {"ok": False, "error": "Pasaron más de 24 h desde el último mensaje del cliente: WhatsApp no deja escribirle sin una "
+                                      "plantilla. Quedó registrado; envíalo cuando el cliente vuelva a escribir."}
+    mensajes, enviados_video = [], []
+    if que == "video":
+        nombres = {e["codigo"]: e["nombre"] for e in a.get("equipos") or []}
+        videos_db = db.pedir(f"alistamiento_videos?alistamiento_id=eq.{a_id}&select=id,equipo_codigo,estado,ruta,peso,subido_en") or []
+        mensajes.append(alistamiento.texto_video())
+        for v in alistamiento.videos_a_enviar(videos_db):
+            media_id = subir_a_meta(db.descargar(videos.BUCKET, v["ruta"]), "video/mp4", f"video-{v['id']}.mp4")
+            mensajes.append(alistamiento.mensaje_video(media_id, v.get("peso"), nombres.get(v["equipo_codigo"], "equipo")))
+            enviados_video.append(v["id"])
+        if not enviados_video:
+            return {"ok": False, "error": "No hay videos listos para enviar."}
+    elif que == "documento":
+        mensajes.append(alistamiento.texto_documento(a))
+    elif que == "guia":
+        nombre = a["guia_ruta"].rsplit("/", 1)[-1]
+        mime = "image/png" if nombre.lower().endswith(".png") else "image/jpeg"
+        media_id = subir_a_meta(db.descargar("guias", a["guia_ruta"]), mime, nombre)
+        mensajes.append({"type": "image", "image": {"id": media_id, "caption": alistamiento.pie_guia(a)}})
+    else:
+        mensajes.append(alistamiento.texto_listo_tienda(flujo.texto_horario()))
+    with _candados.setdefault(numero, threading.Lock()):
+        lead = db.lead(numero)
+        fallidos = 0
+        for m in mensajes:
+            wamid = enviar(numero, m)
+            if wamid:
+                db.guardar_mensaje(lead_id, "bot", visor.texto_saliente(m), m["type"], wamid if wamid != "enviado" else None)
+            else:
+                fallidos += 1
+    if fallidos == len(mensajes):
+        return {"ok": False, "error": "WhatsApp no aceptó el envío. Revisa el chat del cliente e intenta de nuevo."}
+    db.pedir(f"alistamientos?id=eq.{a_id}", "PATCH", {alistamiento.CAMPO[que]: "now"}, "return=minimal")
+    if enviados_video:
+        db.pedir(f"alistamiento_videos?id=in.({','.join(map(str, enviados_video))})", "PATCH", {"enviado_al_cliente_en": "now"}, "return=minimal")
+    anotar(f"🛠 {numero}: alistamiento {a_id} → {que} ({len(mensajes) - fallidos} mensaje(s))")
+    aviso = f"{fallidos} mensaje(s) no salieron." if fallidos else None
+    return {"ok": True, "enviados": len(mensajes) - fallidos, "aviso": aviso}
+
+
 def vaciar_papelera():
     """Leads con más de 30 días en la papelera: se borran con sus mensajes y sus archivos (F4·30 E, 0035)."""
     r = db.vaciar_papelera()
@@ -883,6 +935,8 @@ class Webhook(BaseHTTPRequestHandler):
             return self.interno(probar_agente)
         if ruta == "/interno/comprobante":  # F4·46: validar o rechazar el comprobante (lo registró la base)
             return self.interno(resolver_comprobante)
+        if ruta == "/interno/alistamiento":  # F4·50: video, OP/FVE, guía o «listo para recoger» al cliente (lo permitió la base)
+            return self.interno(resolver_alistamiento)
         if ruta == "/interno/acciones":  # «Probar con una frase» (F4·24, RAG-26)
             return self.interno(lambda p: acciones.probar(str(p["texto"])[:500]))
         if urlparse(self.path).path != "/webhook":

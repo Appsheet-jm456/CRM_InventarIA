@@ -22,6 +22,14 @@ export type Pedido = {
   videos: Video[]
 }
 
+export type Reporte = {
+  desde: string; hasta: string
+  totales: { pedidos: number; listos: number; despachados: number; entregados_tienda: number; horas_entrada_a_listo: number | null; horas_listo_a_guia: number | null }
+  por_tecnico: { tecnico: string; tomados: number; listos: number; videos: number; horas_revision: number | null }[]
+}
+
+const horas = (h: number | null) => h === null ? '—' : h < 1 ? `${Math.round(h * 60)} min` : `${h.toLocaleString('es-CO')} h`
+
 export const CHECKLIST: [string, string][] = [
   ['revision', 'Revisión'], ['inspeccion', 'Inspección'], ['mantenimiento', 'Mantenimiento'],
   ['pasta_termica', 'Cambio de pasta térmica'], ['prueba_funcional', 'Prueba funcional'],
@@ -35,12 +43,12 @@ export const hora = (t: string) => new Date(t).toLocaleString('es-CO', { day: 'n
 const GUARDADO = 'servicio-tecnico:quien'
 
 // F4·50 bloque A (RAL-01 a RAL-09): un solo usuario para el servicio técnico; «¿Quién eres?» se recuerda en este navegador y va en cada acción.
-export function ServicioTecnico({ pedidos, tecnicos, error }: { pedidos: Pedido[]; tecnicos: string[]; error: string | null }) {
+export function ServicioTecnico({ pedidos, tecnicos, error, reporte }: { pedidos: Pedido[]; tecnicos: string[]; error: string | null; reporte: Reporte | null }) {
   const router = useRouter()
   const [quien, setQuien] = useState('')
   const [aviso, setAviso] = useState<Resultado & { pedido?: number }>({})
   const [ocupado, setOcupado] = useState<number | null>(null)
-  const [ver, setVer] = useState<'activos' | 'listos'>('activos')
+  const [ver, setVer] = useState<'activos' | 'listos' | 'reporte'>('activos')
 
   useEffect(() => {
     try { const q = localStorage.getItem(GUARDADO); if (q && tecnicos.includes(q)) setQuien(q) } catch { /* sin almacenamiento: se elige cada vez */ }
@@ -65,7 +73,7 @@ export function ServicioTecnico({ pedidos, tecnicos, error }: { pedidos: Pedido[
 
   const activos = pedidos.filter((p) => p.estado !== 'listo')
   const listos = pedidos.filter((p) => p.estado === 'listo')
-  const lista = ver === 'activos' ? activos : listos
+  const lista = ver === 'listos' ? listos : activos
 
   return (
     <section className="panel">
@@ -88,9 +96,31 @@ export function ServicioTecnico({ pedidos, tecnicos, error }: { pedidos: Pedido[
         <div className="row" style={{ gap: 6 }}>
           <button className={`pastilla${ver === 'activos' ? ' activa' : ''}`} onClick={() => setVer('activos')}>Por hacer ({activos.length})</button>
           <button className={`pastilla${ver === 'listos' ? ' activa' : ''}`} onClick={() => setVer('listos')}>Listos para despachar ({listos.length})</button>
+          {reporte && <button className={`pastilla${ver === 'reporte' ? ' activa' : ''}`} onClick={() => setVer('reporte')}>Reporte</button>}
         </div>
-        {lista.length === 0 && <p className="muted">{ver === 'activos' ? 'No hay pedidos por alistar.' : 'No hay pedidos listos esperando despacho.'}</p>}
-        {lista.map((p) => {
+        {ver === 'reporte' && reporte && (
+          <div style={{ display: 'grid', gap: 10 }}>
+            <small className="muted">Últimos 30 días ({reporte.desde} a {reporte.hasta}), por la fecha en que el pedido entró a Alistamiento o el técnico lo tomó.</small>
+            <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+              {([['Pedidos', reporte.totales.pedidos], ['Listos', reporte.totales.listos], ['Despachados (guía)', reporte.totales.despachados],
+                ['Entregados en tienda', reporte.totales.entregados_tienda], ['Entrada → listo', horas(reporte.totales.horas_entrada_a_listo)],
+                ['Listo → guía', horas(reporte.totales.horas_listo_a_guia)]] as const).map(([t, v]) => (
+                <div key={t} className="dato" style={{ minWidth: 140 }}><small>{t}</small><div><b>{v}</b></div></div>
+              ))}
+            </div>
+            <table>
+              <thead><tr><th>Técnico</th><th>Pedidos tomados</th><th>Listos</th><th>Videos subidos</th><th>Tiempo de revisión (promedio)</th></tr></thead>
+              <tbody>
+                {reporte.por_tecnico.map((t) => (
+                  <tr key={t.tecnico}><td>{t.tecnico}</td><td>{t.tomados}</td><td>{t.listos}</td><td>{t.videos}</td><td>{horas(t.horas_revision)}</td></tr>
+                ))}
+                {!reporte.por_tecnico.length && <tr><td colSpan={5} className="muted">Todavía no hay pedidos tomados en estos días.</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        )}
+        {ver !== 'reporte' && lista.length === 0 && <p className="muted">{ver === 'activos' ? 'No hay pedidos por alistar.' : 'No hay pedidos listos esperando despacho.'}</p>}
+        {ver !== 'reporte' && lista.map((p) => {
           const mio = p.tecnico === quien
           const sinDoc = !p.doc_numero
           const faltanVideos = (p.equipos.length ? p.equipos.map((e) => e.codigo) : ['pedido'])

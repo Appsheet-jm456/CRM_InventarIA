@@ -41,3 +41,52 @@ export async function guardarDocumento(id: number, lead: number, tipo: string, n
   if (!r.error) revalidatePath(`/leads/${lead}`)
   return r
 }
+
+// --------------------------------------------------------------------------- //
+// Bloque C (RAL-07): lo que el asesor le manda al cliente. La base permite y registra; el receptor envía por WhatsApp.
+// --------------------------------------------------------------------------- //
+type Pedido = { lead: number; alistamiento: number; que: string }
+
+async function enviarPorReceptor(pedido: Pedido): Promise<Resultado> {
+  if (!process.env.CRM_INTERNO_URL || !process.env.CRM_INTERNO_TOKEN) return { error: 'Falta la conexión con el receptor del bot.' }
+  try {
+    const r = await fetch(`${process.env.CRM_INTERNO_URL}/interno/alistamiento`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Interno-Token': process.env.CRM_INTERNO_TOKEN },
+      body: JSON.stringify(pedido),
+      cache: 'no-store',
+      signal: AbortSignal.timeout(120000), // subir los videos a Meta puede tardar
+    })
+    if (r.status === 404) return { error: 'El receptor no encontró el pedido o el teléfono del cliente.' }
+    if (!r.ok) return { error: `El receptor del bot respondió ${r.status}. Si lo acaban de actualizar, reinícialo.` }
+    const d = (await r.json()) as { ok: boolean; error?: string; aviso?: string | null }
+    return d.ok ? { ok: d.aviso ? `Enviado. ${d.aviso}` : 'Enviado al cliente por WhatsApp.' } : { error: d.error ?? 'No se pudo enviar.' }
+  } catch {
+    return { error: 'El receptor del bot no responde.' }
+  }
+}
+
+export async function enviarAlCliente(id: number, lead: number, que: 'video' | 'documento' | 'listo_tienda' | 'guia'): Promise<Resultado> {
+  const { data, error } = await crearCliente().rpc('alistamiento_para_enviar', { p_id: id, p_que: que })
+  if (error) return { error: error.code === '42501' ? 'No tienes permiso o la atiende otro asesor.' : error.message }
+  const r = await enviarPorReceptor(data as Pedido)
+  revalidatePath(`/leads/${lead}`)
+  return r
+}
+
+// «📦 Enviar guía»: la base guarda la guía y pasa la oportunidad a Despachado y Vendido; luego se le manda la foto al cliente.
+export async function registrarGuia(id: number, lead: number, ruta: string, transportadora: string, numero: string): Promise<Resultado> {
+  const { data, error } = await crearCliente().rpc('alistamiento_guia', { p_id: id, p_ruta: ruta, p_transportadora: transportadora, p_numero: numero })
+  if (error) return { error: error.code === '42501' ? 'No tienes permiso o la atiende otro asesor.' : error.message }
+  revalidatePath(`/leads/${lead}`)
+  revalidatePath('/servicio-tecnico')
+  const r = await enviarPorReceptor(data as Pedido)
+  return r.error ? { error: `La guía quedó registrada (Despachado y Vendido), pero no se le pudo enviar al cliente: ${r.error} Usa «Reenviar guía».` }
+    : { ok: 'Guía enviada al cliente. El pedido quedó Despachado y Vendido.' }
+}
+
+export async function marcarEntregado(id: number, lead: number): Promise<Resultado> {
+  const r = await llamar('alistamiento_entregado', { p_id: id }, 'Entregado en tienda: el pedido quedó Vendido.')
+  revalidatePath(`/leads/${lead}`)
+  return r
+}
