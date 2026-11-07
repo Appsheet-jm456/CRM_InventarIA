@@ -102,8 +102,11 @@ def _llamar(m, mensajes, sistema, temperatura, tokens_max, espera):
     else:
         try:
             texto = j["choices"][0]["message"]["content"] or ""
+            corto = j["choices"][0].get("finish_reason") == "length"
         except (KeyError, IndexError, TypeError) as e:
             raise CerebroError(f"{m['proveedor']} devolvió una respuesta sin texto") from e
+        if corto and not texto.strip():  # modelos que razonan (deepseek-flash): el límite se fue pensando
+            raise CerebroError(f"{m['proveedor']} se quedó sin tokens pensando: sube «Tokens máximos» en Cerebro")
         ent, sal = j.get("usage", {}).get("prompt_tokens", 0), j.get("usage", {}).get("completion_tokens", 0)
     if not texto.strip():
         raise CerebroError(f"{m['proveedor']} devolvió una respuesta vacía")
@@ -117,11 +120,13 @@ def tope():
     return db.pedir("rpc/agente_tope", "POST", {})
 
 
-def completar(mensajes, sistema="", lead_id=None, config=None, llaves=None, simulador=False, detalle=None):
+def completar(mensajes, sistema="", lead_id=None, config=None, llaves=None, simulador=False, detalle=None, tokens_max=None,
+              con_respaldo=True):
     """Respuesta del modelo a la conversación (lista de {role, content}). Principal, luego respaldo (RAG-10).
 
     Lanza TopeAgotado si ya se gastó el presupuesto (no llama a ningún modelo de pago) y CerebroError si fallan todos.
-    Cada intento, bueno o malo, queda en agente_turnos (RAG-18); los del simulador se marcan aparte y no cuentan para el tope."""
+    Cada intento, bueno o malo, queda en agente_turnos (RAG-18); los del simulador se marcan aparte y no cuentan para el tope.
+    `tokens_max` sube el límite para una tarea larga (el resumen); `con_respaldo=False` no espera al modelo de respaldo."""
     if config is None:
         config, llaves = cargar()
     if not config:
@@ -130,12 +135,13 @@ def completar(mensajes, sistema="", lead_id=None, config=None, llaves=None, simu
         registrar(lead_id, {"proveedor": config["proveedor"], "modelo": config["modelo"]}, "tope", detalle=detalle)
         raise TopeAgotado()
     errores = []
-    for respaldo in (False, True):
+    for respaldo in ((False, True) if con_respaldo else (False,)):
         m = modelo(config, llaves, respaldo)
         if m is None:
             continue
         try:
-            r = _llamar(m, mensajes, sistema, float(config["temperatura"]), int(config["tokens_max"]), int(config["espera_segundos"]))
+            r = _llamar(m, mensajes, sistema, float(config["temperatura"]),
+                       max(int(config["tokens_max"]), int(tokens_max or 0)), int(config["espera_segundos"]))
         except CerebroError as e:
             errores.append(str(e))
             registrar(lead_id, m, "simulador" if simulador else "error", detalle={**(detalle or {}), "error": str(e), "respaldo": respaldo})

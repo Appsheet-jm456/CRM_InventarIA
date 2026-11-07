@@ -603,7 +603,10 @@ def resumir(st, lead, config=None):
                   "equipos que vio, datos que dio, objeciones y en qué quedó. Sin precios ni números de cuenta.\n\n"
                   + (f"Resumen anterior:\n{previo}\n\n" if previo else "") + f"Conversación:\n{charla}")
         r = cerebro.completar([{"role": "user", "content": pedido}], "Eres un asistente que resume conversaciones de ventas.",
-                              lead_id=lead["id"], detalle={"paso": 0, "resumen": True})
+                              lead_id=lead["id"], detalle={"paso": 0, "resumen": True},
+                              # el modelo razona antes de escribir: con 1000 tokens el resumen salía vacío (7 nov 2026). Sin respaldo:
+                              # el local tardaba 30 s con el chat en espera; el resumen se reintenta en el turno siguiente.
+                              tokens_max=4000, con_respaldo=False)
         texto = re.sub(r"\d{9,}", "…", r["texto"])[:1500]
         db.actualizar_lead(lead["id"], {"resumen_agente": texto})
         lead["resumen_agente"] = texto

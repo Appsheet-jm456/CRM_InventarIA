@@ -611,6 +611,7 @@ def _contestar(numero, entrada, visible, nombre, tipo, meta_id, media=None, guar
     with _candados.setdefault(numero, threading.Lock()):
         try:
             lead = db.lead(numero) or db.crear_lead(numero, nombre)
+            interprete.contexto.lead_id = lead["id"]  # el Registro de IA dice de quién fue la búsqueda
             guardada = None
             if media:
                 try:
@@ -862,7 +863,7 @@ def buscar(texto):
                 "cercanos": []}
     filtros, fuente = interprete.reglas(texto, [p["marca"] for p in todos], todos), "reglas"
     if not filtros and interprete.vale_la_pena_ia(flujo.normalizar(texto)):
-        filtros, fuente = interprete.con_ia(texto), "ia"
+        filtros, fuente = interprete.con_ia(texto, simulador=True), "ia"
     if not filtros:
         return {"fuente": "nada", "filtros": {}, "descripcion": "", "codigos": [], "cercanos": []}
     r = interprete.filtrar(todos, filtros, flujo.es_diseno)

@@ -2,12 +2,22 @@ import { crearCliente } from '@/lib/supabase/server'
 
 type Fila = {
   id: number; en: string; proveedor: string; modelo: string; tokens_entrada: number; tokens_salida: number; costo_usd: number
-  resultado: string; ms: number | null; detalle: { problemas?: string[]; error?: string; paso?: number; respaldo?: boolean } | null
+  resultado: string; ms: number | null; detalle: { problemas?: string[]; error?: string; paso?: number; respaldo?: boolean; resumen?: boolean; buscador?: boolean; filtros?: Record<string, unknown> } | null
   leads: { nombre: string | null; telefono: string } | null
 }
 const CHIP: Record<string, string> = { respondido: 'ok', simulador: 'neu', asesor: 'warn', bloqueado: 'warn', error: 'bad', tope: 'bad' }
 
-type Mes = { lead_id: number | null; resultado: string; costo_usd: number; detalle: { paso?: number } | null }
+type Mes = { lead_id: number | null; resultado: string; costo_usd: number; detalle: { paso?: number; buscador?: boolean } | null }
+
+// El servidor corre en UTC: la hora se muestra siempre en la de Colombia.
+const hora = (iso: string) => new Date(iso).toLocaleString('es-CO', { timeZone: 'America/Bogota', dateStyle: 'short', timeStyle: 'medium' })
+
+// Para qué fue la llamada: Avi conversando, el resumen de su memoria o el buscador del menú (la IA solo arma filtros).
+function uso(d: Fila['detalle']) {
+  if (d?.buscador) return 'Buscador del menú'
+  if (d?.resumen) return 'Resumen de memoria'
+  return d?.paso ? `Avi · paso ${d.paso}` : 'Avi'
+}
 
 const usd = (n: number) => `US$ ${n.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}`
 
@@ -32,7 +42,7 @@ export default async function PaginaRegistro() {
   const cuenta = (r: string) => filas.filter((f) => f.resultado === r).length
 
   // Métricas del agente: conversaciones que atendió, qué pasó con ellas y cuánto costaron.
-  const delMes = (mes ?? []) as Mes[]
+  const delMes = ((mes ?? []) as Mes[]).filter((t) => !t.detalle?.buscador)  // las métricas son de Avi; el buscador va aparte
   const leads = [...new Set(delMes.filter((t) => t.lead_id && t.detalle?.paso === 1).map((t) => t.lead_id as number))]
   const costo = delMes.reduce((a, t) => a + Number(t.costo_usd), 0)
   const [{ count: cotizaciones }, { data: oportunidades }] = leads.length ? await Promise.all([
@@ -69,7 +79,7 @@ export default async function PaginaRegistro() {
     </section>
     <section className="panel">
       <div className="panel-h">
-        <div><h2>Registro de Avi</h2><small>Las últimas {filas.length} llamadas al modelo. Los bloqueos son respuestas que el sistema no dejó salir (precio o cuenta inventados).</small></div>
+        <div><h2>Registro de IA</h2><small>Las últimas {filas.length} llamadas a la IA, de la más reciente a la más antigua (hora de Colombia): Avi, el resumen de su memoria y el buscador del menú. Los bloqueos son respuestas que el sistema no dejó salir (precio o cuenta inventados).</small></div>
         <span className="row">
           <span className="chip ok">{cuenta('respondido')} respondidas</span>
           <span className="chip warn">{cuenta('bloqueado')} bloqueadas</span>
@@ -77,16 +87,17 @@ export default async function PaginaRegistro() {
         </span>
       </div>
       {filas.length === 0 ? (
-        <div className="panel-b muted">Aún no hay registros. Aparecen cuando Avi atiende un chat real o falla una prueba de conexión del modelo.</div>
+        <div className="panel-b muted">Aún no hay registros. Aparecen cuando Avi o el buscador del menú usan la IA, o falla una prueba de conexión del modelo.</div>
       ) : (
         <div className="panel-b" style={{ overflowX: 'auto' }}>
           <table>
-            <thead><tr><th>Cuándo</th><th>Cliente</th><th>Modelo</th><th>Tokens</th><th>Costo</th><th>Resultado</th></tr></thead>
+            <thead><tr><th>Cuándo</th><th>Cliente</th><th>Para qué</th><th>Modelo</th><th>Tokens</th><th>Costo</th><th>Resultado</th></tr></thead>
             <tbody>
               {filas.map((f) => (
                 <tr key={f.id}>
-                  <td>{new Date(f.en).toLocaleString('es-CO')}</td>
+                  <td>{hora(f.en)}</td>
                   <td>{f.leads ? (f.leads.nombre || f.leads.telefono) : '—'}</td>
+                  <td>{uso(f.detalle)}</td>
                   <td>{f.proveedor} · {f.modelo}{f.detalle?.respaldo ? ' (respaldo)' : ''}</td>
                   <td>{f.tokens_entrada + f.tokens_salida}</td>
                   <td>US$ {Number(f.costo_usd).toLocaleString('es-CO', { maximumFractionDigits: 5 })}</td>
@@ -95,6 +106,7 @@ export default async function PaginaRegistro() {
                     {f.ms ? ` ${(f.ms / 1000).toFixed(1)} s` : ''}
                     {f.detalle?.problemas?.length ? <><br /><small className="muted">{f.detalle.problemas.join('; ')}</small></> : null}
                     {f.detalle?.error ? <><br /><small className="muted">{f.detalle.error}</small></> : null}
+                    {f.detalle?.buscador && f.detalle.filtros ? <><br /><small className="muted">filtros: {Object.entries(f.detalle.filtros).map(([k, v]) => `${k} ${v}`).join(', ') || 'ninguno'}</small></> : null}
                   </td>
                 </tr>
               ))}

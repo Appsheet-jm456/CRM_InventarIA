@@ -49,8 +49,10 @@ SALIDAS = []
 LLAMADAS = []
 
 
-def modelo_falso(mensajes, sistema="", lead_id=None, config=None, llaves=None, simulador=False, detalle=None):
-    LLAMADAS.append({"mensajes": [dict(m) for m in mensajes], "sistema": sistema, "simulador": simulador})
+def modelo_falso(mensajes, sistema="", lead_id=None, config=None, llaves=None, simulador=False, detalle=None, tokens_max=None,
+                 con_respaldo=True):
+    LLAMADAS.append({"mensajes": [dict(m) for m in mensajes], "sistema": sistema, "simulador": simulador, "tokens_max": tokens_max,
+                     "con_respaldo": con_respaldo})
     if not SALIDAS:
         raise AssertionError("el modelo falso se quedó sin respuestas")
     s = SALIDAS.pop(0)
@@ -213,6 +215,8 @@ prueba(39, "resume los 25 mensajes viejos con el resumen anterior y guarda cuán
         and "mensaje 24" in LLAMADAS[0]["mensajes"][0]["content"] and "mensaje 25" not in LLAMADAS[0]["mensajes"][0]["content"]
         and "Busca un Dell" in LLAMADAS[0]["mensajes"][0]["content"])
 prueba(40, "el resumen nunca guarda números largos (cuentas, cédulas)", "123456789012" not in GUARDADO["resumen_agente"])
+prueba(40.1, "el resumen pide tokens de sobra (el modelo razona) y no espera al respaldo lento",
+       LLAMADAS[-1]["tokens_max"] >= 4000 and LLAMADAS[-1]["con_respaldo"] is False)
 LLAMADAS.clear()
 prueba(41, "con el resumen al día no vuelve a llamar al modelo", agente.resumir(st, lead, CONFIG) is None and not LLAMADAS)
 SALIDAS[:] = []

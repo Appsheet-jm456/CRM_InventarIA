@@ -9,6 +9,8 @@ La IA SOLO devuelve filtros en JSON; la búsqueda y la respuesta salen de la bas
 
 import json
 import re
+import threading
+import time
 import unicodedata
 import urllib.request
 from pathlib import Path
@@ -243,31 +245,70 @@ def _limpiar(crudo):
     return f
 
 
-def con_ia(texto):
-    """Gemini si hay clave de AI Studio (empieza por AIza); si falla, qwen3 local. {} si nada entiende."""
+# Cliente que se está atendiendo en este hilo (lo pone el receptor), para que el Registro de IA diga de quién fue la búsqueda.
+contexto = threading.local()
+
+# Precio aproximado de gemini-2.5-flash en US$ por millón de tokens (entrada, salida); solo para el Registro.
+PRECIO_GEMINI = (0.30, 2.50)
+
+
+def _registrar(proveedor, modelo, resultado, t0, ent=0, sal=0, costo=0.0, filtros=None, error=None, simulador=False):
+    """Deja la llamada del buscador en agente_turnos (Configuración → Agente → Registro). Nunca lanza."""
+    try:
+        import db  # aquí para que el intérprete siga funcionando sin base (pruebas)
+        detalle = {"buscador": True}
+        if filtros is not None:
+            detalle["filtros"] = filtros
+        if error:
+            detalle["error"] = error
+        db.pedir("agente_turnos", "POST", {
+            "lead_id": getattr(contexto, "lead_id", None), "proveedor": proveedor, "modelo": modelo,
+            "tokens_entrada": int(ent or 0), "tokens_salida": int(sal or 0), "costo_usd": round(costo, 6),
+            "ms": int((time.time() - t0) * 1000), "resultado": "simulador" if simulador else resultado, "detalle": detalle},
+            prefer="return=minimal")
+    except Exception:
+        pass
+
+
+def con_ia(texto, simulador=False):
+    """Gemini si hay clave de AI Studio (empieza por AIza); si falla, qwen3 local. {} si nada entiende.
+    Cada intento queda en el Registro de IA (detalle.buscador); `simulador` para el Chat InventarIA, que no es un cliente."""
     env = _env()
     clave = env.get("GEMINI_API_KEY", "")
     if clave.startswith("AIza"):
+        modelo = env.get("GEMINI_MODEL") or "gemini-2.5-flash"
+        t0 = time.time()
         try:
-            modelo = env.get("GEMINI_MODEL") or "gemini-2.5-flash"
             r = _post(f"https://generativelanguage.googleapis.com/v1beta/models/{modelo}:generateContent",
                       {"systemInstruction": {"parts": [{"text": INSTRUCCION}]},
                        "contents": [{"role": "user", "parts": [{"text": texto}]}],
                        "generationConfig": {"temperature": 0, "responseMimeType": "application/json",
                                             "thinkingConfig": {"thinkingBudget": 0}}},
                       {"x-goog-api-key": clave}, 10)
-            return _limpiar(r["candidates"][0]["content"]["parts"][0]["text"])
-        except Exception:
-            pass
+            f = _limpiar(r["candidates"][0]["content"]["parts"][0]["text"])
+            u = r.get("usageMetadata") or {}
+            ent, sal = u.get("promptTokenCount", 0), u.get("candidatesTokenCount", 0)
+            _registrar("gemini", modelo, "respondido", t0, ent, sal, (ent * PRECIO_GEMINI[0] + sal * PRECIO_GEMINI[1]) / 1e6,
+                       filtros=f, simulador=simulador)
+            return f
+        except Exception as e:
+            _registrar("gemini", modelo, "error", t0, error=f"buscador: {type(e).__name__}", simulador=simulador)
+    modelo = env.get("OPENAI_MODEL") or "qwen3"
+    t0 = time.time()
     try:
         base = env.get("OPENAI_BASE_URL") or "http://localhost:8080/v1"
         r = _post(f"{base}/chat/completions",
-                  {"model": env.get("OPENAI_MODEL") or "qwen3", "temperature": 0, "max_tokens": 120,
+                  {"model": modelo, "temperature": 0, "max_tokens": 120,
                    "messages": [{"role": "system", "content": INSTRUCCION + " /no_think"},
                                 {"role": "user", "content": texto}]},
                   {"Authorization": f"Bearer {env.get('OPENAI_API_KEY', '')}"}, 40)
-        return _limpiar(r["choices"][0]["message"]["content"])
-    except Exception:
+        f = _limpiar(r["choices"][0]["message"]["content"])
+        u = r.get("usage") or {}
+        _registrar("local", modelo, "respondido", t0, u.get("prompt_tokens", 0), u.get("completion_tokens", 0), filtros=f,
+                   simulador=simulador)
+        return f
+    except Exception as e:
+        _registrar("local", modelo, "error", t0, error=f"buscador: {type(e).__name__}", simulador=simulador)
         return {}
 
 
