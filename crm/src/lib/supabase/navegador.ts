@@ -10,7 +10,10 @@ let cliente: ReturnType<typeof createBrowserClient> | null = null
 
 export function clienteNavegador() {
   if (!cliente) {
-    const url = `${window.location.protocol}//${window.location.hostname}:${process.env.NEXT_PUBLIC_SUPABASE_PORT ?? '8020'}`
+    // Por la dirección pública (crm.<dominio>, detrás de Cloudflare Access) no hay puerto 8020: el túnel envía /auth/v1, /rest/v1,
+    // /realtime/v1 y /storage/v1 a la base por la misma dirección (docs/TUNEL-WEBHOOK.md). Por red local y Tailscale sigue el puerto.
+    const { protocol, hostname, origin } = window.location
+    const url = hostname.startsWith('crm.') && hostname.endsWith('.shop') ? origin : `${protocol}//${hostname}:${process.env.NEXT_PUBLIC_SUPABASE_PORT ?? '8020'}`
     cliente = createBrowserClient(url, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, { cookieOptions: { name: COOKIE_SESION } })
   }
   return cliente
