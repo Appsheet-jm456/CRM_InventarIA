@@ -209,8 +209,35 @@ def _limpiar(crudo):
     if not m:
         return {}
     datos = json.loads(m.group(0))
-    f = {k: v for k, v in datos.items() if v not in (None, "", 0) and k in
-         ("marca", "procesador", "generacion", "ram_gb", "precio_max", "uso")}
+    f = {}
+    for k, v in datos.items():
+        if k not in ("marca", "procesador", "generacion", "ram_gb", "precio_max", "uso"):
+            continue
+        if isinstance(v, list):  # «alto rendimiento» → uso ["Ejecutivo","Diseño"], ram_gb [16,32,64]: se queda con un valor
+            v = [x for x in v if x not in (None, "", 0)]
+            if not v:
+                continue
+            if k == "uso":
+                v = "Diseño" if "Diseño" in v else v[0]
+            elif k == "ram_gb":
+                v = min(v) if all(isinstance(x, (int, float)) for x in v) else v[0]
+            elif k == "precio_max":
+                v = max(v) if all(isinstance(x, (int, float)) for x in v) else v[0]
+            else:
+                v = v[0]
+        if v in (None, "", 0) or isinstance(v, (dict, list, bool)):
+            continue
+        if k in ("generacion", "ram_gb", "precio_max"):
+            try:
+                v = int(float(v))
+            except (TypeError, ValueError):
+                continue
+        elif k in ("procesador", "uso"):
+            v = str(v)
+            if (k == "procesador" and v.lower() not in ("i3", "i5", "i7", "i9")) or (k == "uso" and v not in ("Hogar", "Ejecutivo", "Diseño")):
+                continue
+            v = v.lower() if k == "procesador" else v
+        f[k] = v
     if "marca" in f:
         f["marca"] = MARCAS_CONOCIDAS.get(_n(f["marca"]), str(f["marca"]).upper())
     return f
