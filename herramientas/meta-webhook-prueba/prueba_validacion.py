@@ -36,6 +36,7 @@ LEAD = {}
 ENV, CAMBIOS = [], {}
 ULTIMO = [datetime.now(timezone.utc)]
 
+db.conocimiento = lambda categoria, fresco=False: []  # F4·49: sin imagen de medios de pago
 db.agente_config = lambda fresco=False: CFG
 db.flujo = lambda bot=None: BOTS.get(bot or 1)
 db.principal = lambda: 1

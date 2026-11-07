@@ -32,6 +32,7 @@ ACCIONES = [
 ]
 
 flujo.inventario = lambda: INVENTARIO
+db.conocimiento = lambda categoria, fresco=False: []  # F4·49: sin imagen de medios de pago
 db.agente_config = lambda fresco=False: CONFIG
 db.acciones_activas = lambda: [a for a in ACCIONES if a["activa"]]
 db.principal = lambda: 1

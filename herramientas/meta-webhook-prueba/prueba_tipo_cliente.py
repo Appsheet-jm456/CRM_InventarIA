@@ -30,6 +30,7 @@ ATRIBUTOS = {"tipo_cliente": {"clave": "tipo_cliente", "nombre": "Tipo de client
 
 flujo.inventario = lambda: INVENTARIO
 db.atributos = lambda: ATRIBUTOS
+db.conocimiento = lambda categoria, fresco=False: []  # F4·49: sin imagen de medios de pago
 db.agente_config = lambda fresco=False: CONFIG
 db.productos_agotados = lambda: []
 db.principal = lambda: 1

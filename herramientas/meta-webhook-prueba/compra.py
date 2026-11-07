@@ -100,6 +100,14 @@ def _resumen(c):
     return "\n".join(lineas)
 
 
+def mensajes_cuentas(cuentas, fresco=False):
+    """F4·49: los datos para pagar. Primero la imagen de los medios de pago (la de la ficha activa «Pagos» de Agente → Conocimiento, si
+    tiene archivo) y después el texto aprobado. Sin imagen, solo el texto, como antes."""
+    imagen = next((f for f in db.conocimiento("Pagos", fresco) if f.get("archivo")), None)
+    return ([{"_conocimiento": {"archivo": imagen["archivo"], "titulo": imagen.get("titulo") or "Medios de pago"}}] if imagen else []) \
+        + [flujo.m_texto(cuentas)]
+
+
 def _pedir_tipo(st):
     st["compra"]["paso"] = "tipo"
     return [flujo.m_botones("¿Compras como *distribuidor* o como *cliente final*?",
@@ -419,7 +427,7 @@ def _responder(st, entrada, tipo, lead):
             c["cuentas_en"] = datetime.now(timezone.utc).isoformat()
             st["espera_hasta"] = (datetime.now(timezone.utc) + timedelta(hours=int(cfg.get("horas_sin_respuesta") or 12))).isoformat()
             nota = f"🛒 Cuentas enviadas: {_que_lleva(c)} · total {flujo.cop(c['total'])}. Esperando comprobante."
-            return [flujo.m_texto(cuentas)], ["Compra-Iniciada"], "esperando_pago", nota
+            return mensajes_cuentas(cuentas), ["Compra-Iniciada"], "esperando_pago", nota  # F4·49: imagen y luego el texto
         return _confirmar(st), [], None, None
 
     _limpiar(st)  # estado desconocido: se sale sin romper nada

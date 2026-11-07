@@ -245,7 +245,7 @@ def _ejecutar(accion, st, lead, fresco, texto):
         elif tipo == "cuentas":
             cuentas = (db.agente_config(fresco).get("texto_cuentas") or "").strip()
             if cuentas:  # sin texto aprobado no se inventa nada (RAG-09)
-                mensajes.append(flujo.m_texto(cuentas))
+                mensajes += compra.mensajes_cuentas(cuentas, fresco)  # F4·49: imagen de los medios de pago y luego el texto
         elif tipo == "etiqueta" and paso.get("etiqueta", "").strip():
             etiquetas.append(paso["etiqueta"].strip())
         elif tipo == "bot" and paso.get("bot_id"):

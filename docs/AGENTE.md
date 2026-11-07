@@ -576,6 +576,23 @@ compra, carrito y cotización cambiaron de «por equipo» a «una vez». Datos: 
 (solo difiere de la publicada en `compra: null` del cuadro Agente) y la ficha de Conocimiento. **Al publicar** ese borrador queda activo el
 menú; el lienzo todavía no muestra `atributos_si_vacio` (lo conserva al guardar).
 
+### 4i. Datos para pagar con la imagen de los medios de pago (F4·49)
+
+**Pedido del dueño, 7 nov 2026.** Al confirmar el pedido («quiero comprar», «Sí, enviar cuentas») y en la acción «Cuentas para pagar» el
+cliente recibía solo el texto de las cuentas; la imagen de los medios de pago estaba cargada en Agente → Conocimiento → *Medios de pago*
+y no salía.
+
+- **RAG-78 · Primero la imagen y después el texto.** Los datos para pagar salen en dos mensajes: la **imagen de los medios de pago** y
+  enseguida el **texto de cuentas aprobado** (Agente → Compra). Aplica a la compra (al confirmar el pedido, de uno o varios equipos) y al
+  paso «Cuentas» de las acciones.
+- **RAG-79 · De dónde sale la imagen.** De la ficha **activa** de Conocimiento de categoría **Pagos** que tenga archivo (imagen o PDF).
+  Para cambiarla o quitarla basta cambiar o quitar el archivo de esa ficha, o apagarla: sin archivo, sale solo el texto como antes. No hay
+  columna ni pantalla nuevas.
+- **RAG-80 · Sin texto aprobado, no se manda nada** (RAG-09 sigue): la imagen sola no se envía; lo manda un asesor.
+
+**Cómo está construida (7 nov 2026).** Sin migración. `compra.mensajes_cuentas` (usa `db.conocimiento("Pagos")`) en `compra.py` y en el paso
+`cuentas` de `acciones.py`. `prueba_cuentas_imagen.py` 6/6; las demás pruebas fijan `db.conocimiento` sin ficha.
+
 ### 5. Herramientas (lo que el agente puede hacer)
 
 | Herramienta | Qué hace | Escribe en la base |
