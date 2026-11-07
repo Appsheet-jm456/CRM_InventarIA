@@ -29,7 +29,7 @@ FICHAS = [{"fuente": "ficha", "id": 1, "titulo": "Garantía", "texto": "La garan
 
 flujo.inventario = lambda: INV
 flujo.texto_horario = lambda: "L-V 8 a 18"
-flujo.asesor = lambda st, etiqueta="Escalado-Asesor", motivo=None: (st.__setitem__("pausa", True), [flujo.m_texto("Te paso con un asesor 🙌")])[1]
+flujo.asesor = lambda st, etiqueta="Escalado-Asesor", motivo=None, **_: (st.__setitem__("pausa", True), [flujo.m_texto("Te paso con un asesor 🙌")])[1]
 flujo.r11 = lambda st, p: [flujo.m_texto(f"FICHA {p['cod']}")]
 compra.iniciar = lambda st, texto, lead=None: [flujo.m_texto("COMPRA iniciada")]
 db.mensajes_recientes = lambda lead_id, n: [{"lado": "cliente", "texto": "hola"}, {"lado": "bot", "texto": "¡Hola! Soy Avi"},

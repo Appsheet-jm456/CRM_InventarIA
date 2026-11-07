@@ -42,7 +42,7 @@ db.conocimiento = lambda categoria, fresco=False: CONOCIMIENTO.get(categoria, []
 db.agente_config = lambda fresco=False: {"texto_cuentas": CUENTAS["texto"]}
 db.principal = lambda: 1
 flujo.texto_horario = lambda: "L–V 8–18"
-flujo.asesor = lambda st, etiqueta="Escalado-Asesor", motivo=None: (st.update(pausa=True), [flujo.m_texto("asesor")])[1]
+flujo.asesor = lambda st, etiqueta="Escalado-Asesor", motivo=None, **_: (st.update(pausa=True), [flujo.m_texto("asesor")])[1]
 
 fallos = 0
 n = 0

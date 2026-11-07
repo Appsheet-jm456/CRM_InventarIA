@@ -36,7 +36,7 @@ db.agente_config = lambda fresco=False: CONFIG
 db.acciones_activas = lambda: [a for a in ACCIONES if a["activa"]]
 db.principal = lambda: 1
 flujo.del_tipo = lambda tipo: "B-ASESOR"
-flujo.asesor = lambda st, etiqueta="Escalado-Asesor", motivo=None: (st.update(pausa=True), [flujo.m_texto("asesor")])[1]
+flujo.asesor = lambda st, etiqueta="Escalado-Asesor", motivo=None, **_: (st.update(pausa=True), [flujo.m_texto("asesor")])[1]
 
 fallos = n = 0
 

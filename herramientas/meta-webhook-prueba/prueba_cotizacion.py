@@ -32,7 +32,7 @@ db.principal = lambda: 1
 db.crear_cotizacion = lambda fila: (GUARDADAS.append(fila), {"id": len(GUARDADAS), "consecutivo": 100 + len(GUARDADAS)})[1]
 db.guardar_pdf_cotizacion = lambda i, ruta, contenido: PDFS.update({ruta: contenido})
 db.apariencia_para_pdf = lambda: ({}, None, "image/png")
-flujo.asesor = lambda st, etiqueta="Escalado-Asesor", motivo=None: (st.update(pausa=True), [flujo.m_texto("asesor")])[1]
+flujo.asesor = lambda st, etiqueta="Escalado-Asesor", motivo=None, **_: (st.update(pausa=True), [flujo.m_texto("asesor")])[1]
 
 fallos = n = 0
 LEAD = {"id": 7, "telefono": "573002103979", "etiquetas": []}

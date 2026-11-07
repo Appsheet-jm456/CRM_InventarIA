@@ -35,7 +35,7 @@ db.principal = lambda: 1
 db.atributos = lambda: {}
 db.agente_config = lambda fresco=False: CONFIG
 db.bot_config = lambda: INTERRUPTORES
-flujo.asesor = lambda st, etiqueta="Escalado-Asesor", motivo=None: (st.update(pausa=True, nodo="B-ASESOR"), [flujo.m_texto("asesor")])[1]
+flujo.asesor = lambda st, etiqueta="Escalado-Asesor", motivo=None, **_: (st.update(pausa=True, nodo="B-ASESOR"), [flujo.m_texto("asesor")])[1]
 
 # El turno de Avi: lo que diga RESPUESTA (None = el cerebro falló). Se guarda con qué cuadro lo llamaron.
 RESPUESTA = {}

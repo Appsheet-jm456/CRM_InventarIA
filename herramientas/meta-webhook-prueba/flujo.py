@@ -588,7 +588,7 @@ def seguir(st, op):
     marcar_datos(st, efectos.get("atributos"))
     destino = cuadros().get(op["destino"])
     if destino and destino["tipo"] == "asesor":
-        return asesor(st, efectos.get("etiqueta") or "Escalado-Asesor", efectos.get("motivo"))
+        return asesor(st, efectos.get("etiqueta") or "Escalado-Asesor", efectos.get("motivo"), de_flecha=True)
     aplicar(st, {"etiqueta": efectos.get("etiqueta")})
     _hilo.texto = op.get("titulo") or getattr(_hilo, "texto", "")  # unas Condiciones después comparan la opción elegida
     if op["destino"] == "@pedir_codigo":
@@ -687,10 +687,13 @@ def r11(st, p):
     return [m_botones(ficha, [(i, t) for i, t, _ in opciones_de(c)], p["foto"])]
 
 
-def asesor(st, etiqueta="Escalado-Asesor", motivo=None):
-    """Pasa el chat a la cola. Fuera de horario avisa cuándo lo atienden (RBOT-05); el chat entra igual."""
+def asesor(st, etiqueta="Escalado-Asesor", motivo=None, de_flecha=False):
+    """Pasa el chat a la cola. Fuera de horario avisa cuándo lo atienden (RBOT-05); el chat entra igual.
+    F4·47: si el cuadro tiene `solo_motivo` y la flecha trae su texto de cierre, el cliente recibe solo ese texto."""
     st["campos"]["Etiqueta"] = etiqueta
     st["pausa"], st["nodo"] = True, del_tipo("asesor")
+    if de_flecha and motivo and (cuadros()[st["nodo"]].get("ajustes") or {}).get("solo_motivo"):
+        return [m_texto(motivo)]
     aviso = f"_{motivo}_\n\n" if motivo else ""
     abierto, cuando = proxima_apertura()
     if abierto:

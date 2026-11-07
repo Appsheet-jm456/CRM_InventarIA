@@ -52,7 +52,7 @@ db.atributos = lambda: ATRIBUTOS
 db.flujo = lambda bot=None: DESPACHO if bot in (None, 1, 7) else None
 db.principal = lambda: 1
 db.agente_config = lambda fresco=False: CONFIG
-flujo.asesor = lambda st, etiqueta="Escalado-Asesor", motivo=None: (st.update(pausa=True, nodo="B-ASESOR"), [flujo.m_texto("asesor")])[1]
+flujo.asesor = lambda st, etiqueta="Escalado-Asesor", motivo=None, **_: (st.update(pausa=True, nodo="B-ASESOR"), [flujo.m_texto("asesor")])[1]
 
 fallos = n = 0
 
