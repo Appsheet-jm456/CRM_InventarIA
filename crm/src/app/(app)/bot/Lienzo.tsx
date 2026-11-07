@@ -179,7 +179,7 @@ function NodoCuadro({ data, selected }: NodeProps<Node<DatosNodo>>) {
   const filas: { id: string; titulo: string; destino?: string | null; unible: boolean; opcional?: boolean }[] = [
     ...(c.opciones ?? []).map((o) => ({ id: o.id, destino: o.destino, unible,
       titulo: c.tipo === 'condicion' ? `${o.titulo} = ${o.palabras?.length ? o.palabras.join(' · ') : '…'}`
-        : `${o.id}. ${o.titulo}${o.efectos?.atributos && Object.keys(o.efectos.atributos).length ? ' 🏷' : ''}` })),
+        : `${o.id}. ${o.titulo}${o.efectos?.atributos && Object.keys(o.efectos.atributos).length ? ' 🏷' : ''}${o.efectos?.motivo ? ' 💬' : ''}` })),
     // Las salidas de un cuadro del dueño van en su orden (la base guarda el JSON con otro orden de claves).
     ...(delDueno(c) ? salidasDe(c) : Object.keys(c.salidas ?? {})).map((s) => ({ id: s, titulo: SALIDAS[s] ?? s, destino: c.salidas?.[s] ?? null, unible })),
     // Como en Kommo: abajo y en gris; «Error al enviar» en rojo. Sueltas no son un problema (RF-20 a RF-22).
@@ -258,9 +258,13 @@ function Panel({ bot, bots, cuadro, cuadros, datos, editable, contexto, alTermin
   const [error, setError] = useState<string | null>(cuadro.salidas?.error ?? null)
   const [espera, setEspera] = useState(Number(cuadro.ajustes?.espera_segundos ?? 900))
   const [destinoBot, setDestinoBot] = useState(String(cuadro.ajustes?.bot_id ?? ''))
+  const [soloMotivo, setSoloMotivo] = useState(cuadro.ajustes?.solo_motivo === true) // F4·47, RF-43
   const [ocupado, iniciar] = useTransition()
   const mensaje = cuadro.tipo === 'mensaje'
   const irBot = cuadro.tipo === 'ir_bot'
+  const esAsesor = cuadro.tipo === 'asesor'
+  const claveAsesor = cuadros.find((c) => c.tipo === 'asesor')?.clave
+  const conAsesorSolo = cuadros.find((c) => c.tipo === 'asesor')?.ajustes?.solo_motivo === true
   const sinBotones = mensaje && opciones?.length === 0 // RF-09: sale como texto y sigue la flecha "respuesta"
   const formato: Formato = sinBotones ? 'texto' : mensaje ? 'menu' : cuadro.formato
   const textoEditable = editable && formato !== 'sistema' && formato !== 'ficha'
@@ -279,6 +283,7 @@ function Panel({ bot, bots, cuadro, cuadros, datos, editable, contexto, alTermin
     !texto.trim() && 'El mensaje no puede quedar vacío.',
     medida.largo > medida.limite && `El mensaje pasa el límite de WhatsApp (${medida.largo} de ${medida.limite}): acórtalo.`,
     desconocidas.length > 0 && `El bot no reemplaza ${desconocidas.map((m) => `{${m}}`).join(', ')}.`,
+    (opciones ?? []).some((o) => String(o.efectos?.motivo ?? '').length > 1000) && 'Un texto de cierre pasa de 1.000 caracteres.',
     titulosMal && `Hay títulos vacíos o de más de ${limite} caracteres (el límite de WhatsApp): acórtalos; están en rojo.`,
     idsMal && 'Revisa los números de las opciones: sin repetir, del 0 al 99 y sin el 9.',
     mensaje && sinRespuesta && (espera < 1 || espera > MAX_ESPERA) && 'La espera de «Sin respuesta» va de 1 segundo a 23 h 59 min 59 s.',
@@ -300,9 +305,14 @@ function Panel({ bot, bots, cuadro, cuadros, datos, editable, contexto, alTermin
         alTerminar(await guardarAjustes(bot, cuadro.clave, nombre, { bot_id: destinoBot ? Number(destinoBot) : null }))
         return
       }
-      // Un Mensaje manda lo que marca cada opción (RF-27; {} lo quita); los cuadros del sistema no.
+      if (esAsesor && soloMotivo !== (cuadro.ajustes?.solo_motivo === true)) {
+        const r = await guardarAjustes(bot, cuadro.clave, nombre, { solo_motivo: soloMotivo })
+        if (r.error) { alTerminar(r); return }
+      }
+      // Un Mensaje manda lo que marca cada opción (RF-27; {} lo quita) y su texto de cierre (F4·47; '' lo quita); los del sistema no.
       const ops = opciones?.map((o) => ({ id: o.id, titulo: o.titulo, destino: o.destino ?? null,
-        ...(mensaje ? { marcar: (o.efectos?.atributos as Record<string, unknown> | undefined) ?? {} } : {}) })) ?? null
+        ...(mensaje ? { marcar: (o.efectos?.atributos as Record<string, unknown> | undefined) ?? {},
+                        cierre: String(o.efectos?.motivo ?? '') } : {}) })) ?? null
       // Un Mensaje manda también sus salidas opcionales (RF-20 a RF-22); sin botones no lleva «Otra respuesta».
       const salidas = mensaje
         ? { ...(sinBotones ? { respuesta } : { otra }), sin_respuesta: sinRespuesta, error, espera_segundos: espera }
@@ -354,6 +364,13 @@ function Panel({ bot, bots, cuadro, cuadros, datos, editable, contexto, alTermin
           </span>
         </label>
       )}
+      {esAsesor && (
+        <label className="check">
+          <input type="checkbox" checked={soloMotivo} disabled={!editable || ocupado} onChange={(e) => setSoloMotivo(e.target.checked)} />
+          {' '}Solo el texto de cierre: si la flecha trae un 💬 texto de cierre, el cliente recibe solo ese texto, sin este mensaje ni el
+          aviso de fuera de horario (F4·47). Si escribe <i>asesor</i> o no se entiende, sale este mensaje como siempre.
+        </label>
+      )}
       {desconocidas.length > 0 && <div className="aviso bad">El bot no reemplaza {desconocidas.map((m) => `{${m}}`).join(', ')}.</div>}
       {opciones && (
         <div className="lienzo-opciones">
@@ -393,6 +410,20 @@ function Panel({ bot, bots, cuadro, cuadros, datos, editable, contexto, alTermin
               {editable && mensaje && (
                 <button type="button" className="btn chico peligro" aria-label={`Quitar opción ${o.id}`} disabled={ocupado}
                   onClick={() => setOpciones(opciones.filter((_, j) => j !== i))}>×</button>
+              )}
+              {mensaje && claveAsesor && o.destino === claveAsesor && (
+                <label className="field lienzo-cierre">💬 Texto de cierre al pasar al asesor
+                  <textarea rows={Math.min(8, Math.max(2, String(o.efectos?.motivo ?? '').split('\n').length + 1))}
+                    value={String(o.efectos?.motivo ?? '')} disabled={!editable || ocupado}
+                    placeholder="Ej.: 🏬 Recojo en tienda · 1️⃣ ✅ Pago confirmado · 2️⃣ Alistamiento…"
+                    onChange={(e) => cambiarOpcion(i, { efectos: { ...(o.efectos ?? {}), motivo: e.target.value } })} />
+                  <small className="muted">
+                    {conAsesorSolo
+                      ? 'El cuadro Asesor envía solo este texto (sin el aviso de horario). Vacío: sale el aviso de siempre.'
+                      : 'Sale en cursiva antes del aviso del Asesor. Para que salga solo este texto, marca «Solo el texto de cierre» en el cuadro Asesor.'}
+                    {' '}{String(o.efectos?.motivo ?? '').length.toLocaleString('es-CO')} / 1.000
+                  </small>
+                </label>
               )}
             </div>
           ))}

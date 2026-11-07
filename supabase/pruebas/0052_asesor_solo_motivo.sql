@@ -34,4 +34,25 @@ select case when (select (k.ajustes->>'solo_motivo')::boolean = false from bot_c
 select case when pg_temp.falla(format('select borrador_guardar_ajustes(%L, null, ''{"solo_motivo": true}'', %s)', 'B00', :bot))
             then 'ok' else 'not ok' end || ' 4 - un Mensaje sigue sin ajustes que guardar aquí';
 
+-- 0053: el texto de cierre de una opción se guarda desde el lienzo (efectos.motivo)
+select borrador_crear_mensaje(0, 300, :bot) as m \gset
+select borrador_guardar_cuadro(:'m', null, 'Hola', '[{"id": "1", "titulo": "Listo", "destino": null, "cierre": "  🏬 Recojo en tienda  "}]', :bot, null);
+select case when (select k.opciones->0->'efectos'->>'motivo' = '🏬 Recojo en tienda' from bot_cuadros k join bot_flujos f on f.id = k.flujo_id
+                  where f.bot_id = :bot and f.estado = 'borrador' and k.clave = :'m')
+            then 'ok' else 'not ok' end || ' 5 - la opción guarda su texto de cierre recortado (0053)';
+
+select borrador_guardar_cuadro(:'m', null, 'Hola', '[{"id": "1", "titulo": "Listo otra vez", "destino": null}]', :bot, null);
+select case when (select k.opciones->0->'efectos'->>'motivo' = '🏬 Recojo en tienda' from bot_cuadros k join bot_flujos f on f.id = k.flujo_id
+                  where f.bot_id = :bot and f.estado = 'borrador' and k.clave = :'m')
+            then 'ok' else 'not ok' end || ' 6 - sin «cierre» se conserva el que tenía';
+
+select borrador_guardar_cuadro(:'m', null, 'Hola', '[{"id": "1", "titulo": "Listo", "destino": null, "cierre": ""}]', :bot, null);
+select case when (select k.opciones->0->'efectos' is null from bot_cuadros k join bot_flujos f on f.id = k.flujo_id
+                  where f.bot_id = :bot and f.estado = 'borrador' and k.clave = :'m')
+            then 'ok' else 'not ok' end || ' 7 - vacío lo quita';
+
+select case when pg_temp.falla(format('select borrador_guardar_cuadro(%L, null, ''Hola'', %L, %s, null)', :'m',
+                  json_build_array(json_build_object('id', '1', 'titulo', 'Listo', 'destino', null, 'cierre', repeat('x', 1001)))::text, :bot))
+            then 'ok' else 'not ok' end || ' 8 - más de 1.000 caracteres no se guarda';
+
 rollback;

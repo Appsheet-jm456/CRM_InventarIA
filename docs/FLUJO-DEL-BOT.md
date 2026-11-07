@@ -24,7 +24,7 @@
 | ✅ **F4·18** Salidas del Mensaje (3 oct, decisión 0030, migración 0021) | «Otra respuesta», «Sin respuesta» (con tiempo) y «Error al enviar el mensaje», como en Kommo |
 | 🔵 **F4·34** Cuadro Pregunta, datos en los mensajes y datos de despacho tras el pago (construida 1 nov 2026, migraciones 0038 y 0039; falta la prueba del dueño) | Cuadro ❓ Pregunta que guarda la respuesta en un dato de la ficha y la valida; marcas `{dato}` en los mensajes; efecto «Marcar un dato» en los botones; la compra sigue en un bot del lienzo después del comprobante; bot de ejemplo «Datos de despacho» |
 | 🔵 **F4·35** Interruptores del bot y cuadro 🤖 Agente (construida 1 nov 2026, decisión 0034, migración 0040; falta la prueba del dueño) | Chatbot, Menú guiado y Avi en texto libre en todo el bot, con mensaje fijo opcional; cuadro 🤖 Agente con instrucción, herramientas, límite y salidas; se retira el modo por bot |
-| 🔵 **F4·47** Cierre de la compra: políticas de despacho y datos de envío más cortos (construida 7 nov 2026, migración 0052; en borrador, falta la prueba del dueño) | Mensajes del bot «Datos de despacho» reescritos con emojis, 5 preguntas en vez de 6, política de despacho propia para envío y para recojo en tienda, y el cuadro 🔒 Asesor puede enviar solo el texto de cierre de la flecha (`solo_motivo`) |
+| 🔵 **F4·47** Cierre de la compra: políticas de despacho y datos de envío más cortos (construida 7 nov 2026, migraciones 0052 y 0053; en borrador, falta la prueba del dueño) | Mensajes del bot «Datos de despacho» reescritos con emojis, 5 preguntas en vez de 6, política de despacho propia para envío y para recojo en tienda, y el cuadro 🔒 Asesor puede enviar solo el texto de cierre de la flecha (`solo_motivo`) |
 | **F4·15** Simulador y pruebas | Probar los cuadros y bots nuevos en el simulador (la Pausa con "Simular que pasó el tiempo"), pruebas de la base y del motor |
 
 ## Reglas
@@ -585,8 +585,10 @@ M1 con «Sí, correctos» y «Corregir»; las dos políticas en las flechas; B-A
 política. Simulado con el motor real: los dos caminos terminan en la política, con el chat en la cola. **Al publicar**, cambiar en Agente →
 Compra el texto de pago validado (hoy «✅ Recibimos tu comprobante.») por el de RF-40.
 
-**Límite de hoy:** el lienzo todavía no muestra la casilla `solo_motivo` ni deja editar el texto de cierre de una flecha (`efectos.motivo`);
-el lienzo los conserva al guardar, pero cambiarlos pide SQL. Pantalla para editarlos: mejora siguiente.
+**En el lienzo (migración 0053).** El cuadro 🔒 Asesor tiene la casilla **«Solo el texto de cierre»** (`solo_motivo`). En un Mensaje, cada
+opción que lleva al Asesor muestra el campo **💬 Texto de cierre al pasar al asesor** (hasta 1.000 caracteres, se guarda en
+`efectos.motivo`; vacío lo quita) y en el lienzo la opción lleva 💬. `borrador_guardar_cuadro` acepta `cierre` por opción y conserva el
+que había si no llega (pruebas 5 a 8 de `0052_asesor_solo_motivo.sql`).
 
 **Fuera de esta tarea:** usar el número de WhatsApp como celular y leer los datos de una foto de la cédula (simplificaciones futuras), y la
 plantilla de Meta para clientes fuera de las 24 h (F4·46).
