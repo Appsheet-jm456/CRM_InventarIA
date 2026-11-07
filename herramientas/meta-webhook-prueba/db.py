@@ -299,6 +299,17 @@ def lead(telefono):
     return filas[0] if filas else None
 
 
+def vincular_usuario(telefono, usuario):
+    """Guarda el identificador de WhatsApp (BSUID) de un cliente con número, para encontrarlo si luego escribe sin él (0051)."""
+    pedir(f"leads?telefono=eq.{q(telefono)}&eliminado_en=is.null&wa_user_id=is.null", "PATCH", {"wa_user_id": usuario}, "return=minimal")
+
+
+def telefono_por_usuario(usuario):
+    """El teléfono (o identificador) del cliente activo con ese usuario de WhatsApp, o None."""
+    filas = pedir(f"leads?wa_user_id=eq.{q(usuario)}&eliminado_en=is.null&select=telefono")
+    return filas[0]["telefono"] if filas else None
+
+
 def crear_lead(telefono, nombre):
     """Un cliente nuevo entra siempre en la primera etapa del embudo. Si otro hilo ya lo creó (teléfono único entre los activos), se usa ese."""
     try:

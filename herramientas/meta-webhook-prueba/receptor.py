@@ -106,7 +106,9 @@ def anotar(texto):
 
 def enviar(numero, mensaje):
     """Envía por la API de Meta. Devuelve el id del mensaje (wamid) o None si falló."""
-    cuerpo = {"messaging_product": "whatsapp", "to": numero, **mensaje}
+    # Sin número (nombres de usuario de WhatsApp, migración 0051) se responde al identificador del cliente con «recipient».
+    destino = {"to": numero} if str(numero).isdigit() else {"recipient": numero}
+    cuerpo = {"messaging_product": "whatsapp", **destino, **mensaje}
     peticion = urllib.request.Request(
         f"{API}/{ENV['META_PHONE_NUMBER_ID']}/messages", method="POST",
         headers={"Authorization": f"Bearer {ENV['META_TOKEN']}", "Content-Type": "application/json"},
@@ -737,12 +739,37 @@ def _contestar(numero, entrada, visible, nombre, tipo, meta_id, media=None, guar
 
 
 def procesar(evento):
+    """Una falla con un evento no debe perderlo en silencio: queda en el registro con lo que mandó Meta (7 nov 2026: un evento sin wa_id)."""
+    try:
+        _procesar(evento)
+    except Exception as e:
+        anotar(f"  ✗ evento no procesado: {e!r} · {json.dumps(evento, ensure_ascii=False)[:1800]}")
+
+
+def _procesar(evento):
     for entrada in evento.get("entry", []):
         for cambio in entrada.get("changes", []):
             valor = cambio.get("value", {})
-            nombres = {c["wa_id"]: c.get("profile", {}).get("name", "") for c in valor.get("contacts", [])}
+            nombres = {}
+            for c in valor.get("contacts", []):
+                for clave in (c.get("wa_id"), c.get("user_id")):
+                    if clave:
+                        nombres[clave] = c.get("profile", {}).get("name", "")
             for m in valor.get("messages", []):
-                de, tipo = m.get("from"), m.get("type")
+                de, usuario, tipo = m.get("from"), m.get("from_user_id"), m.get("type")
+                # Nombres de usuario de WhatsApp (0051): el mensaje puede traer solo el identificador del cliente (from_user_id).
+                try:
+                    if de and usuario:
+                        db.vincular_usuario(de, usuario)
+                    elif usuario:
+                        de = db.telefono_por_usuario(usuario) or usuario
+                except Exception as e:
+                    anotar(f"  ✗ no se pudo resolver el usuario de WhatsApp: {e!r}")
+                    de = de or usuario
+                if not de:
+                    anotar(f"  ✗ mensaje sin número ni usuario: {json.dumps(m, ensure_ascii=False)[:500]}")
+                    continue
+                nombre = nombres.get(de) or nombres.get(usuario or "") or ""
                 media = None
                 if tipo == "text":
                     entrada = m["text"].get("body", "")
@@ -762,8 +789,8 @@ def procesar(evento):
                     visible = ETIQUETAS_MEDIA.get(tipo, f"[{tipo}]") + (f": {pie}" if pie else "")
                 if tipo in ("text", "button"):
                     visible = entrada
-                anotar(f"📩 {de} ({nombres.get(de, '')}) · {tipo}: {entrada}")
-                contestar(de, entrada, visible, nombres.get(de, ""), tipo, m.get("id"), media)
+                anotar(f"📩 {de} ({nombre}) · {tipo}: {entrada}")
+                contestar(de, entrada, visible, nombre, tipo, m.get("id"), media)
             for s in valor.get("statuses", []):
                 errores = "; ".join(f"{e.get('code')} {e.get('title')}" for e in s.get("errors", []))
                 anotar(f"📬 estado {s.get('status')} · {s.get('recipient_id')}" + (f" · {errores}" if errores else ""))

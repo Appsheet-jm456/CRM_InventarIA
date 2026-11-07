@@ -3,6 +3,9 @@ import { conexionMeta } from '@/lib/metaConexion'
 
 export const API = 'https://graph.facebook.com/v25.0'
 
+// Clientes sin número (nombres de usuario de WhatsApp, migración 0051): se les escribe a su identificador con «recipient».
+const destino = (numero: string) => (/^\d+$/.test(numero) ? { to: numero } : { recipient: numero })
+
 // Envía un texto por la Cloud API de Meta. Devuelve el wamid, o un error legible si Meta lo rechaza.
 export async function enviarTexto(numero: string, texto: string): Promise<{ wamid?: string; error?: string }> {
   const conexion = await conexionMeta()
@@ -12,7 +15,7 @@ export async function enviarTexto(numero: string, texto: string): Promise<{ wami
     const r = await fetch(`${API}/${telefono}/messages`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messaging_product: 'whatsapp', to: numero, type: 'text', text: { body: texto } }),
+      body: JSON.stringify({ messaging_product: 'whatsapp', ...destino(numero), type: 'text', text: { body: texto } }),
       cache: 'no-store',
     })
     const datos = await r.json()
@@ -80,7 +83,7 @@ export async function enviarPlantilla(numero: string, nombre: string, idioma: st
     const r = await fetch(`${API}/${telefono}/messages`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messaging_product: 'whatsapp', to: numero, type: 'template', template: plantilla }),
+      body: JSON.stringify({ messaging_product: 'whatsapp', ...destino(numero), type: 'template', template: plantilla }),
       cache: 'no-store',
     })
     const datos = await r.json()
