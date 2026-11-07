@@ -1,0 +1,7 @@
+[Unit]
+Description=Respaldo diario del CRM InventarIA (F5·2)
+After=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/bash %h/chat_bot-inventario/herramientas/respaldos/respaldo-diario.sh --si-falta

@@ -1,0 +1,11 @@
+[Unit]
+Description=Respaldo diario del CRM InventarIA a las 03:30 de Colombia (y al encender si se perdió)
+
+[Timer]
+# El servidor está en UTC: la hora se da en la de Colombia.
+OnCalendar=*-*-* 03:30:00 America/Bogota
+Persistent=true
+RandomizedDelaySec=2min
+
+[Install]
+WantedBy=timers.target

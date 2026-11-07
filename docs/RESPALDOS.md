@@ -1,8 +1,8 @@
 # Respaldos del CRM y continuidad del servidor (F5·2, F5·4 a F5·6)
 
-> Plan acordado con el dueño el 7 nov 2026. **Nada de esto está hecho todavía:** hoy el CRM no tiene respaldos. Es lo más urgente desde que el
-> CRM se publicó por internet (decisión 0037). Modelo del script: `supabase-diario.py` de la web de ventas virtuales (copia diaria y una cada hora
-> que solo actúa si falta la del día). Estudio previo: [PUBLICAR-CRM-EMPRESA.md](PUBLICAR-CRM-EMPRESA.md) §7 y §8.
+> Plan acordado con el dueño el 7 nov 2026. **Estado (7 nov 2026, noche):** ✅ F5·4 disco listo y ✅ F5·2 copia diaria funcionando con restauración
+> probada (scripts y guía para restaurar en [herramientas/respaldos/](../herramientas/respaldos/README.md)). Siguen F5·5 (copia fuera del servidor),
+> F5·6 (luz y UPS) y F5·7 (aviso si falta la copia). Estudio previo: [PUBLICAR-CRM-EMPRESA.md](PUBLICAR-CRM-EMPRESA.md) §7 y §8.
 
 ## 1. El disco de respaldos (F5·4)
 
@@ -31,10 +31,15 @@ El servidor tiene tres discos (verificado el 7 nov 2026 con `lsblk`):
 | Unidades de systemd del usuario y los servicios | Copia de los archivos |
 | Las otras bases (Escuela, Futur Green) | Opcional: el dueño decide |
 
-- **Cuándo:** una copia diaria y otra cada hora que solo actúa si falta la del día (si el servidor estuvo apagado a la hora programada).
-- **Cuántas:** las últimas 14 diarias y una semanal; se borran las viejas solas.
-- **Aviso:** si falta la copia de hoy o el disco está lleno al 80 %, el CRM avisa (a definir: alerta en la app o correo).
-- **Prueba obligatoria (F5·2 no se cierra sin ella):** restaurar una copia en una base aparte y comprobar que el CRM la lee. Una copia que no se ha restaurado no se sabe si sirve.
+- **Hecho el 7 nov 2026:** el dueño corrió `preparar-disco.sh` (disco por número de serie, ext4 `respaldos`, 234 GB, fstab por UUID con `nofail`).
+  `crm/uploads/` no existe hoy (las fotos están en Storage); las otras bases no entran.
+- **Cuándo:** todos los días a las 03:30 de Colombia con el timer `crm-respaldo.timer`. En vez de la copia cada hora, `Persistent=true`: si el servidor
+  estuvo apagado a esa hora, la copia se hace al encender (el script espera hasta 5 minutos a que la base suba).
+- **Cuántas:** las últimas 14 diarias y las de los domingos de las últimas 8 semanas; se borran las viejas solas. Cada copia pesa ~7 MB.
+- **Seguridad:** carpetas y archivos solo para `atlasjm` (`umask 077`); si el disco no está montado no se copia nada (no llenar el disco del sistema).
+- **Aviso (F5·7, pendiente):** hoy el script anota en el registro (`journalctl --user -u crm-respaldo`) si falla o si el disco pasa del 80 %; falta que el CRM avise.
+- **Prueba de restauración ✅ (7 nov 2026):** la copia restaurada en una base aparte dio las mismas filas en las 76 tablas, los secretos de Vault se descifran
+  y Storage es idéntico. Detalle en [herramientas/respaldos/README.md](../herramientas/respaldos/README.md#prueba-de-restauración-del-7-nov-2026).
 
 ## 3. Copia fuera del servidor (F5·5)
 
@@ -56,7 +61,8 @@ La clave de cifrado se guarda aparte, fuera del servidor. **El dueño decide el 
 
 ## 5. Orden propuesto
 
-1. F5·4 disco listo (el dueño formatea con `sudo`, Claude verifica).
-2. F5·2 script de respaldo y una restauración probada.
+1. ✅ F5·4 disco listo (el dueño formatea con `sudo`, Claude verifica).
+2. ✅ F5·2 script de respaldo y una restauración probada.
 3. F5·5 copia fuera del servidor.
 4. F5·6 BIOS, UPS y plan de caída.
+5. F5·7 aviso en el CRM si falta la copia del día o el disco pasa del 80 %.
