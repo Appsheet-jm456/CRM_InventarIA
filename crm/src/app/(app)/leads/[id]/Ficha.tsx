@@ -7,6 +7,7 @@ import { clienteNavegador } from '@/lib/supabase/navegador'
 import { asignar, cerrar, liberar, reanudarBot, responder, tomar } from '../../bandeja/acciones'
 import { Entrega, Media, hora, iniciales, partirOpciones, type Mensaje } from '../../bandeja/Bandeja'
 import { ComprobanteCliente } from '../../bandeja/ComprobanteCliente'
+import { AlistamientoCliente } from './AlistamientoCliente'
 import { OportunidadesCliente, type Embudo, type Etapa } from '../../bandeja/OportunidadesCliente'
 import { ComponerPlantilla } from '../../bandeja/Plantilla'
 import { archivoLead, borrarYa, crearTarea, cumplirTarea, etiquetaLead, guardarFicha, notaLead, type Resultado } from './acciones'
@@ -291,6 +292,8 @@ export function Ficha({ lead: inicial, yo, usuarios, asesores, embudos, etapas, 
         return { quien, texto: 'Ficha guardada · ' + Object.keys(d).map((k) => `${nombreDe(k)}: ${mostrar(k, a[k])} → ${mostrar(k, d[k])}`).join(' · ') }
       }
       case 'tarea': return { quien, texto: `Tarea (${e.detalle}): ${texto(e.despues)}` }
+      case 'alistamiento': return { quien, texto: `🛠 ${e.detalle}` } // F4·50
+      case 'pago': return { quien, texto: `💳 ${e.detalle}` }
       case 'tarea_cumplida': return { quien, texto: `Tarea cumplida: ${texto(e.antes)}${e.detalle ? ` — ${e.detalle}` : ''}` }
       default: return { quien, texto: { archivado: 'Archivado', desarchivado: 'Desarchivado', eliminado: 'Enviado a la papelera', restaurado: 'Restaurado' }[e.tipo] ?? e.tipo }
     }
@@ -465,6 +468,7 @@ export function Ficha({ lead: inicial, yo, usuarios, asesores, embudos, etapas, 
           {pestana === 'oportunidades' && (
             <>
               {yo.validarPagos && <ComprobanteCliente lead={lead.id} version={version} alCambiar={() => { cargar(); router.refresh() }} />}
+              <AlistamientoCliente lead={lead.id} puedeDocumento={yo.moverEtapas} version={version} alCambiar={() => { cargar(); router.refresh() }} />
               <OportunidadesCliente lead={lead.id} embudos={embudos} etapas={etapas} puede={yo.moverEtapas} version={version}
                 alCambiar={() => { cargar(); router.refresh() }} />
             </>

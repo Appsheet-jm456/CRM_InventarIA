@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
 import { MODULOS } from '@/lib/modulos'
 import { obtenerSesion, puede } from '@/lib/sesion'
 import { crearCliente } from '@/lib/supabase/server'
@@ -11,6 +12,8 @@ const dinero = (n: number) =>
 // falta por construir; las conversaciones siguen en el visor de la demo.
 export default async function Inicio() {
   const sesion = (await obtenerSesion())!
+  // F4·50: el usuario del servicio técnico entra directo a sus pedidos.
+  if (puede(sesion, ['gestionar_alistamiento']) && !puede(sesion, ['atender_bandeja'])) redirect('/servicio-tecnico')
   const supabase = crearCliente()
   const atiende = puede(sesion, ['atender_bandeja'])
   const sigue = puede(sesion, ['gestionar_oportunidades'])

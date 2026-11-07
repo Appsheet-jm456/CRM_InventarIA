@@ -20,6 +20,7 @@ export const MODULOS: readonly Modulo[] = [
   { clave: 'bandeja', titulo: 'Bandeja', subtitulo: 'Conversaciones de WhatsApp', grupo: 'Atención', ruta: '/bandeja', icono: 'bandeja', permisos: ['atender_bandeja'] },
   { clave: 'embudo', titulo: 'Embudo', subtitulo: 'Oportunidades por etapa', grupo: 'Atención', ruta: '/embudo', icono: 'embudo', permisos: ['gestionar_oportunidades'] },
   { clave: 'leads', titulo: 'Leads', subtitulo: 'Todos los clientes: buscar, filtrar y editar en grupo', grupo: 'Atención', ruta: '/leads', icono: 'leads', permisos: ['atender_bandeja'] },
+  { clave: 'servicio-tecnico', titulo: 'Servicio técnico', subtitulo: 'Pedidos en alistamiento: revisión, checklist y listo para despachar', grupo: 'Atención', ruta: '/servicio-tecnico', icono: 'herramienta', permisos: ['gestionar_alistamiento'] },
   { clave: 'seguimientos', titulo: 'Seguimientos', subtitulo: 'Seguimientos y SLA', grupo: 'Atención', ruta: '/seguimientos', icono: 'seguimientos', permisos: ['gestionar_oportunidades'] },
 
   { clave: 'inventario', titulo: 'Inventario', subtitulo: 'Portátiles, fichas y catálogos', grupo: 'Ventas', ruta: '/inventario', icono: 'inventario', permisos: [] },

@@ -3,6 +3,7 @@ const TRAZOS = {
   bandeja: '<path d="M3 13h5l1.5 3h5L16 13h5"/><path d="M5.5 5h13L21 13v6H3v-6z"/>',
   embudo: '<path d="M3 4h18l-7 8v7l-4 2v-9z"/>',
   seguimientos: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M8 15l2.5 2.5L16 13"/>',
+  herramienta: '<path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.4-.6-.6-2.4z"/>',
   inventario: '<rect x="3" y="5" width="18" height="12" rx="1.5"/><path d="M1.5 19h21M9 9h6"/>',
   chat: '<path d="M4 5h16v11H9l-5 4z"/><path d="M8 9.5h8M8 12.5h5"/>',
   metricas: '<path d="M4 4v16h16"/><path d="m7 15 4-5 3 3 5-6"/>',

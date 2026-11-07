@@ -1,6 +1,6 @@
 # Alistamiento con servicio técnico, video de soporte y guía: campos que disparan el embudo (F4·50)
 
-> **Estado:** documentada el 7 nov 2026 con las respuestas y correcciones del dueño; **sin construir**. Parte de F4·33 (etapas Alistamiento y
+> **Estado:** documentada el 7 nov 2026 con las respuestas y correcciones del dueño; **bloque A construido el 7 nov 2026** (falta la prueba del dueño); B, C y D por construir. Parte de F4·33 (etapas Alistamiento y
 > Despachado, [LEADS.md §C](LEADS.md)) y de F4·46/F4·47 (el cliente ya recibe la política de despacho que promete el video).
 > **Corrección del dueño (7 nov 2026):** **no se crea otro embudo ni otras etapas.** El embudo de Cliente Final queda como está:
 > **Alistamiento → Despachado → Vendido → Perdido**. Lo nuevo son **campos y botones que actúan como disparadores** dentro de esas etapas.
@@ -110,6 +110,23 @@ quien hace cada cosa: por eso el «¿Quién eres?» de RAL-08.
    vencimiento a 6 meses.
 3. **C. Envío al cliente y cierre:** «Enviar video», «Enviar OP o FVE», «Enviar guía» con Despachado y Vendido automáticos, «Avisar: listo para recoger».
 4. **D. Reportes:** pedidos por técnico y tiempos.
+
+## 5b. Cómo quedó construido el bloque A (7 nov 2026)
+
+- **Migración 0054** (`supabase/pruebas/0054_alistamiento_servicio_tecnico.sql`, 17 pruebas): permiso `gestionar_alistamiento` (administrador y
+  rol nuevo **Técnico**, que no tiene nada más), lista `alistamiento_tecnicos` (Camilo Osorio, Sebastián Melenje, Josep) y tabla `alistamientos`.
+  Un disparador crea el registro cuando la oportunidad **llega a la etapa Alistamiento** (con sus equipos tomados de la oportunidad); los
+  pedidos que ya estaban en Alistamiento se crearon al migrar. **No hay etapas nuevas.**
+- Funciones: `alistamiento_documento` (asesor, `gestionar_oportunidades`), `alistamiento_tomar`, `alistamiento_checklist`, `alistamiento_listo`
+  y `alistamiento_reabrir` (técnico, con el nombre de «¿Quién eres?» validado por la base), y `servicio_tecnico_pedidos` (lo que ve el técnico:
+  nombre del cliente, entrega, equipos, documento y estado; **sin teléfono, chat ni pagos**). «Listo» exige el documento, pone la etiqueta
+  `Listo-Para-Despachar` (el aviso para el asesor) y **no cambia la etapa**. Todo queda en la línea de tiempo (tipo `alistamiento`).
+- Pantallas: módulo **Servicio técnico** (`/servicio-tecnico`, menú Atención) con «¿Quién eres?» (se recuerda en el navegador), pedidos «Por
+  hacer» y «Listos», Tomar pedido, checklist, «✅ Revisado, listo para despachar» y «Volver a revisión»; el usuario técnico entra directo ahí.
+  En la ficha del cliente, pestaña **Oportunidades**: tarjeta **🛠 Alistamiento** con estado, técnico, checklist y el formulario del documento
+  (OP o FVE) para el asesor.
+- **Falta para usarlo:** compilar y reiniciar la app; crear en Usuarios el usuario **«Servicio técnico»** con el rol **Técnico** y agregar su
+  correo a la política `Equipo` de Cloudflare Access.
 
 ## 6. Decisiones del dueño (7 nov 2026)
 
