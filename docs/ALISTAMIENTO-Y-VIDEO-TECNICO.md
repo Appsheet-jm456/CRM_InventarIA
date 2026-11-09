@@ -2,6 +2,7 @@
 
 > **Estado:** documentada el 7 nov 2026 con las respuestas y correcciones del dueño; **bloques A, B, C y D construidos el 7 nov 2026** (falta la prueba del dueño). Parte de F4·33 (etapas Alistamiento y
 > Despachado, [LEADS.md §C](LEADS.md)) y de F4·46/F4·47 (el cliente ya recibe la política de despacho que promete el video).
+> **Mejoras pedidas el 9 nov 2026:** ficha por pasos y módulo Pedidos, documentadas en [PEDIDOS.md](PEDIDOS.md) (F4·54 y F4·55); sin construir.
 > **Corrección del dueño (7 nov 2026):** **no se crea otro embudo ni otras etapas.** El embudo de Cliente Final queda como está:
 > **Alistamiento → Despachado → Vendido → Perdido**. Lo nuevo son **campos y botones que actúan como disparadores** dentro de esas etapas.
 > **¿Es posible? Sí.** Lo difícil no es el embudo, es el **video**: peso, límite de WhatsApp y espacio en disco (ver «Veredicto»).
