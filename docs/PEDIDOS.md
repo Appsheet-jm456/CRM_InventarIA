@@ -99,7 +99,7 @@ y botones sueltos. La propuesta, para el panel angosto de la ficha y para la pan
   **✓ enviado + hora**, sin botón (RPD-16 y RPD-17). Los botones apagados explican por qué, escrito debajo.
 - **RPD-25 · Videos y fotos con miniatura** (no un enlace «Ver»), con peso y quién lo subió en una línea.
 - **RPD-26 · Se respeta el tema de Apariencia** (claro/oscuro y colores de marca) y funciona en celular, tablet y computador.
-- Antes de construir, el dueño aprueba una **maqueta** de la ficha y de Pedidos (la hago a su orden).
+- **Maqueta de la ficha y del Kanban aprobada por el dueño el 9 nov 2026** (pasos, tarjetas, ✓ enviado, Kanban de 5 columnas). Falta la orden de construir.
 
 ## 4. Mejora B · Módulo «Pedidos» (F4·55)
 
