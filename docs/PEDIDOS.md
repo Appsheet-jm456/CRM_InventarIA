@@ -1,6 +1,6 @@
 # Pedidos: ficha ordenada por el proceso y módulo de seguimiento de envíos (F4·54 y F4·55)
 
-> **Estado:** 📝 documentada el 9 nov 2026 por pedido del dueño y **ajustada con sus respuestas el mismo día** (regla de cierre único, vista Kanban,
+> **Estado:** 🔵 **bloque A construido el 9 nov 2026 (falta la prueba del dueño)**; B y C sin construir. Documentada el 9 nov 2026 por pedido del dueño y **ajustada con sus respuestas el mismo día** (regla de cierre único, vista Kanban,
 > cancelación y diseño más profesional). **No está construida; se construye cuando el dueño dé la orden.**
 > Es una mejora de [F4·50 Alistamiento](ALISTAMIENTO-Y-VIDEO-TECNICO.md) (bloques A a D ya construidos y a la espera de su prueba).
 > **Sin embudo ni etapas nuevas** (RAL-01 sigue igual): *Alistamiento → Despachado → Vendido → Perdido*. Esto solo reordena lo que se ve y
@@ -174,6 +174,30 @@ prometía RAL-01 y todavía no existe, con un enlace al pedido.
 1. **A. Ficha por pasos y diseño** (RPD-01 a RPD-07, RPD-20 a RPD-26), con la **regla de envío único** (RPD-16 a RPD-18, que sí toca la base): previa **maqueta aprobada**. Se puede probar con el pedido que ya existe en la base.
 2. **B. Lista, Kanban y detalle de Pedidos** (RPD-08 a RPD-11, RPD-14): migración 0058, lista, filtros, detalle y línea de tiempo.
 3. **C. Alertas, exportar y Embudo** (RPD-12, RPD-13, RPD-15) y la cancelación (RPD-19).
+
+## 6b. Cómo quedó construido el bloque A (9 nov 2026)
+
+- **Migración 0058** (`supabase/pruebas/0058_pedido_numero_envio_unico_y_cancelar.sql`, 19 pruebas; las de 0054, 0056 y 0057 siguen en verde):
+  - `alistamientos.numero` consecutivo y único (PED-0001…; el pedido que ya existía quedó PED-0001) y `primer_video_en` / `primer_documento_en`
+    (un disparador guarda la hora del **primer** envío; de ahí se cuentan las 24 h).
+  - `alistamiento_para_enviar` aplica RPD-16 a RPD-18: **guía y aviso de recogida una sola vez**, **video y documento 24 h desde el primer envío y
+    con el pedido abierto**, y cada envío **reserva su lugar 90 s** (`envios_en_curso`) para que un doble clic o dos asesores no lo manden dos
+    veces. `alistamiento_guia` y `alistamiento_entregado` también se niegan a repetirse.
+  - `alistamiento_cancelar` (RPD-19): motivo obligatorio, solo antes de que se registre la guía; deja el pedido **Cancelado**, la oportunidad
+    **Perdida** con el motivo, y el evento en la línea de tiempo.
+  - Arreglo: la columna nueva `numero` chocaba con una variable de `alistamiento_documento`; se renombró la variable.
+- **Receptor** (`resolver_alistamiento`): pase lo que pase al enviar, suelta la reserva (`prueba_envios_alistamiento.py` 12/12).
+- **Ficha → Oportunidades** (`leads/[id]/pedido/PedidoCliente.tsx` y `pedido.ts`, reemplazan a `AlistamientoCliente.tsx`):
+  - Tarjeta de cabecera: pedido, estado, equipos, total, **la etapa del embudo arriba** (con su selector), **barra de pasos** y **«Siguiente
+    paso»** con botón «Ir» que abre y lleva a la sección.
+  - Secciones plegables: Pago, Servicio técnico (miniatura del video), Documento, **Enviar al cliente** (✓ y hora; Reenviar solo dentro de las
+    24 h; el motivo escrito cuando un botón no aplica; **Cancelar pedido**), Historial del pedido y, al final, Otras oportunidades del cliente.
+  - Estilos `.ped-*` en `globals.css`, con los colores del tema (claro y oscuro).
+- **Desviación de la maqueta:** la barra tiene **4 pasos en envío** (Pago, Alistamiento, Listo, Enviado: la guía deja el pedido en Vendido y no hay
+  dato de entrega por transportadora) y **5 en tienda** (con Aviso de recogida y Entregado).
+- **Verificado:** pruebas SQL y de Python, `tsc`, lint y `next build`; app y receptor reiniciados. **No se vio en el navegador**: falta que el dueño
+  revise el diseño con el pedido de Jhonatan Marin (PED-0001; su video y su FVE ya pasaron las 24 h, así que solo conservan el ✓).
+- **Falta (bloque B y C):** módulo `/pedidos` con lista y Kanban, detalle, permiso `ver_pedidos`, alertas, exportar y pastilla en el Embudo.
 
 ## 7. Decisiones del dueño (9 nov 2026) y lo que falta
 

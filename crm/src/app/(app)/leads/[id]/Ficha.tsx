@@ -7,8 +7,8 @@ import { clienteNavegador } from '@/lib/supabase/navegador'
 import { asignar, cerrar, liberar, reanudarBot, responder, tomar } from '../../bandeja/acciones'
 import { Entrega, Media, hora, iniciales, partirOpciones, type Mensaje } from '../../bandeja/Bandeja'
 import { ComprobanteCliente } from '../../bandeja/ComprobanteCliente'
-import { AlistamientoCliente } from './AlistamientoCliente'
-import { OportunidadesCliente, type Embudo, type Etapa } from '../../bandeja/OportunidadesCliente'
+import { PedidoCliente } from './pedido/PedidoCliente'
+import { type Embudo, type Etapa } from '../../bandeja/OportunidadesCliente'
 import { ComponerPlantilla } from '../../bandeja/Plantilla'
 import { archivoLead, borrarYa, crearTarea, cumplirTarea, etiquetaLead, guardarFicha, notaLead, type Resultado } from './acciones'
 
@@ -466,12 +466,9 @@ export function Ficha({ lead: inicial, yo, usuarios, asesores, embudos, etapas, 
           )}
 
           {pestana === 'oportunidades' && (
-            <>
-              {yo.validarPagos && <ComprobanteCliente lead={lead.id} version={version} alCambiar={() => { cargar(); router.refresh() }} />}
-              <AlistamientoCliente lead={lead.id} puedeDocumento={yo.moverEtapas} version={version} alCambiar={() => { cargar(); router.refresh() }} />
-              <OportunidadesCliente lead={lead.id} embudos={embudos} etapas={etapas} puede={yo.moverEtapas} version={version}
-                alCambiar={() => { cargar(); router.refresh() }} />
-            </>
+            <PedidoCliente lead={lead.id} puedeDocumento={yo.moverEtapas} embudos={embudos} etapas={etapas} version={version}
+              alCambiar={() => { cargar(); router.refresh() }}
+              pago={yo.validarPagos ? <ComprobanteCliente lead={lead.id} version={version} alCambiar={() => { cargar(); router.refresh() }} /> : undefined} />
           )}
 
           {pestana === 'tareas' && (

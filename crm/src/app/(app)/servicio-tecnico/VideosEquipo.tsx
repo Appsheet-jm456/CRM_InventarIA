@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { clienteNavegador, subirConAvance } from '@/lib/supabase/navegador'
 import { registrarVideo, type Resultado } from './acciones'
 
@@ -21,9 +21,26 @@ const ESTADO: Record<Video['estado'], [string, string]> = {
   procesando: ['⏳ Preparando', 'warn'], listo: ['✅ Listo', 'ok'], error: ['❌ Error', 'bad'], vencido: ['Vencido', 'neu'],
 }
 
+// F4·54 (RPD-25): miniatura del video (el primer cuadro) en vez de un enlace «Ver».
+function Miniatura({ ruta, alAbrir }: { ruta: string; alAbrir: () => void }) {
+  const [url, setUrl] = useState<string | null>(null)
+  useEffect(() => {
+    let vivo = true
+    clienteNavegador().storage.from('videos-tecnicos').createSignedUrl(ruta, 3600).then(({ data }: { data: { signedUrl: string } | null }) => { if (vivo && data) setUrl(data.signedUrl) })
+    return () => { vivo = false }
+  }, [ruta])
+  return (
+    <button type="button" className="ped-mini" onClick={alAbrir} aria-label="Ver el video">
+      {url && <video src={`${url}#t=0.3`} preload="metadata" muted playsInline />}
+      <span className="ped-mini-play" aria-hidden="true">▶</span>
+    </button>
+  )
+}
+
 // F4·50 bloque B (RAL-05): los videos de un equipo. El técnico sube (con avance) y cualquiera con permiso los ve con un enlace firmado.
-export function VideosEquipo({ pedido, codigo, videos, quien, puedeSubir, alTerminar }: {
+export function VideosEquipo({ pedido, codigo, videos, quien, puedeSubir, alTerminar, miniaturas = false }: {
   pedido: number; codigo: string; videos: Video[]; quien?: string; puedeSubir: boolean; alTerminar: (r: Resultado) => void
+  miniaturas?: boolean
 }) {
   const archivo = useRef<HTMLInputElement>(null)
   const [avance, setAvance] = useState<number | null>(null)
@@ -54,11 +71,22 @@ export function VideosEquipo({ pedido, codigo, videos, quien, puedeSubir, alTerm
     <div style={{ display: 'grid', gap: 4 }}>
       {videos.map((v) => (
         <div key={v.id} style={{ display: 'grid', gap: 4 }}>
+          {miniaturas && v.estado === 'listo' && v.ruta ? (
+            <div className="ped-video">
+              <Miniatura ruta={v.ruta} alAbrir={() => ver(v)} />
+              <div className="ped-datos">
+                <b>{v.tecnico}</b>
+                <small className="muted">{hora(v.subido_en)}{v.peso ? ` · ${(v.peso / 1048576).toFixed(1)} MB` : ''}</small>
+              </div>
+              <button type="button" className="btn chico" onClick={() => ver(v)}>{viendo?.id === v.id ? 'Ocultar' : 'Ver'}</button>
+            </div>
+          ) : (
           <small className="row" style={{ gap: 6 }}>
             <span className={`chip ${ESTADO[v.estado][1]}`}>{ESTADO[v.estado][0]}</span>
             <span className="muted">{v.tecnico} · {hora(v.subido_en)}{v.peso ? ` · ${(v.peso / 1048576).toFixed(1)} MB` : ''}</span>
             {v.estado === 'listo' && v.ruta && <button type="button" className="btn-link" onClick={() => ver(v)}>{viendo?.id === v.id ? 'Ocultar' : '▶ Ver'}</button>}
           </small>
+          )}
           {v.estado === 'error' && v.error && <small className="error">{v.error}. Súbelo de nuevo.</small>}
           {viendo?.id === v.id && <video src={viendo.url} controls playsInline style={{ width: '100%', maxWidth: 420, borderRadius: 8, background: '#000' }} />}
         </div>

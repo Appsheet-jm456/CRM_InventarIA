@@ -1,6 +1,8 @@
 'use client'
 
-export const MOTIVOS = ['Precio', 'Sin respuesta', 'No calificado', 'Compró en otro lado', 'Solo preguntaba', 'Otro']
+export const MOTIVOS = ['No compró', 'Precio', 'Sin respuesta', 'No calificado', 'Compró en otro lado', 'Solo preguntaba', 'Otro']
+
+export const MOTIVOS_CANCELAR = ['No compró', 'Novedad del cliente', 'Sin respuesta', 'Otro']
 
 // RE-06: cerrar como perdida pide el motivo, en cualquier embudo.
 export function MotivoPerdida({ etapa, alElegir, alCancelar }: { etapa: string; alElegir: (motivo: string) => void; alCancelar: () => void }) {

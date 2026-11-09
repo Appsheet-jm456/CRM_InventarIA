@@ -25,6 +25,10 @@ ESTADO = {"ultimo": datetime.now(timezone.utc) - timedelta(hours=1), "falla": Fa
 ENVIADOS, PATCHES, SUBIDOS, GUARDADOS = [], [], [], []
 
 
+def marcas():  # las marcas de «enviado», sin contar la reserva que siempre se suelta al terminar
+    return [p for p in PATCHES if p[1] != {"envios_en_curso": {}}]
+
+
 def pedir(ruta, metodo="GET", cuerpo=None, prefer=None):
     if metodo == "PATCH":
         PATCHES.append((ruta, cuerpo))
@@ -91,13 +95,14 @@ ok(r["ok"] and "CC La Pasarela" in ENVIADOS[0]["text"]["body"] and "Lunes a vier
 # 5. Fuera de las 24 h no se envía nada
 ESTADO["ultimo"] = datetime.now(timezone.utc) - timedelta(hours=30)
 r = correr("documento")
-ok(not r["ok"] and "24 h" in r["error"] and not ENVIADOS and not PATCHES, "fuera de las 24 h no envía ni marca nada")
+ok(not r["ok"] and "24 h" in r["error"] and not ENVIADOS and not marcas(), "fuera de las 24 h no envía ni marca nada")
 ESTADO["ultimo"] = datetime.now(timezone.utc) - timedelta(hours=1)
 
 # 6. Si WhatsApp rechaza todo, no se marca como enviado
 ESTADO["falla"] = True
 r = correr("documento")
-ok(not r["ok"] and not PATCHES, "si WhatsApp no acepta el envío, no queda marcado como enviado")
+ok(not r["ok"] and not marcas(), "si WhatsApp no acepta el envío, no queda marcado como enviado")
+ok(any(c == {"envios_en_curso": {}} for _, c in PATCHES), "pase lo que pase, suelta la reserva del envío (F4·54)")
 ESTADO["falla"] = False
 
 print(f"\n{n - fallos}/{n} pruebas bien")

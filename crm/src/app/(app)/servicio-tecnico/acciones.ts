@@ -81,8 +81,16 @@ export async function registrarGuia(id: number, lead: number, ruta: string, tran
   revalidatePath(`/leads/${lead}`)
   revalidatePath('/servicio-tecnico')
   const r = await enviarPorReceptor(data as Pedido)
-  return r.error ? { error: `La guía quedó registrada (Despachado y Vendido), pero no se le pudo enviar al cliente: ${r.error} Usa «Reenviar guía».` }
+  return r.error ? { error: `La guía quedó registrada (Despachado y Vendido), pero no se le pudo enviar al cliente: ${r.error} Usa «Reintentar envío».` }
     : { ok: 'Guía enviada al cliente. El pedido quedó Despachado y Vendido.' }
+}
+
+// F4·54 (RPD-19): cancelar el pedido con motivo antes de que salga la guía; la oportunidad queda Perdida.
+export async function cancelarPedido(id: number, lead: number, motivo: string): Promise<Resultado> {
+  const r = await llamar('alistamiento_cancelar', { p_id: id, p_motivo: motivo }, 'Pedido cancelado. La oportunidad quedó Perdida.')
+  revalidatePath(`/leads/${lead}`)
+  revalidatePath('/servicio-tecnico')
+  return r
 }
 
 export async function marcarEntregado(id: number, lead: number): Promise<Resultado> {

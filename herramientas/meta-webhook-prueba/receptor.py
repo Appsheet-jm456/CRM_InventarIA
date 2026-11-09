@@ -511,6 +511,18 @@ def resolver_comprobante(pedido):
 
 
 def resolver_alistamiento(pedido):
+    """Envía lo que el asesor pidió y, pase lo que pase, suelta la reserva del envío (la base la pone 90 s para que un doble clic no lo
+    mande dos veces: F4·54, RPD-18)."""
+    try:
+        return _enviar_alistamiento(pedido)
+    finally:
+        try:
+            db.pedir(f"alistamientos?id=eq.{int(pedido['alistamiento'])}", "PATCH", {"envios_en_curso": {}}, "return=minimal")
+        except Exception as e:
+            anotar(f"  ✗ no se pudo soltar la reserva del envío: {e!r}")
+
+
+def _enviar_alistamiento(pedido):
     """F4·50 bloque C (/interno/alistamiento): el asesor pulsó «Enviar video», «Enviar OP o FVE», «Enviar guía» o «Avisar: listo para
     recoger» y la base ya lo permitió y registró. Arma los mensajes, los envía al cliente y anota la hora del envío. No toca el bot."""
     lead_id, a_id, que = int(pedido["lead"]), int(pedido["alistamiento"]), str(pedido["que"])

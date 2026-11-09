@@ -21,13 +21,16 @@ type Oportunidad = {
 const pesos = (n: number) => n.toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 })
 
 // RE-02: el cliente puede tener una oportunidad en cada embudo; aquí se mueven y se abren (RE-05, RE-06).
-export function OportunidadesCliente({ lead, embudos, etapas, puede, version, alCambiar }: {
+export function OportunidadesCliente({ lead, embudos, etapas, puede, version, alCambiar, modo = 'todas', oportunidadId }: {
   lead: number
   embudos: Embudo[]
   etapas: Etapa[]
   puede: boolean
   version: number
   alCambiar: () => void
+  // F4·54 (RPD-02, RPD-06): 'solo' muestra únicamente la oportunidad del pedido (arriba, en su tarjeta); 'otras', todas menos esa.
+  modo?: 'todas' | 'solo' | 'otras'
+  oportunidadId?: number
 }) {
   const [ops, setOps] = useState<Oportunidad[]>([])
   const [error, setError] = useState('')
@@ -64,16 +67,17 @@ export function OportunidadesCliente({ lead, embudos, etapas, puede, version, al
     else hacer(() => moverOportunidad(op.id, etapaId))
   }
 
-  const abiertas = ops.filter((o) => o.estado === 'abierta')
-  const cerradas = ops.filter((o) => o.estado !== 'abierta').slice(0, 5)
-  const sinAbrir = embudos.filter((e) => !abiertas.some((o) => o.embudo_id === e.id))
+  const lista = modo === 'solo' ? ops.filter((o) => o.id === oportunidadId) : modo === 'otras' ? ops.filter((o) => o.id !== oportunidadId) : ops
+  const abiertas = lista.filter((o) => o.estado === 'abierta')
+  const cerradas = lista.filter((o) => o.estado !== 'abierta').slice(0, 5)
+  const sinAbrir = embudos.filter((e) => !ops.some((o) => o.estado === 'abierta' && o.embudo_id === e.id))
   const nombreEmbudo = (id: number) => embudos.find((e) => e.id === id)?.nombre ?? ''
   const nombreEtapa = (id: number) => etapas.find((e) => e.id === id)?.nombre ?? ''
 
   return (
-    <div className="dato">
-      <small>Oportunidades</small>
-      {abiertas.length === 0 && <div className="muted" style={{ fontWeight: 400 }}>Ninguna abierta.</div>}
+    <div className={modo === 'solo' ? undefined : 'dato'}>
+      {modo !== 'solo' && <small>{modo === 'otras' ? 'Otras oportunidades del cliente' : 'Oportunidades'}</small>}
+      {modo !== 'solo' && abiertas.length === 0 && <div className="muted" style={{ fontWeight: 400 }}>Ninguna abierta.</div>}
       {abiertas.map((o) => (
         <label key={o.id} className="field op">
           <span>{nombreEmbudo(o.embudo_id)}{o.valor_estimado ? ` · ${pesos(Number(o.valor_estimado))}` : ''}{o.producto ? ` · ${o.producto}` : ''}</span>
@@ -91,7 +95,7 @@ export function OportunidadesCliente({ lead, embudos, etapas, puede, version, al
           {o.cerrado_en ? ` · ${new Date(o.cerrado_en).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', timeZone: 'America/Bogota' })}` : ''}
         </div>
       ))}
-      {puede && sinAbrir.length > 0 && (
+      {puede && modo !== 'solo' && sinAbrir.length > 0 && (
         <div className="inline" style={{ marginTop: 6 }}>
           <select value={nuevo} onChange={(e) => setNuevo(e.target.value)} aria-label="Embudo">
             <option value="">Abrir en otro embudo…</option>
