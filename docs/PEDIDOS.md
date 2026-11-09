@@ -168,6 +168,23 @@ Ejemplo del dueño: la factura vale **$2.000.000** y el cliente paga **$1.000.00
   Pantalla: `leads/[id]/pedido/PagosPedido.tsx` en la sección **Pago** (ficha y panel de Pedidos): totales, lista con «Ver soporte» y
   «Anular», y «Registrar pago» (propone el saldo como valor). En Pedidos, la columna Total muestra lo pagado y el CSV trae la columna Pagado.
 
+### Cambiar el video en un clic y reenviarlo dentro de las 24 h de Meta (pedido del dueño, 9 nov 2026)
+
+En el panel de **Servicio técnico → Cerrados** había que autorizar primero y subir después. El dueño pidió un botón para **cambiar (subir) el
+video** directamente y poder **reenviarlo al cliente** con un clic si WhatsApp lo permite (24 h desde el último mensaje del cliente).
+
+- **RPD-38 · «Cambiar video» en un paso:** quien tiene `corregir_pedidos` ve **«Cambiar video»** en cada equipo de un pedido cerrado: elige el
+  archivo, escribe el motivo y el sistema autoriza la corrección y sube el video de una vez (queda en el historial como antes, RPD-29). Con el
+  pedido abierto sigue el botón «Subir otro video» (reemplazar, RPD-27). «Autorizar al técnico» queda para cuando lo grabe otra persona.
+- **RPD-39 · «Enviar al cliente» en el panel:** cuando el video corregido ya está listo (comprimido) y el cliente no lo ha recibido, el panel
+  muestra **«Enviar video corregido»** para quien gestiona oportunidades. Se envía **una vez** (RPD-31).
+- **RPD-40 · Ventana de 24 h de Meta a la vista:** el panel dice hasta cuándo se le puede escribir al cliente («WhatsApp abierto hasta 10 nov,
+  3:20 p. m.»). Si ya venció, el botón se apaga con el motivo: hay que esperar a que el cliente escriba (o usar una plantilla aprobada, pendiente F4·46).
+- Sigue igual: «¿Quién eres?» se elige antes de subir (el video queda a nombre de un técnico de la lista).
+- **Construido el 9 nov 2026:** migración **0062** (`servicio_tecnico_cerrados` con el cliente, el video corregido y `ventana_meta_hasta`; prueba
+  15b en `0059_pedido_cerrado_y_corregir.sql`), `VideosEquipo` con `antesDeSubir` y el panel de Servicio técnico con «Cambiar video», «Autorizar
+  al técnico» y la tarjeta «Enviar al cliente» (también «Enviar video» si el cliente nunca lo recibió). Falta la prueba del dueño.
+
 ## 4. Mejora B · Módulo «Pedidos» (F4·55)
 
 Nueva pantalla **Pedidos** (`/pedidos`, grupo **Atención**, junto a Embudo y Servicio técnico). **Solo consulta y filtra**; las acciones

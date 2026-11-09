@@ -85,6 +85,9 @@ select case when (alistamiento_para_enviar(:a1, 'video') ->> 'corregido')::boole
 select case when exists (select 1 from jsonb_array_elements(servicio_tecnico_cerrados()) x where (x ->> 'id')::bigint = :a1)
              and not exists (select 1 from jsonb_array_elements(servicio_tecnico_pedidos()) x where (x ->> 'id')::bigint = :a1)
             then 'ok' else 'not ok' end || ' 15 - el pedido cerrado pasa a «Cerrados» en Servicio técnico';
+select case when exists (select 1 from jsonb_array_elements(servicio_tecnico_cerrados()) x where (x ->> 'id')::bigint = :a1
+                          and (x ->> 'lead_id')::bigint = :l1 and (x ->> 'correccion_video_id')::bigint = :vnuevo and x ? 'ventana_meta_hasta')
+            then 'ok' else 'not ok' end || ' 15b - «Cerrados» trae el video corregido y la ventana de WhatsApp (0062)';
 
 -- Cancelado: congelado
 select alistamiento_cancelar(:a2, 'No compró');

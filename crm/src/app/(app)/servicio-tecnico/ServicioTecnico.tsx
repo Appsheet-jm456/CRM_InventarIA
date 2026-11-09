@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 import { numeroPedido } from '../leads/[id]/pedido/pedido'
-import { autorizarVideoCorregido, marcarChecklist, marcarListo, reabrirPedido, tomarPedido, type Resultado } from './acciones'
+import { autorizarVideoCorregido, enviarAlCliente, marcarChecklist, marcarListo, reabrirPedido, tomarPedido, type Resultado } from './acciones'
 import { VideosEquipo, type Video } from './VideosEquipo'
 import { Icono } from '@/components/Iconos'
 
@@ -28,6 +28,9 @@ export type Pedido = {
 // F4·54 (RPD-29): pedido cerrado (Vendido o Perdido) de los últimos 6 meses, en la pestaña «Cerrados».
 export type PedidoCerrado = Pedido & {
   cerrado_en: string | null; cierre: string; correccion_video_autorizada_en: string | null; correccion_video_motivo: string | null
+  // 0062 (RPD-39, RPD-40): para reenviar el video corregido desde el panel
+  lead_id: number; video_enviado_en: string | null; correccion_video_en: string | null; correccion_video_id: number | null
+  ventana_meta_hasta: string | null
 }
 
 export type Reporte = {
@@ -89,8 +92,8 @@ function PasosTecnico({ p, chico = false }: { p: Fila; chico?: boolean }) {
   )
 }
 
-export function ServicioTecnico({ pedidos, cerrados, puedeCorregir, tecnicos, error, reporte }: {
-  pedidos: Pedido[]; cerrados: PedidoCerrado[]; puedeCorregir: boolean; tecnicos: string[]; error: string | null; reporte: Reporte | null
+export function ServicioTecnico({ pedidos, cerrados, puedeCorregir, puedeEnviar, tecnicos, error, reporte }: {
+  pedidos: Pedido[]; cerrados: PedidoCerrado[]; puedeCorregir: boolean; puedeEnviar: boolean; tecnicos: string[]; error: string | null; reporte: Reporte | null
 }) {
   const router = useRouter()
   const [quien, setQuien] = useState('')
@@ -129,6 +132,25 @@ export function ServicioTecnico({ pedidos, cerrados, puedeCorregir, tecnicos, er
     setOcupado(null)
     setAviso({ ...r, pedido: p.id })
     router.refresh()
+  }
+
+  // RPD-39: enviar al cliente no necesita «¿Quién eres?» (lo hace quien gestiona oportunidades)
+  async function enviarVideo(p: Fila) {
+    if (!confirm('¿Enviar el video al cliente por WhatsApp? Se envía una sola vez.')) return
+    setOcupado(p.id)
+    const r = await enviarAlCliente(p.id, p.lead_id ?? 0, 'video')
+    setOcupado(null)
+    setAviso({ ...r, pedido: p.id })
+    router.refresh()
+  }
+
+  // RPD-38: al cambiar el video de un pedido cerrado, primero el motivo y la autorización (en el mismo clic)
+  async function prepararCambio(p: Fila): Promise<string | null> {
+    if (!quien) return 'Primero elige quién eres (arriba).'
+    const motivo = prompt(`¿Por qué cambias el video del pedido ${numeroPedido(p.numero)}? (queda en el historial)`)?.trim()
+    if (!motivo) return ''
+    const r = await autorizarVideoCorregido(p.id, p.lead_id ?? null, motivo)
+    return r.error ?? null
   }
 
   const activos = pedidos.filter((p) => p.estado !== 'listo')
@@ -234,7 +256,8 @@ export function ServicioTecnico({ pedidos, cerrados, puedeCorregir, tecnicos, er
               <button className="btn chico" onClick={() => setAbierto(null)} aria-label="Cerrar">✕</button>
             </div>
             <div className="pd-cajon-b">
-              <Resumen p={sel} quien={quien} ocupado={ocupado === sel.id} puedeCorregir={puedeCorregir} aviso={aviso.pedido === sel.id ? aviso : {}}
+              <Resumen p={sel} quien={quien} ocupado={ocupado === sel.id} puedeCorregir={puedeCorregir} puedeEnviar={puedeEnviar}
+                aviso={aviso.pedido === sel.id ? aviso : {}} enviar={() => enviarVideo(sel)} preparar={() => prepararCambio(sel)}
                 hacer={(accion, pregunta) => hacer(sel.id, accion, pregunta)} autorizar={() => autorizar(sel)}
                 alSubir={(r) => { setAviso({ ...r, pedido: sel.id }); router.refresh() }} />
             </div>
@@ -246,15 +269,21 @@ export function ServicioTecnico({ pedidos, cerrados, puedeCorregir, tecnicos, er
 }
 
 // RAL-12 y RAL-13: el resumen del pedido para el técnico; las acciones salen solo mientras el pedido no está cerrado.
-function Resumen({ p, quien, ocupado, puedeCorregir, aviso, hacer, autorizar, alSubir }: {
-  p: Fila; quien: string; ocupado: boolean; puedeCorregir: boolean; aviso: Resultado
+function Resumen({ p, quien, ocupado, puedeCorregir, puedeEnviar, aviso, hacer, autorizar, alSubir, enviar, preparar }: {
+  p: Fila; quien: string; ocupado: boolean; puedeCorregir: boolean; puedeEnviar: boolean; aviso: Resultado
+  enviar: () => void; preparar: () => Promise<string | null>
   hacer: (accion: () => Promise<Resultado>, pregunta?: string) => void; autorizar: () => void; alSubir: (r: Resultado) => void
 }) {
   const mio = p.tecnico === quien
   const sinDoc = !p.doc_numero
   const faltan = equiposDe(p).filter((e) => !(p.videos ?? []).some((v) => v.equipo_codigo === e.codigo && (v.estado === 'listo' || v.estado === 'procesando')))
   const enRevision = !p.cerrado && p.estado === 'en_revision'
-  const puedeSubir = p.cerrado ? !!p.correccion_video_autorizada_en : (enRevision && mio) || p.estado === 'listo'
+  const autorizada = !!p.correccion_video_autorizada_en
+  const puedeSubir = p.cerrado ? autorizada || puedeCorregir : (enRevision && mio) || p.estado === 'listo'
+  // RPD-39 y RPD-40: el video corregido, si ya está listo y sin enviar, y la ventana de 24 h de WhatsApp
+  const pendiente = !!p.correccion_video_en && (!p.video_enviado_en || p.video_enviado_en < p.correccion_video_en)
+  const corregidoListo = (p.videos ?? []).some((v) => v.id === p.correccion_video_id && v.estado === 'listo')
+  const ventanaAbierta = !!p.ventana_meta_hasta && new Date(p.ventana_meta_hasta).getTime() > Date.now()
   const sig = p.cerrado ? { t: p.correccion_video_autorizada_en ? `Video corregido autorizado (${p.correccion_video_motivo}): súbelo abajo.` : 'Pedido cerrado: solo se ve.', tono: p.correccion_video_autorizada_en ? 'aviso' : 'info' }
     : p.estado === 'por_revisar' ? { t: 'Toma el pedido para empezar la revisión.', tono: 'aviso' }
     : enRevision && !mio ? { t: `Lo está revisando ${p.tecnico}.`, tono: 'info' }
@@ -282,14 +311,40 @@ function Resumen({ p, quien, ocupado, puedeCorregir, aviso, hacer, autorizar, al
             <div className="ped-datos"><b>{e.nombre}</b>{e.codigo !== 'pedido' && <small className="muted">{e.codigo}</small>}</div>
             {p.estado !== 'por_revisar' || p.cerrado ? (
               <VideosEquipo pedido={p.id} codigo={e.codigo} videos={(p.videos ?? []).filter((v) => v.equipo_codigo === e.codigo)} quien={quien}
-                puedeSubir={puedeSubir} miniaturas alTerminar={alSubir} />
+                puedeSubir={puedeSubir} miniaturas alTerminar={alSubir}
+                antesDeSubir={p.cerrado && !autorizada ? preparar : undefined} textoSubir={p.cerrado && !autorizada ? 'Cambiar video' : undefined} />
             ) : <small className="muted">Toma el pedido para subir el video.</small>}
           </div>
         ))}
-        {p.cerrado && !p.correccion_video_autorizada_en && puedeCorregir && (
-          <div><button className="btn chico" disabled={ocupado} onClick={autorizar}>Autorizar video corregido</button></div>
+        {p.cerrado && !autorizada && puedeCorregir && (
+          <div className="row"><button className="btn chico" disabled={ocupado} onClick={autorizar}>Autorizar al técnico</button>
+            <small className="muted">Si el video lo graba otra persona: queda autorizado para que lo suba.</small></div>
         )}
       </div>
+
+      {p.cerrado && puedeEnviar && (
+        <div className="ped-card ped-cuerpo">
+          <span className="ped-t"><span className="ped-ico"><Icono nombre="enviar" /></span>Enviar al cliente</span>
+          <small className={ventanaAbierta ? 'ped-ok' : 'ped-aviso'}>
+            {ventanaAbierta ? `WhatsApp abierto hasta ${hora(p.ventana_meta_hasta!)}.`
+              : p.ventana_meta_hasta ? `WhatsApp cerrado desde ${hora(p.ventana_meta_hasta)}: el cliente debe escribir primero para poder enviarle el video.`
+              : 'El cliente no ha escrito: WhatsApp no deja enviarle mensajes libres.'}
+          </small>
+          {pendiente ? (corregidoListo ? (
+            <div className="row">
+              <button className="btn primary chico" disabled={ocupado || !ventanaAbierta} onClick={enviar}>Enviar video corregido</button>
+              <small className="muted">Se envía una sola vez.</small>
+            </div>
+          ) : <small className="muted">Preparando el video corregido (se comprime en el servidor)… vuelve en unos minutos.</small>)
+            : p.video_enviado_en ? <small className="ped-ok">✓ Video enviado {hora(p.video_enviado_en)}. Para enviar otro, primero cámbialo.</small>
+            : (p.videos ?? []).some((v) => v.estado === 'listo') ? (
+              <div className="row">
+                <button className="btn primary chico" disabled={ocupado || !ventanaAbierta} onClick={enviar}>Enviar video</button>
+                <small className="muted">El cliente todavía no lo ha recibido.</small>
+              </div>
+            ) : <small className="muted">Todavía no hay un video listo para enviar.</small>}
+        </div>
+      )}
 
       <div className="ped-card ped-cuerpo">
         <span className="ped-t"><span className="ped-ico"><Icono nombre="chulo" /></span>Revisión ({hechos(p)} de {CHECKLIST.length})</span>

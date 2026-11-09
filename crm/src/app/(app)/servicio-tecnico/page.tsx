@@ -20,7 +20,7 @@ export default async function PaginaServicioTecnico() {
   ])
   return (
     <ServicioTecnico pedidos={(pedidos ?? []) as Pedido[]} cerrados={(cerrados ?? []) as PedidoCerrado[]}
-      puedeCorregir={puede(sesion, ['corregir_pedidos'])} tecnicos={(tecnicos ?? []).map((t) => t.nombre)} error={error?.message ?? null}
+      puedeCorregir={puede(sesion, ['corregir_pedidos'])} puedeEnviar={puede(sesion, ['gestionar_oportunidades'])} tecnicos={(tecnicos ?? []).map((t) => t.nombre)} error={error?.message ?? null}
       reporte={(reporte ?? null) as Reporte | null} />
   )
 }

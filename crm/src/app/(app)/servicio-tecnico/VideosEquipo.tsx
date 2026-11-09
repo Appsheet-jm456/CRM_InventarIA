@@ -38,9 +38,13 @@ function Miniatura({ ruta, alAbrir }: { ruta: string; alAbrir: () => void }) {
 }
 
 // F4·50 bloque B (RAL-05): los videos de un equipo. El técnico sube (con avance) y cualquiera con permiso los ve con un enlace firmado.
-export function VideosEquipo({ pedido, codigo, videos, quien, puedeSubir, alTerminar, miniaturas = false }: {
+export function VideosEquipo({ pedido, codigo, videos, quien, puedeSubir, alTerminar, miniaturas = false, antesDeSubir, textoSubir }: {
   pedido: number; codigo: string; videos: Video[]; quien?: string; puedeSubir: boolean; alTerminar: (r: Resultado) => void
   miniaturas?: boolean
+  // F4·54 (RPD-38): «Cambiar video» en un pedido cerrado: tras elegir el archivo se pide el motivo y se autoriza la corrección.
+  // Devuelve un error, '' si la persona canceló, o null para seguir.
+  antesDeSubir?: () => Promise<string | null>
+  textoSubir?: string
 }) {
   const archivo = useRef<HTMLInputElement>(null)
   const [avance, setAvance] = useState<number | null>(null)
@@ -57,6 +61,14 @@ export function VideosEquipo({ pedido, codigo, videos, quien, puedeSubir, alTerm
     if (!quien) return alTerminar({ error: 'Primero elige quién eres.' })
     if (!f.type.startsWith('video/')) return alTerminar({ error: 'Ese archivo no es un video.' })
     if (f.size > MAXIMO) return alTerminar({ error: `El video pesa ${(f.size / 1048576).toFixed(0)} MB y el máximo es 95 MB: grábalo más corto (hasta 2 minutos) o en 720p.` })
+    if (antesDeSubir) {
+      const fallo = await antesDeSubir()
+      if (fallo !== null) {
+        if (archivo.current) archivo.current.value = ''
+        if (fallo) alTerminar({ error: fallo })
+        return
+      }
+    }
     const ext = (f.name.split('.').pop() ?? 'mp4').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 5) || 'mp4'
     const ruta = `${pedido}/${codigo.replace(/[^A-Za-z0-9-]/g, '_')}/${crypto.randomUUID()}.${ext}`
     setAvance(0)
@@ -96,7 +108,7 @@ export function VideosEquipo({ pedido, codigo, videos, quien, puedeSubir, alTerm
         <div className="row" style={{ gap: 6 }}>
           <input ref={archivo} type="file" accept="video/*" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) subir(f) }} />
           <button type="button" className="btn chico" disabled={avance !== null} onClick={() => archivo.current?.click()}>
-            {avance !== null ? `Subiendo… ${avance} %` : videos.some((v) => v.estado !== 'error') ? '🎥 Subir otro video' : '🎥 Subir video'}
+            {avance !== null ? `Subiendo… ${avance} %` : textoSubir ?? (videos.some((v) => v.estado !== 'error') ? '🎥 Subir otro video' : '🎥 Subir video')}
           </button>
           {avance !== null && <progress value={avance} max={100} style={{ flex: '1 1 120px' }} />}
         </div>
