@@ -1,6 +1,6 @@
 # Pedidos: ficha ordenada por el proceso y módulo de seguimiento de envíos (F4·54 y F4·55)
 
-> **Estado:** 🔵 **bloque A construido el 9 nov 2026 (falta la prueba del dueño)**; B y C sin construir. Documentada el 9 nov 2026 por pedido del dueño y **ajustada con sus respuestas el mismo día** (regla de cierre único, vista Kanban,
+> **Estado:** 🔵 **bloques A, B y C construidos el 9 nov 2026 (falta la prueba del dueño)**; queda la pastilla en el Embudo (RPD-15). Documentada el 9 nov 2026 por pedido del dueño y **ajustada con sus respuestas el mismo día** (regla de cierre único, vista Kanban,
 > cancelación y diseño más profesional). **No está construida; se construye cuando el dueño dé la orden.**
 > Es una mejora de [F4·50 Alistamiento](ALISTAMIENTO-Y-VIDEO-TECNICO.md) (bloques A a D ya construidos y a la espera de su prueba).
 > **Sin embudo ni etapas nuevas** (RAL-01 sigue igual): *Alistamiento → Despachado → Vendido → Perdido*. Esto solo reordena lo que se ve y
@@ -242,6 +242,26 @@ prometía RAL-01 y todavía no existe, con un enlace al pedido.
 - **Verificado:** pruebas SQL y de Python, `tsc`, lint y `next build`; app y receptor reiniciados. **No se vio en el navegador**: falta que el dueño
   revise el diseño con el pedido de Jhonatan Marin (PED-0001; su video y su FVE ya pasaron las 24 h, así que solo conservan el ✓).
 - **Falta (bloque B y C):** módulo `/pedidos` con lista y Kanban, detalle, permiso `ver_pedidos`, alertas, exportar y pastilla en el Embudo.
+
+## 6c. Cómo quedó construido el módulo Pedidos, bloques B y C (9 nov 2026)
+
+- **Pedido del dueño:** módulo **Pedidos** debajo de Servicio técnico, con todos los pedidos en tabla (nombre, producto vendido, flujo,
+  video del servicio técnico), para revisar los pedidos que pasaron el pago y el control de su despacho.
+- **Migración 0060** (`supabase/pruebas/0060_modulo_pedidos.sql`, 5 pruebas): permiso `ver_pedidos` (administrador y asesor; el técnico no) y
+  `pedidos_lista()`: una fila por pedido con cliente, teléfono, equipos, total, entrega, técnico, videos listos, documento, envíos, guía, la
+  **fase** (*Por revisar · En revisión · Listo para despachar · Enviado · Entregado · Cancelado*) y las **alertas** de RPD-12 con los plazos
+  propuestos (documento 24 h, listo sin despachar 24 h, guía sin enviar, avisado sin recoger 7 días, despachado sin video). Respeta quién ve a
+  cada cliente. Hasta 1.000 pedidos, los más recientes primero.
+- **Pantalla `/pedidos`** (`crm/src/app/(app)/pedidos/`), menú Atención debajo de Servicio técnico:
+  - **Tabla**: Pedido (PED, fecha y alertas), Cliente, Producto vendido, **Flujo** (mini barra de pasos y fase), Servicio técnico (técnico y
+    videos), Video (enviado o no), Documento (FVE/OP y si se envió), Despacho (transportadora y guía, tienda o cancelado) y Total.
+  - Atajos con contador por fase y «Con alertas»; búsqueda (cliente, teléfono, PED, código, FVE, guía) y filtros por entrega y técnico.
+  - **Kanban** de solo consulta, una columna por fase (RPD-10); se recuerda la vista elegida.
+  - Al tocar un pedido se abre un **panel lateral con el mismo diseño de la ficha** (pasos, siguiente paso, servicio técnico, documento,
+    enviar, corregir e historial) para ese pedido, más «Abrir ficha».
+  - **Exportar CSV** (separado por punto y coma, abre en Excel) de lo que muestra el filtro (RPD-13).
+- **Falta:** la pastilla del paso en la tarjeta del Embudo (RPD-15) y que el dueño lo pruebe. Los plazos de las alertas quedan fijos en la base
+  (cambiarlos es editar la función).
 
 ## 7. Decisiones del dueño (9 nov 2026) y lo que falta
 

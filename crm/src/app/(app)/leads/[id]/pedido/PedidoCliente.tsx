@@ -69,7 +69,9 @@ function Envio({ icono, titulo, hecho, texto, accion }: { icono: ClaveIcono; tit
 }
 
 // F4·54 (docs/PEDIDOS.md, RPD-01 a RPD-07, RPD-16 a RPD-26): la pestaña Oportunidades de la ficha, en el orden del proceso.
-export function PedidoCliente({ lead, puedeDocumento, puedeCorregir, embudos, etapas, version, alCambiar, pago }: {
+export function PedidoCliente({ lead, puedeDocumento, puedeCorregir, embudos, etapas, version, alCambiar, pago, alistamientoId, compacto = false }: {
+  // F4·55: desde el módulo Pedidos se abre un pedido concreto (alistamientoId) y sin las otras oportunidades del cliente (compacto).
+  alistamientoId?: number; compacto?: boolean
   lead: number; puedeDocumento: boolean; puedeCorregir: boolean; embudos: Embudo[]; etapas: Etapa[]; version: number; alCambiar: () => void; pago?: ReactNode
 }) {
   const [fila, setFila] = useState<Fila | null>(null)
@@ -96,7 +98,7 @@ export function PedidoCliente({ lead, puedeDocumento, puedeCorregir, embudos, et
         'documento_enviado_en, video_enviado_en, primer_documento_en, primer_video_en, aviso_tienda_en, entregado_en, cancelado_en, cancelado_motivo, ' +
         'correccion_documento_en, correccion_video_autorizada_en, correccion_video_motivo, correccion_video_en, ' +
         'alistamiento_videos!alistamiento_videos_alistamiento_id_fkey(id, equipo_codigo, estado, tecnico, subido_en, ruta, peso, error)')
-      .eq('lead_id', lead).order('creado_en', { ascending: false }).limit(1)
+      .eq('lead_id', lead).match(alistamientoId ? { id: alistamientoId } : {}).order('creado_en', { ascending: false }).limit(1)
     const f = ((data ?? [])[0] as unknown as Fila | undefined) ?? null
     setFalla(error ? `No se pudo cargar el pedido: ${error.message}` : '')
     setFila(f)
@@ -110,11 +112,11 @@ export function PedidoCliente({ lead, puedeDocumento, puedeCorregir, embudos, et
     ])
     setTotal(Number(f.oportunidades?.valor_estimado) || Number((cot.data ?? [])[0]?.total) || null)
     setEventos((ev.data ?? []) as Evento[])
-  }, [lead])
+  }, [lead, alistamientoId])
 
   useEffect(() => { setAviso({}); cargar() }, [cargar, version])
 
-  const otras = (
+  const otras = compacto ? null : (
     <OportunidadesCliente lead={lead} embudos={embudos} etapas={etapas} puede={puedeDocumento} version={version} alCambiar={alCambiar}
       modo={fila ? 'otras' : 'todas'} oportunidadId={fila?.oportunidad_id} />
   )
