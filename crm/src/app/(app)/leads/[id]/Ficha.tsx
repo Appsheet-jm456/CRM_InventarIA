@@ -466,7 +466,7 @@ export function Ficha({ lead: inicial, yo, usuarios, asesores, embudos, etapas, 
           )}
 
           {pestana === 'oportunidades' && (
-            <PedidoCliente lead={lead.id} puedeDocumento={yo.moverEtapas} puedeCorregir={yo.corregirPedidos} embudos={embudos} etapas={etapas} version={version}
+            <PedidoCliente lead={lead.id} puedeDocumento={yo.moverEtapas} puedeCorregir={yo.corregirPedidos} puedePagos={yo.validarPagos} embudos={embudos} etapas={etapas} version={version}
               alCambiar={() => { cargar(); router.refresh() }}
               pago={yo.validarPagos ? <ComprobanteCliente lead={lead.id} version={version} alCambiar={() => { cargar(); router.refresh() }} /> : undefined} />
           )}

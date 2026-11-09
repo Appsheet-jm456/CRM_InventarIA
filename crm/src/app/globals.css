@@ -939,4 +939,12 @@ details.columnas > .panel { right: 0; top: calc(100% + 4px); min-width: 220px }
 .pd-cajon { background: var(--bg); width: min(560px, 100%); height: 100%; display: flex; flex-direction: column; box-shadow: var(--shadow) }
 .pd-cajon-h { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 16px; background: var(--surface); border-bottom: 1px solid var(--line) }
 .pd-cajon-b { padding: 14px; overflow-y: auto; flex: 1 }
+/* F4·54 · Pagos del pedido (RPD-32 a RPD-37) */
+.pg { display: grid; gap: 10px }
+.pg-totales { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px }
+.pg-totales div { background: var(--surface-2); border-radius: 8px; padding: 8px 10px; display: grid; gap: 2px; min-width: 0 }
+.pg-totales small { font-size: 11.5px; color: var(--muted) }
+.pg-totales b { font-size: 14.5px; font-weight: 600 }
+.pg-pago { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); flex-wrap: wrap }
+.pg-pago.anulado .ped-datos b { text-decoration: line-through; color: var(--muted) }
 

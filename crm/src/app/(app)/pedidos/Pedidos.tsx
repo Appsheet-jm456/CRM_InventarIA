@@ -18,6 +18,8 @@ export type FilaPedido = Datos & {
   equipos: { codigo: string; nombre: string }[]
   producto: string | null
   total: number | null
+  pagado: number
+  pagos: number
   entrega: Entrega
   etapa: string
   op_estado: string
@@ -61,10 +63,10 @@ function Flujo({ p }: { p: FilaPedido }) {
 }
 
 function exportar(lista: FilaPedido[]) {
-  const cab = ['Pedido', 'Fecha', 'Cliente', 'Teléfono', 'Equipos', 'Total', 'Entrega', 'Estado', 'Técnico', 'Videos', 'Documento',
+  const cab = ['Pedido', 'Fecha', 'Cliente', 'Teléfono', 'Equipos', 'Total', 'Pagado', 'Entrega', 'Estado', 'Técnico', 'Videos', 'Documento',
     'Video enviado', 'Documento enviado', 'Transportadora', 'Guía', 'Guía enviada', 'Entregado', 'Cancelado', 'Alertas']
   const filas = lista.map((p) => [numeroPedido(p.numero), p.creado_en.slice(0, 10), p.cliente, p.telefono,
-    equiposDe(p).map((e) => `${e.nombre} ${e.codigo}`).join(' | '), p.total ?? '', p.entrega ?? '', FASE[p.fase].titulo, p.tecnico ?? '',
+    equiposDe(p).map((e) => `${e.nombre} ${e.codigo}`).join(' | '), p.total ?? '', p.pagado ?? '', p.entrega ?? '', FASE[p.fase].titulo, p.tecnico ?? '',
     `${p.videos}/${Math.max(p.equipos.length, 1)}`, p.doc_numero ? `${p.doc_tipo} ${p.doc_numero}` : '',
     p.video_enviado_en?.slice(0, 16) ?? '', p.documento_enviado_en?.slice(0, 16) ?? '', p.transportadora ?? '', p.numero_guia ?? '',
     p.guia_enviada_en?.slice(0, 16) ?? '', p.entregado_en?.slice(0, 16) ?? '', p.cancelado_motivo ?? '', p.alertas.join(' | ')])
@@ -78,8 +80,8 @@ function exportar(lista: FilaPedido[]) {
 }
 
 // F4·55 (docs/PEDIDOS.md, RPD-08 a RPD-14): revisar todos los pedidos que pasaron el pago y el control de su despacho.
-export function Pedidos({ pedidos, error, etapas, embudos, puedeDocumento, puedeCorregir }: {
-  pedidos: FilaPedido[]; error: string | null; etapas: Etapa[]; embudos: Embudo[]; puedeDocumento: boolean; puedeCorregir: boolean
+export function Pedidos({ pedidos, error, etapas, embudos, puedeDocumento, puedeCorregir, puedePagos }: {
+  pedidos: FilaPedido[]; error: string | null; etapas: Etapa[]; embudos: Embudo[]; puedeDocumento: boolean; puedeCorregir: boolean; puedePagos: boolean
 }) {
   const router = useRouter()
   const [vista, setVista] = useState<'tabla' | 'kanban'>('tabla')
@@ -183,7 +185,8 @@ export function Pedidos({ pedidos, error, etapas, embudos, puedeDocumento, puede
                         : p.entrega === 'tienda' ? <>{p.entregado_en ? `Entregado ${hora(p.entregado_en)}` : p.aviso_tienda_en ? 'Avisado para recoger' : 'Recoge en tienda'}</>
                         : p.numero_guia ? <>{p.transportadora}<small className="pd-sub">Guía {p.numero_guia}{p.guia_enviada_en ? '' : ' · sin enviar'}</small></>
                         : <span className="muted">{p.entrega === 'envio' ? 'Envío · sin guía' : 'Entrega sin definir'}</span>}</td>
-                      <td className="r">{p.total ? pesos(Number(p.total)) : '—'}</td>
+                      <td className="r">{p.total ? pesos(Number(p.total)) : '—'}
+                        <small className="pd-sub">{Number(p.pagado) ? `Pagado ${pesos(Number(p.pagado))}${p.pagos > 1 ? ` (${p.pagos} pagos)` : ''}` : 'Sin pagos'}</small></td>
                     </tr>
                   )
                 })}
@@ -233,7 +236,7 @@ export function Pedidos({ pedidos, error, etapas, embudos, puedeDocumento, puede
             </div>
             <div className="pd-cajon-b">
               <PedidoCliente key={abierto.id} lead={abierto.lead_id} alistamientoId={abierto.id} compacto puedeDocumento={puedeDocumento}
-                puedeCorregir={puedeCorregir} embudos={embudos} etapas={etapas} version={version}
+                puedeCorregir={puedeCorregir} puedePagos={puedePagos} embudos={embudos} etapas={etapas} version={version}
                 alCambiar={() => { setVersion((v) => v + 1); router.refresh() }} />
             </div>
           </aside>

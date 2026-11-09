@@ -8,6 +8,7 @@ import { OportunidadesCliente, type Embudo, type Etapa } from '../../../bandeja/
 import { autorizarVideoCorregido, cancelarPedido, corregirDocumento, enviarAlCliente, guardarDocumento, marcarEntregado, registrarGuia, type Resultado } from '../../../servicio-tecnico/acciones'
 import { CHECKLIST, ESTADO, hora } from '../../../servicio-tecnico/ServicioTecnico'
 import { VideosEquipo, type Video } from '../../../servicio-tecnico/VideosEquipo'
+import { PagosPedido, saldo, type Pago } from './PagosPedido'
 import { nombreDocumento, numeroPedido, pasos, siguiente, ventana, type Datos, type Entrega } from './pedido'
 
 type Fila = Datos & {
@@ -32,6 +33,7 @@ type Evento = { id: number; en: string; detalle: string | null }
 type Ir = { id: string; n: number } | null
 
 const TRANSPORTADORAS = ['Inter Rapidísimo', 'Servientrega', 'Envía', 'Coordinadora']
+const pesosCorto = (n: number) => n.toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 })
 const pesos = (n: number) => n.toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 })
 
 // Sección plegable: la que toca ahora queda abierta y las terminadas, cerradas con su resumen (RPD-04).
@@ -69,14 +71,16 @@ function Envio({ icono, titulo, hecho, texto, accion }: { icono: ClaveIcono; tit
 }
 
 // F4·54 (docs/PEDIDOS.md, RPD-01 a RPD-07, RPD-16 a RPD-26): la pestaña Oportunidades de la ficha, en el orden del proceso.
-export function PedidoCliente({ lead, puedeDocumento, puedeCorregir, embudos, etapas, version, alCambiar, pago, alistamientoId, compacto = false }: {
+export function PedidoCliente({ lead, puedeDocumento, puedeCorregir, puedePagos = false, embudos, etapas, version, alCambiar, pago, alistamientoId, compacto = false }: {
   // F4·55: desde el módulo Pedidos se abre un pedido concreto (alistamientoId) y sin las otras oportunidades del cliente (compacto).
   alistamientoId?: number; compacto?: boolean
+  puedePagos?: boolean // validar_pagos: registrar y anular pagos (RPD-37)
   lead: number; puedeDocumento: boolean; puedeCorregir: boolean; embudos: Embudo[]; etapas: Etapa[]; version: number; alCambiar: () => void; pago?: ReactNode
 }) {
   const [fila, setFila] = useState<Fila | null>(null)
   const [total, setTotal] = useState<number | null>(null)
   const [eventos, setEventos] = useState<Evento[]>([])
+  const [pagos, setPagos] = useState<Pago[]>([])
   const [cargado, setCargado] = useState(false)
   const [falla, setFalla] = useState('')
   const [tipo, setTipo] = useState<'OP' | 'FVE'>('FVE')
@@ -106,12 +110,15 @@ export function PedidoCliente({ lead, puedeDocumento, puedeCorregir, embudos, et
     if (f?.doc_tipo) setTipo(f.doc_tipo)
     setNumero(f?.doc_numero ?? '')
     if (!f) return
-    const [cot, ev] = await Promise.all([
+    const [cot, ev, pg] = await Promise.all([
       sb.from('cotizaciones').select('total').eq('lead_id', lead).order('creado_en', { ascending: false }).limit(1),
-      sb.from('lead_eventos').select('id, en, detalle').eq('lead_id', lead).eq('tipo', 'alistamiento').order('en', { ascending: false }).limit(40),
+      sb.from('lead_eventos').select('id, en, detalle').eq('lead_id', lead).in('tipo', ['alistamiento', 'pago']).order('en', { ascending: false }).limit(40),
+      sb.from('pagos').select('id, valor, medio, fecha_pago, referencia, nota, origen, soporte_bucket, soporte_ruta, soporte_mime, creado_en, anulado_en, ' +
+        'anulado_motivo, registrado:usuarios!pagos_registrado_por_fkey(nombre)').eq('oportunidad_id', f.oportunidad_id).order('fecha_pago').order('id'),
     ])
     setTotal(Number(f.oportunidades?.valor_estimado) || Number((cot.data ?? [])[0]?.total) || null)
     setEventos((ev.data ?? []) as Evento[])
+    setPagos((pg.data ?? []) as unknown as Pago[])
   }, [lead, alistamientoId])
 
   useEffect(() => { setAviso({}); cargar() }, [cargar, version])
@@ -213,8 +220,11 @@ export function PedidoCliente({ lead, puedeDocumento, puedeCorregir, embudos, et
 
       {(aviso.error || aviso.ok) && <div className={`aviso ${aviso.error ? 'bad' : 'ok'}`} role="alert">{aviso.error ?? aviso.ok}</div>}
 
-      <Seccion id="pago" icono="chulo" titulo="Pago" resumen={`Validado · ${cuando(fila.creado_en)}`} defecto={false} ir={ir}>
-        <small className="muted">El pago se validó y el pedido entró a Alistamiento.</small>
+      <Seccion id="pago" icono="chulo" titulo="Pago" ir={ir} defecto={false}
+        resumen={`Pagado ${pesosCorto(saldo(total, pagos).pagado)}${total ? ` de ${pesosCorto(total)}` : ''}`}
+        chip={<span className={`chip ${saldo(total, pagos).estado[1]}`}>{saldo(total, pagos).estado[0]}</span>}>
+        <PagosPedido oportunidad={fila.oportunidad_id} lead={lead} total={total} pagos={pagos} puedeRegistrar={puedePagos && !cancelado}
+          puedeAnular={puedePagos} alCambiar={() => { cargar(); alCambiar() }} />
       </Seccion>
 
       <Seccion id="tecnico" icono="herramienta" titulo="Servicio técnico" ir={ir} defecto={!cancelado && !listo}

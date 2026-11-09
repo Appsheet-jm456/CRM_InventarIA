@@ -145,6 +145,29 @@ a un rol de asesor en Roles), la corrección **se puede enviar una vez** al clie
 - **Mientras no exista el módulo Pedidos (bloque B)**, corregir el documento se hace desde la ficha (solo con el permiso); el video, desde
   la ficha o Servicio técnico → Cerrados.
 
+### Pagos del pedido: los del WhatsApp y los que se suben a mano (pedido del dueño, 9 nov 2026, **construido el mismo día, falta la prueba del dueño**)
+
+Ejemplo del dueño: la factura vale **$2.000.000** y el cliente paga **$1.000.000 + $1.000.000** con **dos soportes**. Hoy la sección Pago solo dice
+«El pago se validó»: no guarda cuánto se pagó ni el soporte (el comprobante del WhatsApp queda solo como un mensaje del chat).
+
+- **RPD-32 · Cada pago queda registrado** en la sección **Pago** del pedido (ficha y panel de Pedidos): valor, medio (transferencia, efectivo en
+  tienda, tarjeta u otro), fecha del pago, referencia, soporte (foto o PDF), quién lo registró y de dónde salió (**WhatsApp** o **manual**).
+- **RPD-33 · El comprobante del WhatsApp se registra solo** al pulsar «Validar» (F4·46): un pago por el total de la compra con la foto o PDF que
+  mandó el cliente como soporte. Los pedidos que ya existían se completan al migrar con el pago validado de su línea de tiempo.
+- **RPD-34 · Subir un pago a mano**: botón **«Registrar pago»** con valor, medio, fecha, referencia opcional y **soporte obligatorio** (JPG,
+  PNG, WEBP o PDF hasta 10 MB, bucket privado `pagos`). Un pedido puede tener varios pagos (abonos).
+- **RPD-35 · Total, pagado y saldo** arriba de la sección: *Total $2.000.000 · Pagado $2.000.000 · Saldo $0* con estado **Pagado completo**,
+  **Saldo pendiente** o **Pagó de más**. En Pedidos, la columna Total muestra lo pagado y aparece la alerta «Saldo pendiente».
+- **RPD-36 · Un pago equivocado no se borra: se anula** con motivo; queda tachado, no suma y queda en la línea de tiempo.
+- **RPD-37 · Quién:** registrar y anular pagos lo hace quien tiene `validar_pagos` (el mismo permiso que valida comprobantes); ver los pagos,
+  quien ve al cliente. Un pedido cancelado no recibe pagos nuevos (sí se ven los que tenía).
+- **Sin cambio de reglas:** registrar un pago **no mueve el embudo ni confirma nada solo** (RAG-21): sigue validando una persona.
+- **Cómo quedó construido:** migración **0061** (`supabase/pruebas/0061_pagos_del_pedido.sql`, 10 pruebas; 0050 y 0054 a 0060 siguen en verde):
+  tabla `pagos`, bucket privado `pagos`, `validar_comprobante` registra el pago del WhatsApp, `pago_registrar`, `pago_anular` y `pedidos_lista`
+  con `pagado`, `pagos` y la alerta «Saldo pendiente». El pedido de Jhonatan Marin (PED-0001) quedó con su pago de $979.900 y su comprobante.
+  Pantalla: `leads/[id]/pedido/PagosPedido.tsx` en la sección **Pago** (ficha y panel de Pedidos): totales, lista con «Ver soporte» y
+  «Anular», y «Registrar pago» (propone el saldo como valor). En Pedidos, la columna Total muestra lo pagado y el CSV trae la columna Pagado.
+
 ## 4. Mejora B · Módulo «Pedidos» (F4·55)
 
 Nueva pantalla **Pedidos** (`/pedidos`, grupo **Atención**, junto a Embudo y Servicio técnico). **Solo consulta y filtra**; las acciones
