@@ -47,6 +47,7 @@ export default async function PaginaFicha({ params }: { params: { id: string } }
         moverEtapas: puede(sesion, ['gestionar_oportunidades']),
         eliminar: puede(sesion, ['eliminar_leads']),
         validarPagos: puede(sesion, ['validar_pagos']),
+        corregirPedidos: puede(sesion, ['corregir_pedidos']),
       }}
       usuarios={(usuarios ?? []).map((u) => ({ id: u.id, nombre: u.nombre }))}
       asesores={(usuarios ?? []).filter((u) => u.activo && rolesQueAtienden.has(u.rol_id)).map((u) => ({ id: u.id, nombre: u.nombre }))}

@@ -5,7 +5,7 @@ import { Icono, type ClaveIcono } from '@/components/Iconos'
 import { MOTIVOS_CANCELAR } from '@/components/MotivoPerdida'
 import { clienteNavegador, subirConAvance } from '@/lib/supabase/navegador'
 import { OportunidadesCliente, type Embudo, type Etapa } from '../../../bandeja/OportunidadesCliente'
-import { cancelarPedido, enviarAlCliente, guardarDocumento, marcarEntregado, registrarGuia, type Resultado } from '../../../servicio-tecnico/acciones'
+import { autorizarVideoCorregido, cancelarPedido, corregirDocumento, enviarAlCliente, guardarDocumento, marcarEntregado, registrarGuia, type Resultado } from '../../../servicio-tecnico/acciones'
 import { CHECKLIST, ESTADO, hora } from '../../../servicio-tecnico/ServicioTecnico'
 import { VideosEquipo, type Video } from '../../../servicio-tecnico/VideosEquipo'
 import { nombreDocumento, numeroPedido, pasos, siguiente, ventana, type Datos, type Entrega } from './pedido'
@@ -20,6 +20,10 @@ type Fila = Datos & {
   transportadora: string | null
   numero_guia: string | null
   cancelado_motivo: string | null
+  correccion_documento_en: string | null
+  correccion_video_autorizada_en: string | null
+  correccion_video_motivo: string | null
+  correccion_video_en: string | null
   oportunidades: { estado: string; valor_estimado: number | null; etapas: { nombre: string } | null } | null
   alistamiento_videos: Video[]
   leads: { atributos: Record<string, unknown> | null } | null
@@ -65,8 +69,8 @@ function Envio({ icono, titulo, hecho, texto, accion }: { icono: ClaveIcono; tit
 }
 
 // F4·54 (docs/PEDIDOS.md, RPD-01 a RPD-07, RPD-16 a RPD-26): la pestaña Oportunidades de la ficha, en el orden del proceso.
-export function PedidoCliente({ lead, puedeDocumento, embudos, etapas, version, alCambiar, pago }: {
-  lead: number; puedeDocumento: boolean; embudos: Embudo[]; etapas: Etapa[]; version: number; alCambiar: () => void; pago?: ReactNode
+export function PedidoCliente({ lead, puedeDocumento, puedeCorregir, embudos, etapas, version, alCambiar, pago }: {
+  lead: number; puedeDocumento: boolean; puedeCorregir: boolean; embudos: Embudo[]; etapas: Etapa[]; version: number; alCambiar: () => void; pago?: ReactNode
 }) {
   const [fila, setFila] = useState<Fila | null>(null)
   const [total, setTotal] = useState<number | null>(null)
@@ -80,6 +84,7 @@ export function PedidoCliente({ lead, puedeDocumento, embudos, etapas, version, 
   const [subiendo, setSubiendo] = useState<number | null>(null)
   const [cancelando, setCancelando] = useState(false)
   const [ir, setIr] = useState<Ir>(null)
+  const [correccion, setCorreccion] = useState<{ tipo: 'OP' | 'FVE'; numero: string; motivo: string } | null>(null)
   const foto = useRef<HTMLInputElement>(null)
 
   const cargar = useCallback(async () => {
@@ -88,6 +93,7 @@ export function PedidoCliente({ lead, puedeDocumento, embudos, etapas, version, 
       .select('id, numero, oportunidad_id, equipos, doc_tipo, doc_numero, estado, tecnico, tomado_en, listo_en, listo_por, checklist, creado_en, ' +
         'oportunidades(estado, valor_estimado, etapas(nombre)), leads(atributos), transportadora, numero_guia, guia_en, guia_enviada_en, ' +
         'documento_enviado_en, video_enviado_en, primer_documento_en, primer_video_en, aviso_tienda_en, entregado_en, cancelado_en, cancelado_motivo, ' +
+        'correccion_documento_en, correccion_video_autorizada_en, correccion_video_motivo, correccion_video_en, ' +
         'alistamiento_videos(id, equipo_codigo, estado, tecnico, subido_en, ruta, peso, error)')
       .eq('lead_id', lead).order('creado_en', { ascending: false }).limit(1)
     const f = ((data ?? [])[0] as unknown as Fila | undefined) ?? null
@@ -125,6 +131,11 @@ export function PedidoCliente({ lead, puedeDocumento, embudos, etapas, version, 
   const docNombre = nombreDocumento(fila.doc_tipo)
   const vVideo = ventana(fila.video_enviado_en, fila.primer_video_en, opAbierta)
   const vDoc = ventana(fila.documento_enviado_en, fila.primer_documento_en, opAbierta)
+  // RPD-28: cerrado (Vendido, Perdido o cancelado) = la ficha solo muestra; se corrige con permiso (RPD-29) y lo corregido se envía una vez (RPD-31).
+  const cerrado = cancelado || !opAbierta
+  const corregible = puedeCorregir && !cancelado && !opAbierta
+  const docCorregido = !!fila.correccion_documento_en && (!fila.documento_enviado_en || fila.documento_enviado_en < fila.correccion_documento_en)
+  const videoCorregido = !!fila.correccion_video_en && (!fila.video_enviado_en || fila.video_enviado_en < fila.correccion_video_en)
   const puedeCancelar = puedeDocumento && opAbierta && !cancelado && !fila.guia_en && !fila.entregado_en
   const estadoPedido: [string, string] = cancelado ? ['Cancelado', 'bad'] : fila.entregado_en ? ['Entregado', 'ok'] : fila.guia_enviada_en ? ['Enviado', 'ok']
     : fila.aviso_tienda_en ? ['Por recoger', 'acc'] : [ESTADO[fila.estado].texto, ESTADO[fila.estado].clase]
@@ -212,6 +223,14 @@ export function PedidoCliente({ lead, puedeDocumento, embudos, etapas, version, 
               videos={videos.filter((v) => v.equipo_codigo === e.codigo)} />
           </div>
         ))}
+        {corregible && (fila.correccion_video_autorizada_en ? (
+          <small className="ped-aviso">Video corregido autorizado ({fila.correccion_video_motivo}): el técnico lo sube en Servicio técnico → Cerrados.</small>
+        ) : (
+          <div><button className="btn chico" disabled={ocupado} onClick={() => {
+            const motivo = prompt('¿Por qué hay que cambiar el video? (queda en el historial)')?.trim()
+            if (motivo) hacer(() => autorizarVideoCorregido(fila.id, lead, motivo))
+          }}>Autorizar video corregido</button></div>
+        ))}
         <dl className="ped-par">
           <dt>Técnico</dt><dd>{fila.tecnico ?? 'Aún sin técnico'}{fila.tomado_en && <small className="muted"> · tomó {cuando(fila.tomado_en)}</small>}</dd>
           {fila.listo_en && <><dt>Listo</dt><dd>{cuando(fila.listo_en)}{fila.listo_por && <small className="muted"> · {fila.listo_por}</small>}</dd></>}
@@ -225,7 +244,32 @@ export function PedidoCliente({ lead, puedeDocumento, embudos, etapas, version, 
         resumen={fila.doc_numero ? `${fila.doc_tipo} ${fila.doc_numero}` : 'Falta'}
         chip={<span className={`chip ${fila.doc_numero ? 'ok' : 'warn'}`}>{fila.doc_numero ? 'Listo' : 'Falta'}</span>}>
         <small className="muted">OP de garantía (POS) o FVE: el número lo da contabilidad.</small>
-        {puedeDocumento && !cancelado ? (
+        {cerrado && <small className="muted">Pedido cerrado: el documento ya no se cambia aquí{corregible ? '; usa «Corregir» (pide motivo y queda en el historial).' : '.'}</small>}
+        {corregible && !correccion && (
+          <div><button className="btn chico" onClick={() => setCorreccion({ tipo: fila.doc_tipo ?? 'FVE', numero: '', motivo: '' })}>Corregir documento</button></div>
+        )}
+        {corregible && correccion && (
+          <form className="ped-guia" onSubmit={(e) => {
+            e.preventDefault()
+            const c = correccion
+            hacer(() => corregirDocumento(fila.id, lead, c.tipo, c.numero.trim(), c.motivo.trim()), `¿Corregir el documento a ${c.tipo} ${c.numero.trim()}?`).then(() => setCorreccion(null))
+          }}>
+            <div className="ped-doc">
+              <select value={correccion.tipo} onChange={(e) => setCorreccion({ ...correccion, tipo: e.target.value as 'OP' | 'FVE' })} aria-label="Tipo de documento">
+                <option value="FVE">FVE · factura electrónica</option>
+                <option value="OP">OP · garantía POS</option>
+              </select>
+              <input value={correccion.numero} onChange={(e) => setCorreccion({ ...correccion, numero: e.target.value })} placeholder="Número nuevo" aria-label="Número nuevo" />
+            </div>
+            <input className="ped-motivo" value={correccion.motivo} onChange={(e) => setCorreccion({ ...correccion, motivo: e.target.value })} maxLength={120}
+              placeholder="Motivo: factura anulada y reemplazada…" aria-label="Motivo de la corrección" />
+            <div className="row">
+              <button className="btn primary chico" disabled={ocupado || !correccion.numero.trim() || !correccion.motivo.trim()}>Guardar corrección</button>
+              <button type="button" className="btn chico" onClick={() => setCorreccion(null)}>Volver</button>
+            </div>
+          </form>
+        )}
+        {puedeDocumento && !cerrado ? (
           <form className="ped-doc" onSubmit={(e) => { e.preventDefault(); hacer(() => guardarDocumento(fila.id, lead, tipo, numero.trim())) }}>
             <select value={tipo} onChange={(e) => setTipo(e.target.value as 'OP' | 'FVE')} disabled={ocupado} aria-label="Tipo de documento">
               <option value="FVE">FVE · factura electrónica</option>
@@ -235,20 +279,26 @@ export function PedidoCliente({ lead, puedeDocumento, embudos, etapas, version, 
             <button className="btn primary chico" disabled={ocupado || !numero.trim() || (numero.trim() === fila.doc_numero && tipo === fila.doc_tipo)}>Guardar</button>
           </form>
         ) : fila.doc_numero && <b>{fila.doc_tipo} {fila.doc_numero}</b>}
-        {!fila.doc_numero && !cancelado && <small className="ped-aviso">El técnico no puede marcar «listo para despachar» hasta que pongas el documento.</small>}
+        {!fila.doc_numero && !cerrado && <small className="ped-aviso">El técnico no puede marcar «listo para despachar» hasta que pongas el documento.</small>}
       </Seccion>
 
       <Seccion id="enviar" icono="enviar" titulo="Enviar al cliente" ir={ir} defecto={!cancelado && listo && sig?.tono !== 'ok'}
         resumen={`${enviados.filter(Boolean).length} de ${enviados.length} hechos`}>
         <Envio icono="video" titulo="Video de la revisión" hecho={vVideo.estado !== 'nuevo'}
-          texto={vVideo.estado === 'nuevo' ? (videosListos ? 'Pendiente' : 'Aún no hay videos listos') : `Enviado ${cuando(fila.video_enviado_en)}${vVideo.hasta ? ` · ${reenvio(vVideo)}` : ''}`}
-          accion={vVideo.estado !== 'cerrado' && !cancelado && puedeDocumento && (
+          texto={videoCorregido ? 'Hay un video corregido sin enviar' : vVideo.estado === 'nuevo' ? (videosListos ? 'Pendiente' : 'Aún no hay videos listos') : `Enviado ${cuando(fila.video_enviado_en)}${vVideo.hasta ? ` · ${reenvio(vVideo)}` : ''}`}
+          accion={videoCorregido && !cancelado && puedeDocumento ? (
+            <button className="btn primary chico" disabled={ocupado}
+              onClick={() => hacer(() => enviarAlCliente(fila.id, lead, 'video'), '¿Enviar al cliente el video corregido? Se envía una sola vez.')}>Enviar corregido</button>
+          ) : vVideo.estado !== 'cerrado' && !cancelado && puedeDocumento && (
             <button className={`btn chico${vVideo.estado === 'nuevo' && videosListos ? ' primary' : ''}`} disabled={ocupado || !videosListos}
               onClick={() => hacer(() => enviarAlCliente(fila.id, lead, 'video'), vVideo.estado === 'nuevo' ? '¿Enviar al cliente el video de cada equipo?' : '¿Reenviar al cliente el video?')}>
               {vVideo.estado === 'nuevo' ? 'Enviar' : 'Reenviar'}</button>)} />
         <Envio icono="documento" titulo={`${docNombre}${fila.doc_numero ? ` ${fila.doc_numero}` : ''}`} hecho={vDoc.estado !== 'nuevo'}
-          texto={vDoc.estado === 'nuevo' ? (fila.doc_numero ? 'Pendiente' : 'Primero guarda el OP o la FVE') : `Enviada ${cuando(fila.documento_enviado_en)}${vDoc.hasta ? ` · ${reenvio(vDoc)}` : ''}`}
-          accion={vDoc.estado !== 'cerrado' && !cancelado && puedeDocumento && (
+          texto={docCorregido ? 'Documento corregido sin enviar' : vDoc.estado === 'nuevo' ? (fila.doc_numero ? 'Pendiente' : 'Primero guarda el OP o la FVE') : `Enviada ${cuando(fila.documento_enviado_en)}${vDoc.hasta ? ` · ${reenvio(vDoc)}` : ''}`}
+          accion={docCorregido && !cancelado && puedeDocumento ? (
+            <button className="btn primary chico" disabled={ocupado}
+              onClick={() => hacer(() => enviarAlCliente(fila.id, lead, 'documento'), `¿Enviar al cliente su ${docNombre} corregida ${fila.doc_numero}? Se envía una sola vez.`)}>Enviar corregido</button>
+          ) : vDoc.estado !== 'cerrado' && !cancelado && puedeDocumento && (
             <button className={`btn chico${vDoc.estado === 'nuevo' && fila.doc_numero ? ' primary' : ''}`} disabled={ocupado || !fila.doc_numero}
               onClick={() => hacer(() => enviarAlCliente(fila.id, lead, 'documento'), `¿${vDoc.estado === 'nuevo' ? 'Enviar' : 'Reenviar'} al cliente su ${docNombre} ${fila.doc_numero ?? ''}?`)}>
               {vDoc.estado === 'nuevo' ? 'Enviar' : 'Reenviar'}</button>)} />

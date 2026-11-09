@@ -105,5 +105,20 @@ ok(not r["ok"] and not marcas(), "si WhatsApp no acepta el envío, no queda marc
 ok(any(c == {"envios_en_curso": {}} for _, c in PATCHES), "pase lo que pase, suelta la reserva del envío (F4·54)")
 ESTADO["falla"] = False
 
+
+# F4·54 (RPD-31): una corrección pendiente manda solo lo corregido, con su texto
+import alistamiento  # noqa: E402
+ok(alistamiento.es_correccion({"correccion_documento_en": "2026-11-09T10:00:00Z", "documento_enviado_en": "2026-11-08T10:00:00Z"}, "documento")
+   and not alistamiento.es_correccion({"correccion_documento_en": "2026-11-09T10:00:00Z", "documento_enviado_en": "2026-11-09T11:00:00+00:00"}, "documento")
+   and not alistamiento.es_correccion({"documento_enviado_en": "2026-11-09T11:00:00Z"}, "documento"),
+   "reconoce una corrección que el cliente todavía no recibió")
+ok("corregida" in alistamiento.texto_documento({"doc_tipo": "FVE", "doc_numero": "12"}, True)["text"]["body"], "el documento corregido lo dice")
+A.update(correccion_video_en="2026-11-09T10:00:00Z", video_enviado_en="2026-11-08T10:00:00Z", correccion_video_id=3)
+r = correr("video")
+videos_enviados = [m for m in ENVIADOS if m["type"] in ("video", "document")]
+ok(r["ok"] and len(videos_enviados) == 1 and "corregido" in ENVIADOS[0]["text"]["body"], "el video corregido sale solo, con su texto")
+for k in ("correccion_video_en", "video_enviado_en", "correccion_video_id"):
+    A.pop(k, None)
+
 print(f"\n{n - fallos}/{n} pruebas bien")
 sys.exit(1 if fallos else 0)

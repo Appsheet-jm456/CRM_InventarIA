@@ -19,6 +19,8 @@ export type Datos = {
   aviso_tienda_en: string | null
   entregado_en: string | null
   cancelado_en: string | null
+  correccion_documento_en?: string | null
+  correccion_video_en?: string | null
 }
 
 export const HORAS_REENVIO = 24
@@ -54,6 +56,13 @@ export type Siguiente = { texto: string; seccion: 'tecnico' | 'documento' | 'env
 // «Siguiente paso» (RPD-03): una sola acción sugerida. Los envíos van en orden: video → documento → guía o aviso de recogida.
 export function siguiente(d: Datos, entrega: Entrega, ctx: { videosListos: boolean; videos: number; equipos: number }): Siguiente | null {
   if (d.cancelado_en) return null
+  // RPD-31: una corrección que el cliente aún no recibió va primero
+  if (d.correccion_video_en && (!d.video_enviado_en || d.video_enviado_en < d.correccion_video_en)) {
+    return { texto: 'Envía al cliente el video corregido', seccion: 'enviar', tono: 'aviso' }
+  }
+  if (d.correccion_documento_en && (!d.documento_enviado_en || d.documento_enviado_en < d.correccion_documento_en)) {
+    return { texto: `Envía al cliente su ${nombreDocumento(d.doc_tipo)} corregida`, seccion: 'enviar', tono: 'aviso' }
+  }
   if (!d.doc_numero) return { texto: 'Falta el documento: escribe el OP o la FVE', seccion: 'documento', tono: 'aviso' }
   if (d.estado === 'por_revisar') return { texto: 'Esperando que el servicio técnico tome el pedido', seccion: 'tecnico', tono: 'info' }
   if (d.estado === 'en_revision') {

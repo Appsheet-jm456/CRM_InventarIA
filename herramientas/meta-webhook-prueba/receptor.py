@@ -535,10 +535,13 @@ def _enviar_alistamiento(pedido):
         return {"ok": False, "error": "Pasaron más de 24 h desde el último mensaje del cliente: WhatsApp no deja escribirle sin una "
                                       "plantilla. Quedó registrado; envíalo cuando el cliente vuelva a escribir."}
     mensajes, enviados_video = [], []
+    corregido = alistamiento.es_correccion(a, que)  # F4·54 (RPD-31): solo lo corregido, con su texto
     if que == "video":
         nombres = {e["codigo"]: e["nombre"] for e in a.get("equipos") or []}
         videos_db = db.pedir(f"alistamiento_videos?alistamiento_id=eq.{a_id}&select=id,equipo_codigo,estado,ruta,peso,subido_en") or []
-        mensajes.append(alistamiento.texto_video())
+        if corregido:
+            videos_db = [v for v in videos_db if v["id"] == a.get("correccion_video_id")]
+        mensajes.append(alistamiento.texto_video(corregido))
         for v in alistamiento.videos_a_enviar(videos_db):
             media_id = subir_a_meta(db.descargar(videos.BUCKET, v["ruta"]), "video/mp4", f"video-{v['id']}.mp4")
             mensajes.append(alistamiento.mensaje_video(media_id, v.get("peso"), nombres.get(v["equipo_codigo"], "equipo")))
@@ -546,7 +549,7 @@ def _enviar_alistamiento(pedido):
         if not enviados_video:
             return {"ok": False, "error": "No hay videos listos para enviar."}
     elif que == "documento":
-        mensajes.append(alistamiento.texto_documento(a))
+        mensajes.append(alistamiento.texto_documento(a, corregido))
     elif que == "guia":
         nombre = a["guia_ruta"].rsplit("/", 1)[-1]
         mime = "image/png" if nombre.lower().endswith(".png") else "image/jpeg"

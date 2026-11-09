@@ -10,6 +10,20 @@ TIENDA = "📍 CC La Pasarela, local 2-107, Cali – Valle."
 CAMPO = {"video": "video_enviado_en", "documento": "documento_enviado_en", "guia": "guia_enviada_en", "listo_tienda": "aviso_tienda_en"}
 
 
+def _fecha(v):
+    from datetime import datetime
+    return datetime.fromisoformat(str(v).replace("Z", "+00:00")) if v else None
+
+
+def es_correccion(a, que):
+    """F4·54 (RPD-31): hay una corrección del documento o del video que el cliente todavía no recibió."""
+    campo = {"documento": ("correccion_documento_en", "documento_enviado_en"), "video": ("correccion_video_en", "video_enviado_en")}.get(que)
+    if not campo:
+        return False
+    corregido, enviado = _fecha(a.get(campo[0])), _fecha(a.get(campo[1]))
+    return bool(corregido and (not enviado or enviado < corregido))
+
+
 def nombre_documento(tipo):
     return "factura electrónica (FVE)" if tipo == "FVE" else "orden de garantía (OP)"
 
@@ -30,12 +44,17 @@ def mensaje_video(media_id, peso, nombre_equipo):
     return {"type": "video", "video": {"id": media_id, "caption": pie}}
 
 
-def texto_video():
+def texto_video(corregido=False):
+    if corregido:
+        return {"type": "text", "text": {"body": "🛠️ Te enviamos el video corregido de la revisión de tu equipo 👇"}}
     return {"type": "text", "text": {"body": "🛠️ Así quedó tu equipo después de la revisión de nuestro servicio técnico. ✅\n"
                                              "Te compartimos el video de soporte técnico 👇"}}
 
 
-def texto_documento(a):
+def texto_documento(a, corregido=False):
+    if corregido:
+        return {"type": "text", "text": {"body": f"🧾 Te enviamos tu {nombre_documento(a['doc_tipo'])} corregida: N.° *{a['doc_numero']}*.\n"
+                                                 "Reemplaza la anterior y guárdala para cualquier garantía. 🙌"}}
     return {"type": "text", "text": {"body": f"🧾 Tu {nombre_documento(a['doc_tipo'])} es la N.° *{a['doc_numero']}*.\n"
                                              "Guárdala: la necesitas para cualquier garantía. 🙌"}}
 

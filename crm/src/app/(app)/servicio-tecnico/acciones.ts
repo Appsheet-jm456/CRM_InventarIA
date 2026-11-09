@@ -93,6 +93,21 @@ export async function cancelarPedido(id: number, lead: number, motivo: string): 
   return r
 }
 
+// F4·54 (RPD-29): pedido cerrado. Corregir el documento, o autorizar que el técnico suba un video corregido; siempre con motivo.
+export async function corregirDocumento(id: number, lead: number, tipo: string, numero: string, motivo: string): Promise<Resultado> {
+  const r = await llamar('alistamiento_corregir_documento', { p_id: id, p_tipo: tipo, p_numero: numero, p_motivo: motivo },
+    'Documento corregido. Puedes enviárselo al cliente una vez.')
+  revalidatePath(`/leads/${lead}`)
+  return r
+}
+
+export async function autorizarVideoCorregido(id: number, lead: number | null, motivo: string): Promise<Resultado> {
+  const r = await llamar('alistamiento_corregir_video', { p_id: id, p_motivo: motivo },
+    'Autorizado: el técnico ya puede subir el video corregido en Servicio técnico → Cerrados.')
+  if (lead) revalidatePath(`/leads/${lead}`)
+  return r
+}
+
 export async function marcarEntregado(id: number, lead: number): Promise<Resultado> {
   const r = await llamar('alistamiento_entregado', { p_id: id }, 'Entregado en tienda: el pedido quedó Vendido.')
   revalidatePath(`/leads/${lead}`)

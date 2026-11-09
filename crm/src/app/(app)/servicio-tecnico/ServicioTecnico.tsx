@@ -2,11 +2,13 @@
 
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { marcarChecklist, marcarListo, reabrirPedido, tomarPedido, type Resultado } from './acciones'
+import { numeroPedido } from '../leads/[id]/pedido/pedido'
+import { autorizarVideoCorregido, marcarChecklist, marcarListo, reabrirPedido, tomarPedido, type Resultado } from './acciones'
 import { VideosEquipo, type Video } from './VideosEquipo'
 
 export type Pedido = {
   id: number
+  numero: number
   cliente: string
   entrega: 'envio' | 'tienda' | null
   equipos: { codigo: string; nombre: string }[]
@@ -20,6 +22,11 @@ export type Pedido = {
   checklist: Record<string, { por: string; en: string }>
   entro_en: string
   videos: Video[]
+}
+
+// F4·54 (RPD-29): pedido cerrado (Vendido o Perdido) de los últimos 6 meses, en la pestaña «Cerrados».
+export type PedidoCerrado = Pedido & {
+  cerrado_en: string | null; cierre: string; correccion_video_autorizada_en: string | null; correccion_video_motivo: string | null
 }
 
 export type Reporte = {
@@ -43,12 +50,14 @@ export const hora = (t: string) => new Date(t).toLocaleString('es-CO', { day: 'n
 const GUARDADO = 'servicio-tecnico:quien'
 
 // F4·50 bloque A (RAL-01 a RAL-09): un solo usuario para el servicio técnico; «¿Quién eres?» se recuerda en este navegador y va en cada acción.
-export function ServicioTecnico({ pedidos, tecnicos, error, reporte }: { pedidos: Pedido[]; tecnicos: string[]; error: string | null; reporte: Reporte | null }) {
+export function ServicioTecnico({ pedidos, cerrados, puedeCorregir, tecnicos, error, reporte }: {
+  pedidos: Pedido[]; cerrados: PedidoCerrado[]; puedeCorregir: boolean; tecnicos: string[]; error: string | null; reporte: Reporte | null
+}) {
   const router = useRouter()
   const [quien, setQuien] = useState('')
   const [aviso, setAviso] = useState<Resultado & { pedido?: number }>({})
   const [ocupado, setOcupado] = useState<number | null>(null)
-  const [ver, setVer] = useState<'activos' | 'listos' | 'reporte'>('activos')
+  const [ver, setVer] = useState<'activos' | 'listos' | 'cerrados' | 'reporte'>('activos')
 
   useEffect(() => {
     try { const q = localStorage.getItem(GUARDADO); if (q && tecnicos.includes(q)) setQuien(q) } catch { /* sin almacenamiento: se elige cada vez */ }
@@ -73,7 +82,17 @@ export function ServicioTecnico({ pedidos, tecnicos, error, reporte }: { pedidos
 
   const activos = pedidos.filter((p) => p.estado !== 'listo')
   const listos = pedidos.filter((p) => p.estado === 'listo')
-  const lista = ver === 'listos' ? listos : activos
+  const lista = ver === 'listos' ? listos : ver === 'activos' ? activos : []
+
+  async function autorizar(p: PedidoCerrado) {
+    const motivo = prompt(`¿Por qué hay que cambiar el video del pedido ${numeroPedido(p.numero)}? (queda en el historial)`)?.trim()
+    if (!motivo) return
+    setOcupado(p.id)
+    const r = await autorizarVideoCorregido(p.id, null, motivo)
+    setOcupado(null)
+    setAviso({ ...r, pedido: p.id })
+    router.refresh()
+  }
 
   return (
     <section className="panel">
@@ -96,6 +115,7 @@ export function ServicioTecnico({ pedidos, tecnicos, error, reporte }: { pedidos
         <div className="row" style={{ gap: 6 }}>
           <button className={`pastilla${ver === 'activos' ? ' activa' : ''}`} onClick={() => setVer('activos')}>Por hacer ({activos.length})</button>
           <button className={`pastilla${ver === 'listos' ? ' activa' : ''}`} onClick={() => setVer('listos')}>Listos para despachar ({listos.length})</button>
+          <button className={`pastilla${ver === 'cerrados' ? ' activa' : ''}`} onClick={() => setVer('cerrados')}>Cerrados ({cerrados.length})</button>
           {reporte && <button className={`pastilla${ver === 'reporte' ? ' activa' : ''}`} onClick={() => setVer('reporte')}>Reporte</button>}
         </div>
         {ver === 'reporte' && reporte && (
@@ -119,8 +139,40 @@ export function ServicioTecnico({ pedidos, tecnicos, error, reporte }: { pedidos
             </table>
           </div>
         )}
-        {ver !== 'reporte' && lista.length === 0 && <p className="muted">{ver === 'activos' ? 'No hay pedidos por alistar.' : 'No hay pedidos listos esperando despacho.'}</p>}
-        {ver !== 'reporte' && lista.map((p) => {
+        {ver === 'cerrados' && (
+          <div style={{ display: 'grid', gap: 10 }}>
+            <small className="muted">Pedidos cerrados de los últimos 6 meses. Para cambiar un video, alguien con permiso «Corregir pedidos» lo autoriza con un motivo; luego aquí se sube el video corregido.</small>
+            {cerrados.length === 0 && <p className="muted">No hay pedidos cerrados en los últimos 6 meses.</p>}
+            {cerrados.map((p) => (
+              <article key={p.id} className="dato" style={{ display: 'grid', gap: 8 }}>
+                <div className="row" style={{ justifyContent: 'space-between', gap: 8 }}>
+                  <b>Pedido {numeroPedido(p.numero)} · {p.cliente}</b>
+                  <span className="row" style={{ gap: 6 }}>
+                    <span className="chip neu">{p.cierre}{p.cerrado_en ? ` · ${hora(p.cerrado_en)}` : ''}</span>
+                    {p.doc_numero && <span className="chip ok">{p.doc_tipo} {p.doc_numero}</span>}
+                  </span>
+                </div>
+                {(p.equipos.length ? p.equipos : [{ codigo: 'pedido', nombre: 'Equipo del pedido' }]).map((e) => (
+                  <div key={e.codigo} style={{ display: 'grid', gap: 4, borderLeft: '3px solid var(--line)', paddingLeft: 10 }}>
+                    <span>{e.nombre} {e.codigo !== 'pedido' && <small className="muted">· {e.codigo}</small>}</span>
+                    <VideosEquipo pedido={p.id} codigo={e.codigo} videos={(p.videos ?? []).filter((v) => v.equipo_codigo === e.codigo)} quien={quien}
+                      puedeSubir={!!p.correccion_video_autorizada_en} alTerminar={(r) => { setAviso({ ...r, pedido: p.id }); router.refresh() }} />
+                  </div>
+                ))}
+                {p.correccion_video_autorizada_en ? (
+                  <div className="aviso warn">Video corregido autorizado: {p.correccion_video_motivo}. Sube el video nuevo del equipo.</div>
+                ) : puedeCorregir ? (
+                  <div><button className="btn chico" disabled={ocupado === p.id} onClick={() => autorizar(p)}>Autorizar video corregido</button></div>
+                ) : null}
+                {aviso.pedido === p.id && (aviso.error || aviso.ok) && (
+                  <div className={`aviso ${aviso.error ? 'bad' : 'ok'}`} role="alert">{aviso.error ?? aviso.ok}</div>
+                )}
+              </article>
+            ))}
+          </div>
+        )}
+        {(ver === 'activos' || ver === 'listos') && lista.length === 0 && <p className="muted">{ver === 'activos' ? 'No hay pedidos por alistar.' : 'No hay pedidos listos esperando despacho.'}</p>}
+        {(ver === 'activos' || ver === 'listos') && lista.map((p) => {
           const mio = p.tecnico === quien
           const sinDoc = !p.doc_numero
           const faltanVideos = (p.equipos.length ? p.equipos.map((e) => e.codigo) : ['pedido'])
@@ -128,7 +180,7 @@ export function ServicioTecnico({ pedidos, tecnicos, error, reporte }: { pedidos
           return (
             <article key={p.id} className="dato" style={{ display: 'grid', gap: 8 }}>
               <div className="row" style={{ justifyContent: 'space-between', gap: 8 }}>
-                <b>Pedido #{p.id} · {p.cliente}</b>
+                <b>Pedido {numeroPedido(p.numero)} · {p.cliente}</b>
                 <span className="row" style={{ gap: 6 }}>
                   <span className="chip neu">{p.entrega === 'envio' ? '🚚 Envío' : p.entrega === 'tienda' ? '🏬 Tienda' : 'Entrega sin definir'}</span>
                   <span className={`chip ${ESTADO[p.estado].clase}`}>{ESTADO[p.estado].texto}</span>
@@ -140,7 +192,7 @@ export function ServicioTecnico({ pedidos, tecnicos, error, reporte }: { pedidos
                     <span>💻 {e.nombre} {e.codigo !== 'pedido' && <small className="muted">· {e.codigo}</small>}</span>
                     {p.estado !== 'por_revisar' && (
                       <VideosEquipo pedido={p.id} codigo={e.codigo} videos={(p.videos ?? []).filter((v) => v.equipo_codigo === e.codigo)} quien={quien}
-                        puedeSubir={p.estado === 'en_revision' && mio} alTerminar={(r) => { setAviso({ ...r, pedido: p.id }); router.refresh() }} />
+                        puedeSubir={(p.estado === 'en_revision' && mio) || p.estado === 'listo'} alTerminar={(r) => { setAviso({ ...r, pedido: p.id }); router.refresh() }} />
                     )}
                   </div>
                 ))}

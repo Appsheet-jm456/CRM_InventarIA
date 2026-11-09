@@ -101,7 +101,7 @@ y botones sueltos. La propuesta, para el panel angosto de la ficha y para la pan
 - **RPD-26 · Se respeta el tema de Apariencia** (claro/oscuro y colores de marca) y funciona en celular, tablet y computador.
 - **Maqueta de la ficha y del Kanban aprobada por el dueño el 9 nov 2026** (pasos, tarjetas, ✓ enviado, Kanban de 5 columnas). Falta la orden de construir.
 
-### Cambiar el video o el documento: abierto en la ficha, cerrado solo con «Corregir» (pedido del dueño, 9 nov 2026, sin construir)
+### Cambiar el video o el documento: abierto en la ficha, cerrado solo con «Corregir» (pedido del dueño, 9 nov 2026, **construido el 9 nov, falta la prueba del dueño**)
 
 **Cómo está hoy (bloque A):** en la ficha el asesor **puede cambiar el FVE/OP en cualquier momento**, incluso con el pedido ya Vendido o
 entregado (nada lo frena). El **video no se cambia desde la ficha**: solo lo sube el técnico en Servicio técnico mientras tiene el pedido
@@ -126,8 +126,24 @@ pero desde una tabla de **Servicio técnico** o de **Pedidos** se debe poder **c
 - **RPD-31 · ¿Se le envía la corrección al cliente?** Propuesta: tras corregir, se habilita **un** envío del documento o del video corregido
   (con la misma regla de 24 h de WhatsApp), con el texto «Te enviamos tu FVE corregida»; si no, la corrección queda solo interna.
 
-**Por confirmar con el dueño:** (a) quién puede corregir un pedido cerrado (solo administrador, o también asesores con permiso); (b) si la
-corrección se le envía al cliente (RPD-31) o queda interna; (c) si un pedido **Cancelado** también se puede corregir o queda congelado.
+**Decidido (9 nov 2026, con las propuestas):** corrige quien tenga `corregir_pedidos` (de entrada solo el **administrador**; se le puede dar
+a un rol de asesor en Roles), la corrección **se puede enviar una vez** al cliente y un pedido **cancelado queda congelado**.
+
+**Cómo quedó construido (migración 0059, `supabase/pruebas/0059_pedido_cerrado_y_corregir.sql`, 17 pruebas; 0054 a 0058 siguen en verde):**
+- `alistamiento_cerrado()` (cancelado u oportunidad no abierta). `alistamiento_documento` se niega con el pedido cerrado.
+- `alistamiento_video_registrar`: en revisión (quien lo tiene), **listo = reemplazar** (cualquier técnico, sin «Volver a revisión») y cerrado
+  solo con la corrección autorizada (se gasta al subir el video). Cancelado: nunca.
+- `alistamiento_corregir_documento` y `alistamiento_corregir_video` (permiso `corregir_pedidos`, motivo, solo cerrado y no cancelado), con el
+  antes, el después y el motivo en la línea de tiempo; el embudo no se mueve.
+- `alistamiento_para_enviar`: la corrección pendiente habilita **un** envío aunque el pedido esté cerrado o pasaran las 24 h; el video corregido
+  espera a estar comprimido. El receptor manda **solo lo corregido** con su texto («Te enviamos tu FVE corregida…», «…el video corregido…»).
+  `prueba_envios_alistamiento.py` 15/15.
+- `servicio_tecnico_cerrados()` y pestaña **Cerrados** en Servicio técnico (últimos 6 meses, sin cancelados): videos de cada equipo,
+  «Autorizar video corregido» para quien tenga el permiso y, ya autorizado, «Subir video» para el técnico. La lista muestra el número PED.
+- Ficha: con el pedido cerrado, Documento sin formulario; con el permiso, **«Corregir documento»** (número nuevo y motivo) y **«Autorizar video
+  corregido»**; en Enviar al cliente, **«Enviar corregido»**; el «Siguiente paso» lo recuerda.
+- **Mientras no exista el módulo Pedidos (bloque B)**, corregir el documento se hace desde la ficha (solo con el permiso); el video, desde
+  la ficha o Servicio técnico → Cerrados.
 
 ## 4. Mejora B · Módulo «Pedidos» (F4·55)
 
