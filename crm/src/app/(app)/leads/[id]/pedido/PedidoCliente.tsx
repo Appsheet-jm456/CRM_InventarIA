@@ -76,6 +76,7 @@ export function PedidoCliente({ lead, puedeDocumento, puedeCorregir, embudos, et
   const [total, setTotal] = useState<number | null>(null)
   const [eventos, setEventos] = useState<Evento[]>([])
   const [cargado, setCargado] = useState(false)
+  const [falla, setFalla] = useState('')
   const [tipo, setTipo] = useState<'OP' | 'FVE'>('FVE')
   const [numero, setNumero] = useState('')
   const [aviso, setAviso] = useState<Resultado>({})
@@ -89,14 +90,15 @@ export function PedidoCliente({ lead, puedeDocumento, puedeCorregir, embudos, et
 
   const cargar = useCallback(async () => {
     const sb = clienteNavegador()
-    const { data } = await sb.from('alistamientos')
+    const { data, error } = await sb.from('alistamientos')
       .select('id, numero, oportunidad_id, equipos, doc_tipo, doc_numero, estado, tecnico, tomado_en, listo_en, listo_por, checklist, creado_en, ' +
         'oportunidades(estado, valor_estimado, etapas(nombre)), leads(atributos), transportadora, numero_guia, guia_en, guia_enviada_en, ' +
         'documento_enviado_en, video_enviado_en, primer_documento_en, primer_video_en, aviso_tienda_en, entregado_en, cancelado_en, cancelado_motivo, ' +
         'correccion_documento_en, correccion_video_autorizada_en, correccion_video_motivo, correccion_video_en, ' +
-        'alistamiento_videos(id, equipo_codigo, estado, tecnico, subido_en, ruta, peso, error)')
+        'alistamiento_videos!alistamiento_videos_alistamiento_id_fkey(id, equipo_codigo, estado, tecnico, subido_en, ruta, peso, error)')
       .eq('lead_id', lead).order('creado_en', { ascending: false }).limit(1)
     const f = ((data ?? [])[0] as unknown as Fila | undefined) ?? null
+    setFalla(error ? `No se pudo cargar el pedido: ${error.message}` : '')
     setFila(f)
     setCargado(true)
     if (f?.doc_tipo) setTipo(f.doc_tipo)
@@ -117,7 +119,7 @@ export function PedidoCliente({ lead, puedeDocumento, puedeCorregir, embudos, et
       modo={fila ? 'otras' : 'todas'} oportunidadId={fila?.oportunidad_id} />
   )
   if (!cargado) return null
-  if (!fila) return <div className="ped">{pago}{otras}</div>
+  if (!fila) return <div className="ped">{falla && <div className="aviso bad" role="alert">{falla}</div>}{pago}{otras}</div>
 
   const opAbierta = fila.oportunidades?.estado === 'abierta'
   const entrega: Entrega = fila.leads?.atributos?.venta_online === true ? 'envio' : fila.leads?.atributos?.venta_online === false ? 'tienda' : null
