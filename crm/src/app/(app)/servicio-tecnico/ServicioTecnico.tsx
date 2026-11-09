@@ -1,10 +1,11 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { numeroPedido } from '../leads/[id]/pedido/pedido'
 import { autorizarVideoCorregido, marcarChecklist, marcarListo, reabrirPedido, tomarPedido, type Resultado } from './acciones'
 import { VideosEquipo, type Video } from './VideosEquipo'
+import { Icono } from '@/components/Iconos'
 
 export type Pedido = {
   id: number
@@ -50,6 +51,44 @@ export const hora = (t: string) => new Date(t).toLocaleString('es-CO', { day: 'n
 const GUARDADO = 'servicio-tecnico:quien'
 
 // F4·50 bloque A (RAL-01 a RAL-09): un solo usuario para el servicio técnico; «¿Quién eres?» se recuerda en este navegador y va en cada acción.
+// F4·56 (RAL-11 a RAL-14): tabla como en Pedidos; al tocar un pedido se abre su resumen y ahí se modifica mientras no esté cerrado.
+type Fila = Pedido & Partial<Omit<PedidoCerrado, keyof Pedido>> & { cerrado?: boolean }
+
+const equiposDe = (p: Pedido) => (p.equipos.length ? p.equipos : [{ codigo: 'pedido', nombre: 'Equipo del pedido' }])
+const conVideo = (p: Pedido) => equiposDe(p).filter((e) => (p.videos ?? []).some((v) => v.equipo_codigo === e.codigo && v.estado === 'listo')).length
+const hechos = (p: Pedido) => CHECKLIST.filter(([k]) => p.checklist[k]).length
+const hace = (t: string) => {
+  const h = (Date.now() - new Date(t).getTime()) / 3600000
+  return h < 1 ? `${Math.max(1, Math.round(h * 60))} min` : h < 48 ? `${Math.round(h)} h` : `${Math.round(h / 24)} días`
+}
+
+function PasosTecnico({ p, chico = false }: { p: Fila; chico?: boolean }) {
+  const pasos = [
+    { t: 'Por revisar', hecho: true, cuando: p.entro_en },
+    { t: 'En revisión', hecho: p.estado !== 'por_revisar', cuando: p.tomado_en },
+    { t: 'Listo', hecho: p.estado === 'listo', cuando: p.listo_en },
+  ]
+  const actual = pasos.findIndex((x) => !x.hecho)
+  if (chico) {
+    return (
+      <span className="pd-flujo">
+        {pasos.map((x, i) => <span key={x.t} className={`pd-punto${x.hecho ? ' hecho' : ''}${i === actual ? ' actual' : ''}`} title={x.t} />)}
+      </span>
+    )
+  }
+  return (
+    <ol className="ped-pasos" aria-label="Pasos del servicio técnico">
+      {pasos.map((x, i) => (
+        <li key={x.t} className={`ped-paso${x.hecho ? ' hecho' : ''}${i === actual ? ' actual' : ''}`}>
+          <span className="pt">{x.hecho ? <Icono nombre="chulo" /> : i + 1}</span>
+          <span className="pn">{x.t}</span>
+          <small>{x.hecho && x.cuando ? hora(x.cuando) : ''}</small>
+        </li>
+      ))}
+    </ol>
+  )
+}
+
 export function ServicioTecnico({ pedidos, cerrados, puedeCorregir, tecnicos, error, reporte }: {
   pedidos: Pedido[]; cerrados: PedidoCerrado[]; puedeCorregir: boolean; tecnicos: string[]; error: string | null; reporte: Reporte | null
 }) {
@@ -58,6 +97,8 @@ export function ServicioTecnico({ pedidos, cerrados, puedeCorregir, tecnicos, er
   const [aviso, setAviso] = useState<Resultado & { pedido?: number }>({})
   const [ocupado, setOcupado] = useState<number | null>(null)
   const [ver, setVer] = useState<'activos' | 'listos' | 'cerrados' | 'reporte'>('activos')
+  const [texto, setTexto] = useState('')
+  const [abierto, setAbierto] = useState<number | null>(null)
 
   useEffect(() => {
     try { const q = localStorage.getItem(GUARDADO); if (q && tecnicos.includes(q)) setQuien(q) } catch { /* sin almacenamiento: se elige cada vez */ }
@@ -71,7 +112,7 @@ export function ServicioTecnico({ pedidos, cerrados, puedeCorregir, tecnicos, er
   }
 
   async function hacer(pedido: number, accion: () => Promise<Resultado>, pregunta?: string) {
-    if (!quien) { setAviso({ error: 'Primero elige quién eres.', pedido }); return }
+    if (!quien) { setAviso({ error: 'Primero elige quién eres (arriba).', pedido }); return }
     if (pregunta && !confirm(pregunta)) return
     setOcupado(pedido)
     const r = await accion()
@@ -80,11 +121,7 @@ export function ServicioTecnico({ pedidos, cerrados, puedeCorregir, tecnicos, er
     router.refresh()
   }
 
-  const activos = pedidos.filter((p) => p.estado !== 'listo')
-  const listos = pedidos.filter((p) => p.estado === 'listo')
-  const lista = ver === 'listos' ? listos : ver === 'activos' ? activos : []
-
-  async function autorizar(p: PedidoCerrado) {
+  async function autorizar(p: Fila) {
     const motivo = prompt(`¿Por qué hay que cambiar el video del pedido ${numeroPedido(p.numero)}? (queda en el historial)`)?.trim()
     if (!motivo) return
     setOcupado(p.id)
@@ -94,12 +131,21 @@ export function ServicioTecnico({ pedidos, cerrados, puedeCorregir, tecnicos, er
     router.refresh()
   }
 
+  const activos = pedidos.filter((p) => p.estado !== 'listo')
+  const listos = pedidos.filter((p) => p.estado === 'listo')
+  const todos: Fila[] = useMemo(() => [...pedidos, ...cerrados.map((c) => ({ ...c, cerrado: true }))], [pedidos, cerrados])
+  const base: Fila[] = ver === 'listos' ? listos : ver === 'cerrados' ? cerrados.map((c) => ({ ...c, cerrado: true })) : activos
+  const q = texto.trim().toLowerCase()
+  const lista = q ? base.filter((p) => [numeroPedido(p.numero), p.cliente, p.doc_numero, ...p.equipos.flatMap((e) => [e.codigo, e.nombre])]
+    .some((c) => (c ?? '').toLowerCase().includes(q))) : base
+  const sel = abierto ? todos.find((p) => p.id === abierto) ?? null : null
+
   return (
     <section className="panel">
       <div className="panel-h">
         <div>
           <h2>Servicio técnico</h2>
-          <small>Pedidos pagados en Alistamiento. Toma el pedido, marca lo que le hiciste y pulsa «Revisado, listo para despachar». No le escribe al cliente.</small>
+          <small>Pedidos pagados en Alistamiento. Toca un pedido para ver su resumen: tómalo, marca lo que le hiciste, sube el video y pulsa «Revisado, listo para despachar».</small>
         </div>
         <label className="field" style={{ minWidth: 220 }}>
           ¿Quién eres?
@@ -118,6 +164,7 @@ export function ServicioTecnico({ pedidos, cerrados, puedeCorregir, tecnicos, er
           <button className={`pastilla${ver === 'cerrados' ? ' activa' : ''}`} onClick={() => setVer('cerrados')}>Cerrados ({cerrados.length})</button>
           {reporte && <button className={`pastilla${ver === 'reporte' ? ' activa' : ''}`} onClick={() => setVer('reporte')}>Reporte</button>}
         </div>
+
         {ver === 'reporte' && reporte && (
           <div style={{ display: 'grid', gap: 10 }}>
             <small className="muted">Últimos 30 días ({reporte.desde} a {reporte.hasta}), por la fecha en que el pedido entró a Alistamiento o el técnico lo tomó.</small>
@@ -139,114 +186,147 @@ export function ServicioTecnico({ pedidos, cerrados, puedeCorregir, tecnicos, er
             </table>
           </div>
         )}
-        {ver === 'cerrados' && (
-          <div style={{ display: 'grid', gap: 10 }}>
-            <small className="muted">Pedidos cerrados de los últimos 6 meses. Para cambiar un video, alguien con permiso «Corregir pedidos» lo autoriza con un motivo; luego aquí se sube el video corregido.</small>
-            {cerrados.length === 0 && <p className="muted">No hay pedidos cerrados en los últimos 6 meses.</p>}
-            {cerrados.map((p) => (
-              <article key={p.id} className="dato" style={{ display: 'grid', gap: 8 }}>
-                <div className="row" style={{ justifyContent: 'space-between', gap: 8 }}>
-                  <b>Pedido {numeroPedido(p.numero)} · {p.cliente}</b>
-                  <span className="row" style={{ gap: 6 }}>
-                    <span className="chip neu">{p.cierre}{p.cerrado_en ? ` · ${hora(p.cerrado_en)}` : ''}</span>
-                    {p.doc_numero && <span className="chip ok">{p.doc_tipo} {p.doc_numero}</span>}
-                  </span>
-                </div>
-                {(p.equipos.length ? p.equipos : [{ codigo: 'pedido', nombre: 'Equipo del pedido' }]).map((e) => (
-                  <div key={e.codigo} style={{ display: 'grid', gap: 4, borderLeft: '3px solid var(--line)', paddingLeft: 10 }}>
-                    <span>{e.nombre} {e.codigo !== 'pedido' && <small className="muted">· {e.codigo}</small>}</span>
-                    <VideosEquipo pedido={p.id} codigo={e.codigo} videos={(p.videos ?? []).filter((v) => v.equipo_codigo === e.codigo)} quien={quien}
-                      puedeSubir={!!p.correccion_video_autorizada_en} alTerminar={(r) => { setAviso({ ...r, pedido: p.id }); router.refresh() }} />
-                  </div>
-                ))}
-                {p.correccion_video_autorizada_en ? (
-                  <div className="aviso warn">Video corregido autorizado: {p.correccion_video_motivo}. Sube el video nuevo del equipo.</div>
-                ) : puedeCorregir ? (
-                  <div><button className="btn chico" disabled={ocupado === p.id} onClick={() => autorizar(p)}>Autorizar video corregido</button></div>
-                ) : null}
-                {aviso.pedido === p.id && (aviso.error || aviso.ok) && (
-                  <div className={`aviso ${aviso.error ? 'bad' : 'ok'}`} role="alert">{aviso.error ?? aviso.ok}</div>
-                )}
-              </article>
-            ))}
-          </div>
-        )}
-        {(ver === 'activos' || ver === 'listos') && lista.length === 0 && <p className="muted">{ver === 'activos' ? 'No hay pedidos por alistar.' : 'No hay pedidos listos esperando despacho.'}</p>}
-        {(ver === 'activos' || ver === 'listos') && lista.map((p) => {
-          const mio = p.tecnico === quien
-          const sinDoc = !p.doc_numero
-          const faltanVideos = (p.equipos.length ? p.equipos.map((e) => e.codigo) : ['pedido'])
-            .filter((c) => !(p.videos ?? []).some((v) => v.equipo_codigo === c && (v.estado === 'listo' || v.estado === 'procesando')))
-          return (
-            <article key={p.id} className="dato" style={{ display: 'grid', gap: 8 }}>
-              <div className="row" style={{ justifyContent: 'space-between', gap: 8 }}>
-                <b>Pedido {numeroPedido(p.numero)} · {p.cliente}</b>
-                <span className="row" style={{ gap: 6 }}>
-                  <span className="chip neu">{p.entrega === 'envio' ? '🚚 Envío' : p.entrega === 'tienda' ? '🏬 Tienda' : 'Entrega sin definir'}</span>
-                  <span className={`chip ${ESTADO[p.estado].clase}`}>{ESTADO[p.estado].texto}</span>
-                </span>
-              </div>
-              <div style={{ display: 'grid', gap: 8 }}>
-                {(p.equipos.length ? p.equipos : [{ codigo: 'pedido', nombre: 'Equipo del pedido (sin código en la oportunidad)' }]).map((e) => (
-                  <div key={e.codigo} style={{ display: 'grid', gap: 4, borderLeft: '3px solid var(--line)', paddingLeft: 10 }}>
-                    <span>💻 {e.nombre} {e.codigo !== 'pedido' && <small className="muted">· {e.codigo}</small>}</span>
-                    {p.estado !== 'por_revisar' && (
-                      <VideosEquipo pedido={p.id} codigo={e.codigo} videos={(p.videos ?? []).filter((v) => v.equipo_codigo === e.codigo)} quien={quien}
-                        puedeSubir={(p.estado === 'en_revision' && mio) || p.estado === 'listo'} alTerminar={(r) => { setAviso({ ...r, pedido: p.id }); router.refresh() }} />
-                    )}
-                  </div>
-                ))}
-              </div>
-              <small className="muted">
-                Entró {hora(p.entro_en)}
-                {p.tecnico && <> · {p.estado === 'listo' ? 'Revisó' : 'Lo tiene'} <b>{p.tecnico}</b>{p.tomado_en && ` desde ${hora(p.tomado_en)}`}</>}
-                {p.listo_en && <> · listo {hora(p.listo_en)}</>}
-              </small>
-              <div>
-                {sinDoc ? <span className="chip bad">Falta el documento (OP o FVE): lo pone el asesor</span>
-                  : <span className="chip ok">{p.doc_tipo} {p.doc_numero}</span>}
-              </div>
-              {p.estado !== 'por_revisar' && (
-                <div className="row" style={{ gap: 12, flexWrap: 'wrap' }}>
-                  {CHECKLIST.map(([clave, texto]) => {
-                    const marca = p.checklist[clave]
+
+        {ver !== 'reporte' && (
+          <>
+            <div className="pd-filtros">
+              <input type="search" value={texto} onChange={(e) => setTexto(e.target.value)} placeholder="Buscar cliente, PED, código del equipo o FVE" aria-label="Buscar" />
+            </div>
+            {ver === 'cerrados' && <small className="muted">Pedidos cerrados de los últimos 6 meses. Solo se ven; para cambiar un video, alguien con permiso «Corregir pedidos» lo autoriza con un motivo y luego se sube aquí.</small>}
+            <div className="pd-tabla">
+              <table>
+                <thead>
+                  <tr><th>Pedido</th><th>Cliente</th><th>Producto</th><th>Entrega</th><th>Estado</th><th>Técnico</th><th>Videos</th><th>Revisión</th><th>Documento</th></tr>
+                </thead>
+                <tbody>
+                  {lista.map((p) => {
+                    const n = equiposDe(p).length
                     return (
-                      <label key={clave} className="check" title={marca ? `${marca.por} · ${hora(marca.en)}` : undefined}>
-                        <input type="checkbox" checked={!!marca} disabled={p.estado !== 'en_revision' || !mio || ocupado === p.id}
-                          onChange={(e) => hacer(p.id, () => marcarChecklist(p.id, clave, e.target.checked, quien))} />
-                        {texto}
-                      </label>
+                      <tr key={p.id} className={`pd-fila${abierto === p.id ? ' activa' : ''}`} tabIndex={0} onClick={() => { setAbierto(p.id); setAviso({}) }}
+                        onKeyDown={(e) => { if (e.key === 'Enter') { setAbierto(p.id); setAviso({}) } }}>
+                        <td><b>{numeroPedido(p.numero)}</b><small className="pd-sub">{p.cerrado ? `${p.cierre ?? 'Cerrado'}${p.cerrado_en ? ` · ${hora(p.cerrado_en)}` : ''}` : `entró hace ${hace(p.entro_en)}`}</small></td>
+                        <td><b>{p.cliente}</b></td>
+                        <td>{equiposDe(p).map((e) => <div key={e.codigo}>{e.nombre}{e.codigo !== 'pedido' && <small className="pd-sub">{e.codigo}</small>}</div>)}</td>
+                        <td>{p.entrega === 'envio' ? 'Envío' : p.entrega === 'tienda' ? 'Tienda' : <span className="muted">Sin definir</span>}</td>
+                        <td><PasosTecnico p={p} chico /><small className="pd-sub">
+                          <span className={`chip ${p.cerrado ? 'neu' : ESTADO[p.estado].clase}`}>{p.cerrado ? 'Cerrado' : ESTADO[p.estado].texto}</span></small></td>
+                        <td>{p.tecnico ?? <span className="muted">Sin tomar</span>}{p.tomado_en && !p.cerrado && p.estado === 'en_revision' && <small className="pd-sub">hace {hace(p.tomado_en)}</small>}</td>
+                        <td>{conVideo(p) >= n ? <span className="pd-ok"><Icono nombre="chulo" />{conVideo(p)} de {n}</span> : <span className={p.estado === 'por_revisar' ? 'muted' : 'ped-aviso'}>{conVideo(p)} de {n}</span>}</td>
+                        <td>{hechos(p)} de {CHECKLIST.length}</td>
+                        <td>{p.doc_numero ? <span className="chip ok">{p.doc_tipo} {p.doc_numero}</span> : <span className="chip warn">Falta</span>}</td>
+                      </tr>
                     )
                   })}
-                </div>
-              )}
-              <div className="row" style={{ gap: 6 }}>
-                {p.estado === 'por_revisar' && (
-                  <button className="btn primary chico" disabled={ocupado === p.id} onClick={() => hacer(p.id, () => tomarPedido(p.id, quien))}>Tomar pedido</button>
-                )}
-                {p.estado === 'en_revision' && !mio && <small className="muted">Lo está revisando {p.tecnico}.</small>}
-                {p.estado === 'en_revision' && mio && (
-                  <button className="btn primary chico" disabled={ocupado === p.id || sinDoc || faltanVideos.length > 0}
-                    title={sinDoc ? 'Falta el documento (OP o FVE): lo pone el asesor' : faltanVideos.length ? 'Falta un video por cada equipo' : undefined}
-                    onClick={() => hacer(p.id, () => marcarListo(p.id, quien), '¿El equipo quedó revisado y funcional, listo para despachar?')}>
-                    ✅ Revisado, listo para despachar
-                  </button>
-                )}
-                {p.estado === 'listo' && (
-                  <button className="btn chico" disabled={ocupado === p.id}
-                    onClick={() => hacer(p.id, () => reabrirPedido(p.id, quien), '¿Volver a abrir la revisión de este pedido?')}>Volver a revisión</button>
-                )}
-              </div>
-              {p.estado === 'en_revision' && mio && faltanVideos.length > 0 && (
-                <small className="muted">Para marcarlo listo falta {faltanVideos.length === 1 ? 'un video' : `${faltanVideos.length} videos`} (uno por equipo, de 1 a 2 minutos).</small>
-              )}
-              {aviso.pedido === p.id && (aviso.error || aviso.ok) && (
-                <div className={`aviso ${aviso.error ? 'bad' : 'ok'}`} role="alert">{aviso.error ?? aviso.ok}</div>
-              )}
-            </article>
-          )
-        })}
+                  {!lista.length && <tr><td colSpan={9} className="muted">{ver === 'activos' ? 'No hay pedidos por alistar.' : ver === 'listos' ? 'No hay pedidos listos esperando despacho.' : 'No hay pedidos cerrados con este filtro.'}</td></tr>}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
       </div>
+
+      {sel && (
+        <div className="pd-fondo" onClick={() => setAbierto(null)}>
+          <aside className="pd-cajon" onClick={(e) => e.stopPropagation()} role="dialog" aria-label={`Pedido ${numeroPedido(sel.numero)}`}>
+            <div className="pd-cajon-h">
+              <div><b>Pedido {numeroPedido(sel.numero)} · {sel.cliente}</b>
+                <small className="pd-sub">{sel.entrega === 'envio' ? 'Envío' : sel.entrega === 'tienda' ? 'Recoge en tienda' : 'Entrega sin definir'} · entró {hora(sel.entro_en)}</small></div>
+              <button className="btn chico" onClick={() => setAbierto(null)} aria-label="Cerrar">✕</button>
+            </div>
+            <div className="pd-cajon-b">
+              <Resumen p={sel} quien={quien} ocupado={ocupado === sel.id} puedeCorregir={puedeCorregir} aviso={aviso.pedido === sel.id ? aviso : {}}
+                hacer={(accion, pregunta) => hacer(sel.id, accion, pregunta)} autorizar={() => autorizar(sel)}
+                alSubir={(r) => { setAviso({ ...r, pedido: sel.id }); router.refresh() }} />
+            </div>
+          </aside>
+        </div>
+      )}
     </section>
+  )
+}
+
+// RAL-12 y RAL-13: el resumen del pedido para el técnico; las acciones salen solo mientras el pedido no está cerrado.
+function Resumen({ p, quien, ocupado, puedeCorregir, aviso, hacer, autorizar, alSubir }: {
+  p: Fila; quien: string; ocupado: boolean; puedeCorregir: boolean; aviso: Resultado
+  hacer: (accion: () => Promise<Resultado>, pregunta?: string) => void; autorizar: () => void; alSubir: (r: Resultado) => void
+}) {
+  const mio = p.tecnico === quien
+  const sinDoc = !p.doc_numero
+  const faltan = equiposDe(p).filter((e) => !(p.videos ?? []).some((v) => v.equipo_codigo === e.codigo && (v.estado === 'listo' || v.estado === 'procesando')))
+  const enRevision = !p.cerrado && p.estado === 'en_revision'
+  const puedeSubir = p.cerrado ? !!p.correccion_video_autorizada_en : (enRevision && mio) || p.estado === 'listo'
+  const sig = p.cerrado ? { t: p.correccion_video_autorizada_en ? `Video corregido autorizado (${p.correccion_video_motivo}): súbelo abajo.` : 'Pedido cerrado: solo se ve.', tono: p.correccion_video_autorizada_en ? 'aviso' : 'info' }
+    : p.estado === 'por_revisar' ? { t: 'Toma el pedido para empezar la revisión.', tono: 'aviso' }
+    : enRevision && !mio ? { t: `Lo está revisando ${p.tecnico}.`, tono: 'info' }
+    : enRevision && sinDoc ? { t: 'Falta el documento (OP o FVE): lo pone el asesor.', tono: 'aviso' }
+    : enRevision && faltan.length ? { t: `Sube ${faltan.length === 1 ? 'el video' : `${faltan.length} videos`} (uno por equipo, de 1 a 2 minutos).`, tono: 'aviso' }
+    : enRevision ? { t: 'Todo listo: pulsa «Revisado, listo para despachar».', tono: 'aviso' }
+    : { t: 'Listo para despachar: el asesor envía la guía o avisa al cliente.', tono: 'ok' }
+
+  return (
+    <div className="ped">
+      <div className="ped-card">
+        <div className="ped-h">
+          <span className="ped-t"><span className="ped-ico"><Icono nombre="herramienta" /></span>{p.tecnico ?? 'Sin técnico'}</span>
+          <span className={`chip ${p.cerrado ? 'neu' : ESTADO[p.estado].clase}`}>{p.cerrado ? p.cierre ?? 'Cerrado' : ESTADO[p.estado].texto}</span>
+        </div>
+        <PasosTecnico p={p} />
+        <div className={`ped-sig ${sig.tono}`}><span>{sig.tono === 'ok' && <Icono nombre="chulo" />}{sig.t}</span></div>
+      </div>
+      {(aviso.error || aviso.ok) && <div className={`aviso ${aviso.error ? 'bad' : 'ok'}`} role="alert">{aviso.error ?? aviso.ok}</div>}
+
+      <div className="ped-card ped-cuerpo">
+        <span className="ped-t"><span className="ped-ico"><Icono nombre="video" /></span>Equipos y videos</span>
+        {equiposDe(p).map((e) => (
+          <div key={e.codigo} className="ped-equipo">
+            <div className="ped-datos"><b>{e.nombre}</b>{e.codigo !== 'pedido' && <small className="muted">{e.codigo}</small>}</div>
+            {p.estado !== 'por_revisar' || p.cerrado ? (
+              <VideosEquipo pedido={p.id} codigo={e.codigo} videos={(p.videos ?? []).filter((v) => v.equipo_codigo === e.codigo)} quien={quien}
+                puedeSubir={puedeSubir} miniaturas alTerminar={alSubir} />
+            ) : <small className="muted">Toma el pedido para subir el video.</small>}
+          </div>
+        ))}
+        {p.cerrado && !p.correccion_video_autorizada_en && puedeCorregir && (
+          <div><button className="btn chico" disabled={ocupado} onClick={autorizar}>Autorizar video corregido</button></div>
+        )}
+      </div>
+
+      <div className="ped-card ped-cuerpo">
+        <span className="ped-t"><span className="ped-ico"><Icono nombre="chulo" /></span>Revisión ({hechos(p)} de {CHECKLIST.length})</span>
+        <div className="st-check">
+          {CHECKLIST.map(([clave, texto]) => {
+            const marca = p.checklist[clave]
+            return (
+              <label key={clave} className="check" title={marca ? `${marca.por} · ${hora(marca.en)}` : undefined}>
+                <input type="checkbox" checked={!!marca} disabled={!enRevision || !mio || ocupado}
+                  onChange={(ev) => hacer(() => marcarChecklist(p.id, clave, ev.target.checked, quien))} />
+                {texto}{marca && <small className="muted"> · {marca.por}</small>}
+              </label>
+            )
+          })}
+        </div>
+        {!p.cerrado && p.estado === 'listo' && <small className="muted">Para cambiar la revisión, pulsa «Volver a revisión».</small>}
+      </div>
+
+      <div className="ped-card ped-cuerpo">
+        <span className="ped-t"><span className="ped-ico"><Icono nombre="documento" /></span>Documento</span>
+        {p.doc_numero ? <span><span className="chip ok">{p.doc_tipo} {p.doc_numero}</span></span> : <small className="ped-aviso">Falta el documento (OP o FVE): lo pone el asesor.</small>}
+      </div>
+
+      {!p.cerrado && (
+        <div className="row" style={{ gap: 6 }}>
+          {p.estado === 'por_revisar' && (
+            <button className="btn primary" disabled={ocupado} onClick={() => hacer(() => tomarPedido(p.id, quien))}>Tomar pedido</button>
+          )}
+          {enRevision && mio && (
+            <button className="btn primary" disabled={ocupado || sinDoc || faltan.length > 0}
+              onClick={() => hacer(() => marcarListo(p.id, quien), '¿El equipo quedó revisado y funcional, listo para despachar?')}>Revisado, listo para despachar</button>
+          )}
+          {p.estado === 'listo' && (
+            <button className="btn" disabled={ocupado} onClick={() => hacer(() => reabrirPedido(p.id, quien), '¿Volver a abrir la revisión de este pedido?')}>Volver a revisión</button>
+          )}
+        </div>
+      )}
+    </div>
   )
 }

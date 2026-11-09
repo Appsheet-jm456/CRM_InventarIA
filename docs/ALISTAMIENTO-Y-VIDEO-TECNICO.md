@@ -168,6 +168,25 @@ quien hace cada cosa: por eso el «¿Quién eres?» de RAL-08.
   la guía no se registra y el mensaje dice qué falta. Los textos al cliente están en `alistamiento.py` (aún no se editan desde la pantalla).
 - **Falta para usarlo:** compilar y reiniciar la app y reiniciar el receptor.
 
+## 5e. Servicio técnico en tabla con panel de resumen (F4·56, pedido del dueño, 9 nov 2026)
+
+El dueño pidió que **Servicio técnico** se vea como el módulo **Pedidos**: en tabla, que al tocar un pedido **abra su resumen**, y que se pueda
+**modificar mientras no esté cerrado**.
+
+- **RAL-11 · Tabla** en las pestañas *Por hacer*, *Listos para despachar* y *Cerrados*: Pedido (PED y cuándo entró), Cliente (solo el nombre),
+  Producto (equipos y códigos), Entrega, Estado (mini barra *Por revisar → En revisión → Listo* y chip), Técnico, Videos (n de n), Revisión
+  (puntos del checklist hechos) y Documento (OP/FVE o «Falta»), más el tiempo que lleva. Búsqueda por cliente, PED o código. Sin teléfono, chat ni
+  pagos (RAL-08 sigue igual).
+- **RAL-12 · Panel de resumen** al tocar una fila (como el de Pedidos): pasos del técnico, «Siguiente paso», equipos con sus videos
+  (miniatura), checklist, documento y las acciones.
+- **RAL-13 · Se modifica mientras no esté cerrado:** en el panel, *Tomar pedido*; con el pedido en revisión y a su nombre, marcar el checklist,
+  subir videos y «Revisado, listo para despachar»; con el pedido listo, **reemplazar el video** (F4·54, RPD-27) o «Volver a revisión» para
+  cambiar el checklist. **Cerrado** (Vendido o Perdido): solo se ve; el video se cambia solo con la corrección autorizada (RPD-29). La base ya lo
+  hace cumplir (migraciones 0054, 0056 y 0059): esto es solo pantalla, sin migración.
+- **RAL-14 · «¿Quién eres?»** sigue arriba y se pide antes de cualquier acción.
+- **Construido el 9 nov 2026** (`servicio-tecnico/ServicioTecnico.tsx`, sin migración; `tsc`, lint y `next build` en verde, app reiniciada). Falta la
+  prueba del dueño.
+
 ## 6. Decisiones del dueño (7 nov 2026)
 
 | Tema | Decisión |
