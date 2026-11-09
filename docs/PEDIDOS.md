@@ -1,6 +1,7 @@
 # Pedidos: ficha ordenada por el proceso y módulo de seguimiento de envíos (F4·54 y F4·55)
 
-> **Estado:** 📝 documentada el 9 nov 2026 por pedido del dueño. **No está construida; se construye cuando el dueño dé la orden.**
+> **Estado:** 📝 documentada el 9 nov 2026 por pedido del dueño y **ajustada con sus respuestas el mismo día** (regla de cierre único, vista Kanban,
+> cancelación y diseño más profesional). **No está construida; se construye cuando el dueño dé la orden.**
 > Es una mejora de [F4·50 Alistamiento](ALISTAMIENTO-Y-VIDEO-TECNICO.md) (bloques A a D ya construidos y a la espera de su prueba).
 > **Sin embudo ni etapas nuevas** (RAL-01 sigue igual): *Alistamiento → Despachado → Vendido → Perdido*. Esto solo reordena lo que se ve y
 > suma una pantalla para consultar lo que ya se guarda.
@@ -65,14 +66,49 @@ Lo que incomoda:
 
 Sin migración: solo `Ficha.tsx`, `AlistamientoCliente.tsx` y `OportunidadesCliente.tsx` (se reorganizan en componentes más chicos).
 
+### Reglas del cierre: un pedido se envía una sola vez (pedido del dueño, 9 nov 2026)
+
+Ejemplo del dueño: un cliente compra, se cierra el pedido por WhatsApp y **no se le puede mandar dos veces la guía ni el video**. Si compra otra
+vez es **otro pedido** (otra oportunidad, RE-03), con sus propios envíos.
+
+- **RPD-16 · Guía: se envía una sola vez.** Al enviarla, el pedido pasa a Despachado y Vendido y **desaparece «Reenviar guía»**. Solo se puede
+  reintentar si el envío **falló** (Meta no lo aceptó: queda «no se le envió al cliente» y el botón sigue). Corregir una guía equivocada lo hace
+  solo un administrador, con motivo, y queda en el historial.
+- **RPD-17 · Video y documento: 24 horas para enviarlos o reenviarlos.** Pasadas 24 h desde el primer envío, o con el pedido cerrado, los botones
+  desaparecen y queda la marca **✓ Video enviado · 8 nov 6:18 p. m.** y **✓ FVE enviada · 7 nov 6:57 p. m.** (check verde y hora, sin botón).
+  *(Entendí así el «24 horas»; confirmar la cuenta en la sección 7.)*
+- **RPD-18 · La base lo hace cumplir**, no solo la pantalla: `alistamiento_para_enviar` rechaza el envío repetido (y la prueba SQL lo comprueba),
+  para que ni un doble clic ni dos asesores a la vez lo manden dos veces. Cada envío queda en la línea de tiempo.
+- **RPD-19 · Cancelar un pedido** (el cliente dice «ya no compro» o hay una novedad): botón **Cancelar pedido** con motivo obligatorio, antes de
+  enviar la guía. El pedido queda **Cancelado** (se ve en la lista y el Kanban), la oportunidad pasa a **Perdida** con ese motivo y el técnico deja
+  de verlo. Si ya salió la guía no se cancela: es una devolución y se atiende como caso de **Pos Venta**.
+
+### Diseño: más ordenado y profesional (pedido del dueño, 9 nov 2026)
+
+Lo que se ve hoy en la ficha (captura del dueño): textos en mayúsculas pequeñas, chips sueltos sin jerarquía, una lista larga de datos sin separar
+y botones sueltos. La propuesta, para el panel angosto de la ficha y para la pantalla ancha:
+
+- **RPD-20 · Tarjetas con encabezado y pie fijos:** cada sección (Servicio técnico, Documento, Enviar al cliente) es una tarjeta con título,
+  icono de línea (no emoji), estado a la derecha y una línea de resumen; márgenes de 12 px y separación uniforme.
+- **RPD-21 · Una sola escala de texto:** título 15 px, texto 14 px, datos secundarios 12 px **sin mayúsculas forzadas**, etiquetas en gris y
+  valores en el color normal. Los datos clave (técnico, FVE, guía) como pares «etiqueta · valor» alineados en dos columnas.
+- **RPD-22 · Estados con un solo lenguaje de colores:** verde = hecho (con ✓), azul = en curso, ámbar = falta algo, gris = no aplica o cerrado, rojo = problema.
+  Las mismas pastillas en la ficha, en Pedidos, en el Kanban y en el Embudo.
+- **RPD-23 · La barra de 5 pasos** (RPD-02) con círculos y línea, el paso actual resaltado y la fecha debajo de cada paso hecho.
+- **RPD-24 · Acciones con jerarquía:** un solo botón principal por sección (el siguiente paso); los demás secundarios. Los envíos hechos pasan a
+  **✓ enviado + hora**, sin botón (RPD-16 y RPD-17). Los botones apagados explican por qué, escrito debajo.
+- **RPD-25 · Videos y fotos con miniatura** (no un enlace «Ver»), con peso y quién lo subió en una línea.
+- **RPD-26 · Se respeta el tema de Apariencia** (claro/oscuro y colores de marca) y funciona en celular, tablet y computador.
+- Antes de construir, el dueño aprueba una **maqueta** de la ficha y de Pedidos (la hago a su orden).
+
 ## 4. Mejora B · Módulo «Pedidos» (F4·55)
 
 Nueva pantalla **Pedidos** (`/pedidos`, grupo **Atención**, junto a Embudo y Servicio técnico). **Solo consulta y filtra**; las acciones
 (enviar, subir guía) se siguen haciendo en la ficha, a un clic.
 
 **RPD-08 · Qué es un pedido.** Una venta con pago validado que entró a Alistamiento: es una fila de `alistamientos`, con su oportunidad, su
-cliente y su cotización (total, equipos, consecutivo). **Número de pedido consecutivo** (`PED-0001`…), que se asigna al entrar a Alistamiento;
-los que ya existen se numeran por fecha al migrar.
+cliente y su cotización (total, equipos, consecutivo). **Número interno consecutivo** (`PED-0001`…, decidido por el dueño), que se asigna al entrar a Alistamiento;
+los que ya existen se numeran por fecha al migrar. El **número de la FVE o del OP no es este**: lo da contabilidad y se escribe en el pedido; el **video lo sube el servicio técnico**.
 
 **RPD-09 · Lista.** Una fila por pedido, la más reciente primero:
 
@@ -86,9 +122,14 @@ los que ya existen se numeran por fecha al migrar.
 | **Servicio técnico** | técnico, videos (n de n), listo sí/no, horas en revisión |
 | **Documento** | OP o FVE con su número, o «Falta» |
 | **Envío** | transportadora, guía y hora; enviada al cliente sí/no |
-| Estado | *En alistamiento · Listo para despachar · Enviado · Entregado · Cancelado* |
+| Estado | *Por revisar · En revisión · Listo para despachar · Enviado · Entregado · Cancelado* |
 
-**RPD-10 · Filtros y búsqueda.** Estado, rango de fechas, entrega, técnico, transportadora, «sin documento», «sin enviar la guía», y búsqueda por
+**RPD-10 · Dos vistas: Lista y Kanban** (respuesta del dueño: filtrar y ver en qué estado está cada pedido). El mismo filtro vale para las dos. El **Kanban** tiene una
+columna por estado: *Por revisar · En revisión · Listo para despachar · Enviado · Entregado · Cancelado*; la tarjeta muestra pedido, cliente, equipos,
+técnico, documento (✓ o «falta»), días en el estado y alertas, y al abrirla va al detalle. **Solo se mira**: no se arrastra para mover (el estado
+lo mueven las acciones de la ficha y de Servicio técnico, y el embudo solo avanza).
+
+**RPD-10b · Filtros y búsqueda.** Estado, rango de fechas, entrega, técnico, transportadora, «sin documento», «sin enviar la guía», y búsqueda por
 cliente, teléfono, código del equipo, número de pedido, de guía o de documento. Atajos arriba con contador: *Por enviar · Enviados hoy ·
 Sin documento · Sin entregar hace más de X días*.
 
@@ -119,7 +160,8 @@ prometía RAL-01 y todavía no existe, con un enlace al pedido.
 
 ## 5. Modelo (para construir)
 
-- **Migración 0058** (la siguiente libre): `alistamientos.numero` (consecutivo, único) con su secuencia; permiso `ver_pedidos` y su asignación a roles.
+- **Migración 0058** (la siguiente libre): `alistamientos.numero` (consecutivo, único) con su secuencia; permiso `ver_pedidos` y su asignación a roles;
+  estado `cancelado` con motivo y quién; envío único de guía y 24 h para video y documento dentro de `alistamiento_para_enviar` (RPD-16 a RPD-18).
 - Función `pedidos_lista(filtros, pagina)` (SQL, `security definer`, respeta permisos) que une `alistamientos`, `oportunidades`, `leads`,
   `cotizaciones` y `alistamiento_videos` y devuelve el estado calculado; y `pedido_detalle(id)` con la línea de tiempo.
 - Índices en `alistamientos (estado)`, `(guia_en)`, `(creado_en desc)`; paginado de 50 en 50.
@@ -129,17 +171,27 @@ prometía RAL-01 y todavía no existe, con un enlace al pedido.
 
 ## 6. Plan por bloques (cada uno se prueba y se aprueba)
 
-1. **A. Ficha por pasos** (RPD-01 a RPD-07): solo pantalla. Se puede probar con el pedido que ya existe en la base.
-2. **B. Lista y detalle de Pedidos** (RPD-08 a RPD-11, RPD-14): migración 0058, lista, filtros, detalle y línea de tiempo.
-3. **C. Alertas, exportar y Embudo** (RPD-12, RPD-13, RPD-15).
+1. **A. Ficha por pasos y diseño** (RPD-01 a RPD-07, RPD-20 a RPD-26), con la **regla de envío único** (RPD-16 a RPD-18, que sí toca la base): previa **maqueta aprobada**. Se puede probar con el pedido que ya existe en la base.
+2. **B. Lista, Kanban y detalle de Pedidos** (RPD-08 a RPD-11, RPD-14): migración 0058, lista, filtros, detalle y línea de tiempo.
+3. **C. Alertas, exportar y Embudo** (RPD-12, RPD-13, RPD-15) y la cancelación (RPD-19).
 
-## 7. Por decidir con el dueño antes de construir
+## 7. Decisiones del dueño (9 nov 2026) y lo que falta
 
-| # | Pregunta | Propuesta |
+| # | Tema | Decisión |
 |---|---|---|
-| 1 | ¿«Todos los pedidos enviados» es solo los que ya tienen guía o también los que están en alistamiento? | Mostrar **todos** los pedidos con filtro de estado; por defecto, *Enviados* |
-| 2 | ¿El número de pedido `PED-0001` sirve o prefieres usar el consecutivo de la cotización? | Número propio de pedido |
-| 3 | ¿Quién ve la lista? | Administrador y asesores; contabilidad con un rol de solo lectura si lo quieres |
-| 4 | ¿Cuántas horas y días son los umbrales de las alertas (RPD-12)? | Guía: 24 h · documento: 24 h · entrega: 7 días |
-| 5 | ¿Una venta cancelada después del pago aparece en Pedidos? | Sí, con estado *Cancelado* |
-| 6 | ¿«Documento de garantía» es el OP (POS) o hay otro? | El OP; si hay otro, se agrega el tipo |
+| 1 | Qué pedidos se ven | **Todos**, con filtros **y vista Kanban** para ver en qué estado está cada uno (RPD-10) |
+| 2 | Número | **Consecutivo interno** (`PED-0001`). El número de la FVE o del OP lo pone contabilidad (vía el asesor) y el video lo sube el servicio técnico |
+| 3 | Para qué | **Controlar los procesos de pedidos**: lo ven administrador y asesores (la lista no la ve el técnico) |
+| 4 | Alertas | **Sí, con plazos** (RPD-12) |
+| 5 | Cancelación | **Sí**: el cliente puede decir «no compro» u otra novedad (RPD-19) |
+| 6 | Envío único | **Guía y video no se mandan dos veces**; video y documento se pueden enviar 24 h y luego quedan con ✓ (RPD-16 a RPD-18) |
+| 7 | Diseño | **Más ordenado y profesional** en la ficha (RPD-20 a RPD-26) |
+
+**Quedan por confirmar (propuestas mías):**
+
+1. **Las 24 horas de RPD-17**: ¿se cuentan desde el primer envío del video, o desde que el técnico lo marca listo? ¿Y si pasan sin haberlo enviado, se
+   envía con plantilla de Meta?
+2. **Plazos de las alertas** (RPD-12): guía 24 h después de «listo», documento 24 h, entrega 7 días. ¿Te sirven?
+3. **Quién escribe el FVE/OP:** hoy lo escribe el asesor con el dato de contabilidad. ¿Quieres un rol **Contabilidad** que lo escriba y vea Pedidos en solo lectura?
+4. **Cancelar con la guía ya enviada:** propongo que sea una devolución por Pos Venta (RPD-19). ¿De acuerdo?
+5. **«Documento de garantía»:** ¿es siempre el OP (POS)?
