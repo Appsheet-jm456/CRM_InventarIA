@@ -101,6 +101,34 @@ y botones sueltos. La propuesta, para el panel angosto de la ficha y para la pan
 - **RPD-26 · Se respeta el tema de Apariencia** (claro/oscuro y colores de marca) y funciona en celular, tablet y computador.
 - **Maqueta de la ficha y del Kanban aprobada por el dueño el 9 nov 2026** (pasos, tarjetas, ✓ enviado, Kanban de 5 columnas). Falta la orden de construir.
 
+### Cambiar el video o el documento: abierto en la ficha, cerrado solo con «Corregir» (pedido del dueño, 9 nov 2026, sin construir)
+
+**Cómo está hoy (bloque A):** en la ficha el asesor **puede cambiar el FVE/OP en cualquier momento**, incluso con el pedido ya Vendido o
+entregado (nada lo frena). El **video no se cambia desde la ficha**: solo lo sube el técnico en Servicio técnico mientras tiene el pedido
+**en revisión**; si ya lo marcó listo, debe pulsar «Volver a revisión» y subir otro. Cuando el pedido sale de la etapa Alistamiento
+(Despachado, Vendido, Perdido) **desaparece de Servicio técnico** y el video ya no se puede cambiar por ningún lado.
+
+**Lo que pidió el dueño:** mientras el flujo está abierto se puede cambiar; cuando el pedido se entrega y se cierra, **la ficha queda bloqueada**,
+pero desde una tabla de **Servicio técnico** o de **Pedidos** se debe poder **corregir** el video o la factura.
+
+- **RPD-27 · Abierto = editable donde se trabaja.** Mientras la oportunidad está abierta y el pedido no está cancelado: el asesor cambia el
+  FVE/OP en la ficha (como hoy) y el técnico reemplaza el video en Servicio técnico con un botón **«Reemplazar video»** que no obliga a «Volver a
+  revisión» (el video anterior queda en el historial, no se borra).
+- **RPD-28 · Cerrado = la ficha solo muestra.** Con el pedido **Vendido, Entregado o Cancelado**, la sección Documento muestra el número sin
+  formulario y el servicio técnico solo se ve. La base lo hace cumplir: `alistamiento_documento` y `alistamiento_video_registrar` se niegan con
+  el pedido cerrado.
+- **RPD-29 · «Corregir» en las tablas.** En **Pedidos** (detalle del pedido) y en **Servicio técnico** (pestaña nueva **«Cerrados»**, últimos 6
+  meses, que es lo que se guardan los videos) hay un botón **«Corregir»** para cambiar el FVE/OP o subir otro video a un pedido cerrado.
+  Pide **motivo** («factura anulada y reemplazada», «video equivocado»…), deja el valor anterior y el nuevo en la línea de tiempo y **no mueve
+  el embudo** (el pedido sigue Vendido o Entregado).
+- **RPD-30 · Quién corrige.** Permiso nuevo `corregir_pedidos`: el documento lo corrige el administrador (propuesta: también el asesor con ese
+  permiso) y el video lo sube el técnico (con «¿Quién eres?»), pero el «Corregir» de un pedido cerrado lo **autoriza** quien tenga el permiso.
+- **RPD-31 · ¿Se le envía la corrección al cliente?** Propuesta: tras corregir, se habilita **un** envío del documento o del video corregido
+  (con la misma regla de 24 h de WhatsApp), con el texto «Te enviamos tu FVE corregida»; si no, la corrección queda solo interna.
+
+**Por confirmar con el dueño:** (a) quién puede corregir un pedido cerrado (solo administrador, o también asesores con permiso); (b) si la
+corrección se le envía al cliente (RPD-31) o queda interna; (c) si un pedido **Cancelado** también se puede corregir o queda congelado.
+
 ## 4. Mejora B · Módulo «Pedidos» (F4·55)
 
 Nueva pantalla **Pedidos** (`/pedidos`, grupo **Atención**, junto a Embudo y Servicio técnico). **Solo consulta y filtra**; las acciones
