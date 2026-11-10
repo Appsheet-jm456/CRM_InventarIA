@@ -6,7 +6,7 @@
 | Tarea | Mejora | Dónde se ve | Migración |
 |---|---|---|---|
 | **F4·59** | Pago completo o pago parcial (abono) al validar el comprobante | Bandeja, Ficha → Chat, Ficha → Oportunidades | Sí |
-| **F4·60** | Catálogos: modificar el enlace o el PDF, desactivar y eliminar | Inventario → Catálogos (y acceso desde Bot) | No |
+| **F4·60** ✅🔵 | Catálogos: modificar el enlace o el PDF, desactivar y eliminar | Inventario → Catálogos (y acceso desde Bot) | 0063 |
 | **F4·61** | El asesor envía catálogos y dispara acciones desde el chat con «/» | Bandeja y Ficha → Chat | Sí (pequeña) |
 | **F4·62** | Emojis, documentos, imágenes y audios desde el chat | Bandeja y Ficha → Chat | No |
 
@@ -100,6 +100,23 @@ Pantalla: `ComprobanteCliente.tsx` (ya se usa en los tres sitios).
 - **RI-16 · Dónde vive** *(decidido por el dueño el 10 nov 2026)*: se queda en Inventario → Catálogos, con un acceso «Catálogos» en el
   menú de Bot. Lo importante para el dueño es **enviarlos desde el chat** (F4·61).
 - **Quién:** el permiso `administrar_inventario`, como hoy.
+
+**Construida el 10 nov 2026 🔵 (falta la prueba del dueño).** Migración **0063** (`catalogo_usos`, 5 pruebas en
+`supabase/pruebas/0063_catalogos_usos.sql`). `inventario/acciones.ts`: `modificarCatalogo` (borra el PDF anterior y limpia
+`meta_media_id` si cambia el archivo o el enlace), `usosCatalogo`, y la categoría o marca se guarda como ya existe si solo cambian tildes
+o mayúsculas. `FormCatalogo.tsx`: el mismo formulario agrega y modifica, con listas de categorías y marcas (del inventario y de los
+catálogos) que también aceptan una nueva; botón «Acciones ▾» con Modificar, Desactivar/Activar y Eliminar (ventana con los usos y
+«Desactivar» como alternativa). Pestaña «Catálogos ↗» en Bot. App compilada y reiniciada.
+
+**Para probarlo (dueño):** recargar Inventario → Catálogos; en un catálogo, Acciones ▾ → Modificar, cambiar el enlace y guardar; luego
+Eliminar en uno que use el bot (sale la lista de cuadros) y pulsar Cancelar.
+
+**Hallazgos al revisar los datos (10 nov 2026):**
+- La categoría está escrita «Portatil» en Lenovo (305), HP (307) y los Gamer (308, 309, 311), y «Portatiles» en Dell (304) y el
+  Unificado (312). El bot busca el catálogo **por marca** con la categoría «Portátiles» (Acciones con «el catálogo de la marca» y
+  la ruta de marcas del menú), así que **Lenovo, HP y Gamer nunca salen por esa vía**. Los cuadros de Avi Ventas sí funcionan porque
+  eligen el catálogo por número. Arreglo: Modificar y poner la categoría «Portatiles» en esos cinco.
+- El cuadro «Catálogo Dell» del bot **Distribuidor** (versión publicada) apunta al catálogo 39, que ya no existe: no envía nada.
 
 **Categorías que el dueño va a cargar:** Portátiles usados, Portátiles nuevos, Torres Tiny, SFF, Combos, Portátiles Gamer, Monitores
 nuevos y usados, y Tablets.

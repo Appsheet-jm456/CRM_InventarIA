@@ -168,38 +168,71 @@ export async function aplicarExcel(productos: FilaCarga[]): Promise<Previa> {
 }
 
 // --------------------------------------------------------------------------- //
-// Catálogos (RI-05)
+// Catálogos (RI-05; modificar y usos: F4·60, RI-11 a RI-16)
 // --------------------------------------------------------------------------- //
-export async function crearCatalogo(_: Resultado, datos: FormData): Promise<Resultado> {
+const sinTildes = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim()
+
+// RI-15: si la categoría o la marca ya existen escritas de otra forma (tildes, mayúsculas), se guarda la que ya está.
+async function comoExiste(campo: 'categoria' | 'marca', valor: string) {
+  if (!valor) return ''
+  const supabase = crearCliente()
+  const [{ data: p }, { data: c }] = await Promise.all([
+    supabase.from('productos').select(campo).neq(campo, '').limit(2000),
+    supabase.from('catalogos').select(campo).neq(campo, ''),
+  ])
+  const todas = [...(p ?? []), ...(c ?? [])].map((f) => String((f as Record<string, unknown>)[campo] ?? ''))
+  return todas.find((x) => sinTildes(x) === sinTildes(valor)) ?? valor
+}
+
+async function subirPdf(pdf: File): Promise<string | Resultado> {
+  if (pdf.type !== 'application/pdf') return { error: 'El archivo tiene que ser PDF.' }
+  if (pdf.size > MAX_PDF) return { error: 'El PDF pesa más de 20 MB.' }
+  const limpio = pdf.name.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^\w.-]+/g, '_')
+  const ruta = `${Date.now()}-${limpio}`
+  const { error } = await crearCliente().storage.from('catalogos').upload(ruta, pdf, { contentType: 'application/pdf' })
+  if (error) return { error: /policy|security/i.test(error.message) ? SIN_PERMISO : `No se pudo subir el PDF: ${error.message}` }
+  return ruta
+}
+
+// Lo que comparten Agregar y Modificar: nombre, tipo, categoría, marca y el enlace (el PDF se resuelve aparte).
+type DatosCatalogo = { nombre: string; tipo: string; todos: boolean; categoria: string; marca: string; url: string }
+async function leerCatalogo(datos: FormData): Promise<{ error: string } | { fila: DatosCatalogo }> {
   const nombre = String(datos.get('nombre') ?? '').trim()
   const tipo = String(datos.get('tipo') ?? '')
   const todos = datos.get('todos') === '1'
   if (!nombre) return { error: 'Ponle un nombre al catálogo.' }
-  const fila = {
-    nombre, tipo, todos,
-    categoria: todos ? '' : String(datos.get('categoria') ?? '').trim(),
-    marca: todos ? '' : String(datos.get('marca') ?? '').trim(),
-    url: '', archivo: '',
+  if (tipo !== 'drive' && tipo !== 'pdf') return { error: 'Elige si es un PDF o un enlace de Drive.' }
+  if (tipo === 'pdf' && todos) return { error: 'El catálogo "Todos" es el enlace de Drive con todos los catálogos.' }
+  let url = ''
+  if (tipo === 'drive') {
+    url = String(datos.get('url') ?? '').trim()
+    if (!/^https:\/\/(drive|docs)\.google\.com\//.test(url)) return { error: 'Pega un enlace de Google Drive (https://drive.google.com/…).' }
   }
+  return { fila: {
+    nombre, tipo, todos, url,
+    categoria: todos ? '' : await comoExiste('categoria', String(datos.get('categoria') ?? '').trim()),
+    marca: todos ? '' : await comoExiste('marca', String(datos.get('marca') ?? '').trim()),
+  } }
+}
+
+function catalogosCambiaron() {
+  revalidatePath('/inventario/catalogos')
+  revalidatePath('/bot', 'layout') // el cuadro Catálogos del lienzo y las Acciones lo ven enseguida
+  revalidatePath('/agente', 'layout')
+}
+
+export async function crearCatalogo(_: Resultado, datos: FormData): Promise<Resultado> {
+  const r = await leerCatalogo(datos)
+  if ('error' in r) return r
+  const fila = { ...r.fila, archivo: '' }
   const supabase = crearCliente()
 
-  if (tipo === 'drive') {
-    const url = String(datos.get('url') ?? '').trim()
-    if (!/^https:\/\/(drive|docs)\.google\.com\//.test(url)) return { error: 'Pega un enlace de Google Drive (https://drive.google.com/…).' }
-    fila.url = url
-  } else if (tipo === 'pdf') {
-    if (todos) return { error: 'El catálogo "Todos" es el enlace de Drive con todos los catálogos.' }
+  if (fila.tipo === 'pdf') {
     const pdf = datos.get('pdf')
     if (!(pdf instanceof File) || pdf.size === 0) return { error: 'Elige el PDF.' }
-    if (pdf.type !== 'application/pdf') return { error: 'El archivo tiene que ser PDF.' }
-    if (pdf.size > MAX_PDF) return { error: 'El PDF pesa más de 20 MB.' }
-    const limpio = pdf.name.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^\w.-]+/g, '_')
-    const ruta = `${Date.now()}-${limpio}`
-    const { error } = await supabase.storage.from('catalogos').upload(ruta, pdf, { contentType: 'application/pdf' })
-    if (error) return { error: /policy|security/i.test(error.message) ? SIN_PERMISO : `No se pudo subir el PDF: ${error.message}` }
-    fila.archivo = ruta
-  } else {
-    return { error: 'Elige si es un PDF o un enlace de Drive.' }
+    const subida = await subirPdf(pdf)
+    if (typeof subida !== 'string') return subida
+    fila.archivo = subida
   }
 
   const { data: creado, error } = await supabase.from('catalogos').insert(fila).select('id').single()
@@ -207,16 +240,62 @@ export async function crearCatalogo(_: Resultado, datos: FormData): Promise<Resu
     if (fila.archivo) await supabase.storage.from('catalogos').remove([fila.archivo])
     return { error: error.code === '23505' ? 'Ya hay un catálogo "Todos" activo: desactívalo primero.' : mensaje(error) }
   }
-  revalidatePath('/inventario/catalogos')
-  revalidatePath('/bot', 'layout') // el cuadro Catálogos del lienzo lo ofrece enseguida
-  return { ok: `Catálogo ${nombre} agregado.`, id: creado.id }
+  catalogosCambiaron()
+  return { ok: `Catálogo ${fila.nombre} agregado.`, id: creado.id }
+}
+
+// RI-12 y RI-13: modificar conserva el número del catálogo (el bot y las Acciones siguen enviándolo). Si cambia el archivo o el
+// enlace, se borra el PDF anterior y se olvida la copia que Meta tenía guardada, para que el cliente reciba el nuevo.
+export async function modificarCatalogo(_: Resultado, datos: FormData): Promise<Resultado> {
+  const id = Number(datos.get('id'))
+  if (!id) return { error: 'Falta el catálogo.' }
+  const r = await leerCatalogo(datos)
+  if ('error' in r) return r
+  const leido = r.fila
+  const supabase = crearCliente()
+  const { data: actual } = await supabase.from('catalogos').select('tipo, archivo, url').eq('id', id).maybeSingle()
+  if (!actual) return { error: 'Ese catálogo ya no existe.' }
+
+  let archivo = ''
+  let subido = ''
+  if (leido.tipo === 'pdf') {
+    const pdf = datos.get('pdf')
+    if (pdf instanceof File && pdf.size > 0) {
+      const subida = await subirPdf(pdf)
+      if (typeof subida !== 'string') return subida
+      archivo = subido = subida
+    } else if (actual.tipo === 'pdf' && actual.archivo) {
+      archivo = actual.archivo // se queda el mismo PDF
+    } else {
+      return { error: 'Elige el PDF.' }
+    }
+  }
+
+  const cambiaContenido = archivo !== actual.archivo || leido.url !== actual.url
+  const fila = { ...leido, archivo, ...(cambiaContenido ? { meta_media_id: '', meta_media_en: null } : {}) }
+  const { data, error } = await supabase.from('catalogos').update(fila).eq('id', id).select('id')
+  if (error || !data?.length) {
+    if (subido) await supabase.storage.from('catalogos').remove([subido])
+    if (error) return { error: error.code === '23505' ? 'Ya hay un catálogo "Todos" activo: desactívalo primero.' : mensaje(error) }
+    return { error: SIN_PERMISO }
+  }
+  if (actual.archivo && actual.archivo !== archivo) await supabase.storage.from('catalogos').remove([actual.archivo])
+  catalogosCambiaron()
+  return { ok: `Catálogo ${leido.nombre} actualizado.`, id }
+}
+
+// RI-14: qué cuadros del bot (publicado o borrador) y qué Acciones lo envían por su número (migración 0063).
+export async function usosCatalogo(id: number): Promise<{ usos: string[]; error?: string }> {
+  const { data, error } = await crearCliente().rpc('catalogo_usos', { p_catalogo: id })
+  if (error) return { usos: [], error: mensaje(error) }
+  return { usos: ((data ?? []) as { donde: string }[]).map((u) => u.donde) }
 }
 
 export async function activarCatalogo(id: number, activo: boolean): Promise<Resultado> {
   const { data, error } = await crearCliente().from('catalogos').update({ activo }).eq('id', id).select('id')
   if (error) return { error: error.code === '23505' ? 'Ya hay un catálogo "Todos" activo: desactívalo primero.' : mensaje(error) }
   if (!data?.length) return { error: SIN_PERMISO }
-  revalidatePath('/inventario/catalogos')
+  catalogosCambiaron()
   return {}
 }
 
@@ -226,6 +305,6 @@ export async function borrarCatalogo(id: number): Promise<Resultado> {
   if (error) return { error: mensaje(error) }
   if (!data?.length) return { error: SIN_PERMISO }
   if (data[0].archivo) await supabase.storage.from('catalogos').remove([data[0].archivo])
-  revalidatePath('/inventario/catalogos')
+  catalogosCambiaron()
   return {}
 }

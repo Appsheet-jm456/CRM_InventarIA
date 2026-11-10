@@ -106,6 +106,8 @@ export default async function Bot({ searchParams }: { searchParams: { t?: string
         <Link href="/bot?t=horario" className={`pastilla${pestana === 'horario' ? ' activa' : ''}`}>Horario y festivos</Link>
         <Link href="/bot?t=interruptores" className={`pastilla${pestana === 'interruptores' ? ' activa' : ''}`}>Interruptores</Link>
         <Link href="/bot?t=retorno" className={`pastilla${pestana === 'retorno' ? ' activa' : ''}`}>Retorno y seguimiento</Link>
+        {/* F4·60 (RI-16): los catálogos viven en Inventario; acceso directo desde Bot */}
+        <Link href="/inventario/catalogos" className="pastilla">Catálogos ↗</Link>
       </div>
       {contenido}
     </>

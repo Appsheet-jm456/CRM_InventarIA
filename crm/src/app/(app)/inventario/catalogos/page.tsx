@@ -2,16 +2,32 @@ import { obtenerSesion, puede } from '@/lib/sesion'
 import { crearCliente } from '@/lib/supabase/server'
 import { rutaArchivo } from '@/lib/inventario'
 import { Pestanas } from '../Pestanas'
-import { AccionesCatalogo, FormCatalogo } from './FormCatalogo'
+import { AccionesCatalogo, FormCatalogo, type CatalogoEditable, type OpcionesCatalogo } from './FormCatalogo'
 
-type Catalogo = { id: number; nombre: string; categoria: string; marca: string; tipo: 'pdf' | 'drive'; archivo: string; url: string; todos: boolean; activo: boolean }
+// RI-15: categorías y marcas del inventario y de los catálogos, sin repetir la misma escrita de otra forma.
+function unicas(valores: string[]) {
+  const vistas = new Map<string, string>()
+  for (const v of valores.map((x) => x.trim()).filter(Boolean)) {
+    const clave = v.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+    if (!vistas.has(clave)) vistas.set(clave, v)
+  }
+  return [...vistas.values()].sort((a, b) => a.localeCompare(b, 'es'))
+}
 
 export default async function Catalogos() {
   const sesion = (await obtenerSesion())!
   const administra = puede(sesion, ['administrar_inventario'])
-  const { data } = await crearCliente().from('catalogos').select('id, nombre, categoria, marca, tipo, archivo, url, todos, activo').order('todos', { ascending: false }).order('id')
-  const catalogos = (data ?? []) as Catalogo[]
+  const supabase = crearCliente()
+  const [{ data }, { data: productos }] = await Promise.all([
+    supabase.from('catalogos').select('id, nombre, categoria, marca, tipo, archivo, url, todos, activo').order('todos', { ascending: false }).order('id'),
+    supabase.from('productos').select('categoria, marca').limit(2000),
+  ])
+  const catalogos = (data ?? []) as CatalogoEditable[]
   const todos = catalogos.find((c) => c.todos && c.activo)
+  const opciones: OpcionesCatalogo = {
+    categorias: unicas([...(productos ?? []).map((p) => p.categoria ?? ''), ...catalogos.map((c) => c.categoria)]),
+    marcas: unicas([...(productos ?? []).map((p) => p.marca ?? ''), ...catalogos.map((c) => c.marca)]),
+  }
 
   return (
     <>
@@ -35,7 +51,7 @@ export default async function Catalogos() {
                     <td>{c.todos ? <span className="chip acc">Todos</span> : [c.categoria, c.marca].filter(Boolean).join(' · ') || 'General'}</td>
                     <td>{c.tipo === 'pdf' ? 'PDF' : 'Drive'}</td>
                     <td><span className={`chip ${c.activo ? 'ok' : 'neu'}`}>{c.activo ? 'Activo' : 'Inactivo'}</span></td>
-                    {administra && <td className="r"><AccionesCatalogo id={c.id} activo={c.activo} nombre={c.nombre} /></td>}
+                    {administra && <td className="r"><AccionesCatalogo catalogo={c} opciones={opciones} /></td>}
                   </tr>
                 ))}
               </tbody>
@@ -43,7 +59,7 @@ export default async function Catalogos() {
           </div>
         )}
       </section>
-      {administra && <FormCatalogo />}
+      {administra && <FormCatalogo opciones={opciones} />}
     </>
   )
 }
