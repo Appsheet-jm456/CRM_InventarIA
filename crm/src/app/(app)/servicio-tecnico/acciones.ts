@@ -1,6 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { crearClienteAdmin } from '@/lib/supabase/admin'
 import { crearCliente } from '@/lib/supabase/server'
 
 export type Resultado = { error?: string; ok?: string }
@@ -112,4 +113,29 @@ export async function marcarEntregado(id: number, lead: number): Promise<Resulta
   const r = await llamar('alistamiento_entregado', { p_id: id }, 'Entregado en tienda: el pedido quedó Vendido.')
   revalidatePath(`/leads/${lead}`)
   return r
+}
+
+// F4·63: el PDF o la foto del OP / FVE. Se sube con la sesión del asesor (la política del bucket pide gestionar_oportunidades),
+// la base revisa el pedido y lo registra; el archivo anterior se borra.
+const DOCUMENTO_MIME: Record<string, string> = { 'application/pdf': 'pdf', 'image/jpeg': 'jpg', 'image/png': 'png' }
+export async function subirArchivoDocumento(id: number, lead: number, datos: FormData): Promise<Resultado> {
+  const archivo = datos.get('archivo')
+  if (!(archivo instanceof File) || archivo.size === 0) return { error: 'Elige el PDF o la foto del documento.' }
+  const ext = DOCUMENTO_MIME[archivo.type]
+  if (!ext) return { error: 'El documento debe ser PDF, JPG o PNG.' }
+  if (archivo.size > 10 * 1024 * 1024) return { error: 'El documento pesa más de 10 MB.' }
+  const limpio = (archivo.name || `documento.${ext}`).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^\w.-]+/g, '_').slice(-80)
+  const ruta = `${id}/${Date.now()}-${limpio}`
+  const sb = crearCliente()
+  const { error: errSubida } = await sb.storage.from('documentos').upload(ruta, archivo, { contentType: archivo.type })
+  if (errSubida) return { error: /policy|security/i.test(errSubida.message) ? 'No tienes permiso para subir documentos.' : `No se pudo subir: ${errSubida.message}` }
+  const { data: anterior, error } = await sb.rpc('alistamiento_documento_archivo', { p_id: id, p_ruta: ruta, p_mime: archivo.type, p_nombre: archivo.name })
+  if (error) {
+    await crearClienteAdmin().storage.from('documentos').remove([ruta])
+    return { error: error.code === '42501' ? 'No tienes permiso para esta operación.' : error.message }
+  }
+  if (anterior) await crearClienteAdmin().storage.from('documentos').remove([anterior as string])
+  revalidatePath(`/leads/${lead}`)
+  revalidatePath('/pedidos')
+  return { ok: 'Archivo del documento guardado. Se envía al cliente con «Enviar» en «Enviar al cliente».' }
 }

@@ -51,7 +51,7 @@ select case when pg_temp.falla(format('select alistamiento_checklist(%s, %L, tru
        || ' 9 - un punto que no existe se rechaza';
 
 select case when pg_temp.falla(format('select alistamiento_listo(%s, %L)', :a, 'Camilo Osorio')) then 'ok' else 'not ok' end
-       || ' 10 - sin OP ni FVE no se puede marcar listo (lo pone el asesor)';
+       || ' 10 - sin video no se puede marcar listo (desde la 0068 el OP o la FVE ya no lo detienen)';
 select case when pg_temp.falla(format('select alistamiento_documento(%s, %L, %L)', :a, 'XYZ', '123')) then 'ok' else 'not ok' end
        || ' 11 - el documento solo es OP o FVE';
 select alistamiento_documento(:a, 'FVE', ' FVE-1234 ');

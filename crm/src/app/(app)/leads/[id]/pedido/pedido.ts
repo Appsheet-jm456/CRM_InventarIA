@@ -7,6 +7,8 @@ export type Datos = {
   estado: 'por_revisar' | 'en_revision' | 'listo'
   doc_tipo: 'OP' | 'FVE' | null
   doc_numero: string | null
+  doc_ruta?: string | null // F4·63: el PDF o la foto del documento
+  doc_nombre?: string | null
   creado_en: string
   tomado_en: string | null
   listo_en: string | null
@@ -63,11 +65,12 @@ export function siguiente(d: Datos, entrega: Entrega, ctx: { videosListos: boole
   if (d.correccion_documento_en && (!d.documento_enviado_en || d.documento_enviado_en < d.correccion_documento_en)) {
     return { texto: `Envía al cliente su ${nombreDocumento(d.doc_tipo)} corregida`, seccion: 'enviar', tono: 'aviso' }
   }
-  if (!d.doc_numero) return { texto: 'Falta el documento: escribe el OP o la FVE', seccion: 'documento', tono: 'aviso' }
+  // F4·63: el documento ya no detiene al técnico; se pide cuando el equipo está revisado (antes de enviar o entregar).
   if (d.estado === 'por_revisar') return { texto: 'Esperando que el servicio técnico tome el pedido', seccion: 'tecnico', tono: 'info' }
   if (d.estado === 'en_revision') {
     return { texto: `El servicio técnico está revisando · ${Math.min(ctx.videos, ctx.equipos)} de ${ctx.equipos} videos`, seccion: 'tecnico', tono: 'info' }
   }
+  if (!d.doc_numero) return { texto: 'Falta el documento: escribe el OP o la FVE y sube su PDF', seccion: 'documento', tono: 'aviso' }
   if (!entrega) return { texto: 'Marca en la pestaña Principal si la venta es online o en tienda', seccion: null, tono: 'aviso' }
   if (!d.video_enviado_en && ctx.videosListos) return { texto: 'Envía al cliente el video de la revisión', seccion: 'enviar', tono: 'aviso' }
   if (!d.documento_enviado_en) return { texto: `Envía al cliente su ${nombreDocumento(d.doc_tipo)}`, seccion: 'enviar', tono: 'aviso' }

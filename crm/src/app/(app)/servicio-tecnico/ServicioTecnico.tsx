@@ -275,7 +275,6 @@ function Resumen({ p, quien, ocupado, puedeCorregir, puedeEnviar, aviso, hacer, 
   hacer: (accion: () => Promise<Resultado>, pregunta?: string) => void; autorizar: () => void; alSubir: (r: Resultado) => void
 }) {
   const mio = p.tecnico === quien
-  const sinDoc = !p.doc_numero
   const faltan = equiposDe(p).filter((e) => !(p.videos ?? []).some((v) => v.equipo_codigo === e.codigo && (v.estado === 'listo' || v.estado === 'procesando')))
   const enRevision = !p.cerrado && p.estado === 'en_revision'
   const autorizada = !!p.correccion_video_autorizada_en
@@ -287,7 +286,6 @@ function Resumen({ p, quien, ocupado, puedeCorregir, puedeEnviar, aviso, hacer, 
   const sig = p.cerrado ? { t: p.correccion_video_autorizada_en ? `Video corregido autorizado (${p.correccion_video_motivo}): súbelo abajo.` : 'Pedido cerrado: solo se ve.', tono: p.correccion_video_autorizada_en ? 'aviso' : 'info' }
     : p.estado === 'por_revisar' ? { t: 'Toma el pedido para empezar la revisión.', tono: 'aviso' }
     : enRevision && !mio ? { t: `Lo está revisando ${p.tecnico}.`, tono: 'info' }
-    : enRevision && sinDoc ? { t: 'Falta el documento (OP o FVE): lo pone el asesor.', tono: 'aviso' }
     : enRevision && faltan.length ? { t: `Sube ${faltan.length === 1 ? 'el video' : `${faltan.length} videos`} (uno por equipo, de 1 a 2 minutos).`, tono: 'aviso' }
     : enRevision ? { t: 'Todo listo: pulsa «Revisado, listo para despachar».', tono: 'aviso' }
     : { t: 'Listo para despachar: el asesor envía la guía o avisa al cliente.', tono: 'ok' }
@@ -365,7 +363,7 @@ function Resumen({ p, quien, ocupado, puedeCorregir, puedeEnviar, aviso, hacer, 
 
       <div className="ped-card ped-cuerpo">
         <span className="ped-t"><span className="ped-ico"><Icono nombre="documento" /></span>Documento</span>
-        {p.doc_numero ? <span><span className="chip ok">{p.doc_tipo} {p.doc_numero}</span></span> : <small className="ped-aviso">Falta el documento (OP o FVE): lo pone el asesor.</small>}
+        {p.doc_numero ? <span><span className="chip ok">{p.doc_tipo} {p.doc_numero}</span></span> : <small className="muted">Pendiente: lo pone el asesor (no detiene la revisión).</small>}
       </div>
 
       {!p.cerrado && (
@@ -374,7 +372,7 @@ function Resumen({ p, quien, ocupado, puedeCorregir, puedeEnviar, aviso, hacer, 
             <button className="btn primary" disabled={ocupado} onClick={() => hacer(() => tomarPedido(p.id, quien))}>Tomar pedido</button>
           )}
           {enRevision && mio && (
-            <button className="btn primary" disabled={ocupado || sinDoc || faltan.length > 0}
+            <button className="btn primary" disabled={ocupado || faltan.length > 0}
               onClick={() => hacer(() => marcarListo(p.id, quien), '¿El equipo quedó revisado y funcional, listo para despachar?')}>Revisado, listo para despachar</button>
           )}
           {p.estado === 'listo' && (

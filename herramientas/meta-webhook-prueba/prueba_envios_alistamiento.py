@@ -120,5 +120,17 @@ ok(r["ok"] and len(videos_enviados) == 1 and "corregido" in ENVIADOS[0]["text"][
 for k in ("correccion_video_en", "video_enviado_en", "correccion_video_id"):
     A.pop(k, None)
 
+# F4·63: con el archivo del documento, el cliente recibe el PDF (o la foto) con el texto como pie
+A.update(doc_ruta="7/fve-88.pdf", doc_mime="application/pdf", doc_nombre="FVE-88.pdf")
+r = correr("documento")
+ok(r["ok"] and [m["type"] for m in ENVIADOS] == ["document"] and SUBIDOS == [("documentos:7/fve-88.pdf", "application/pdf")]
+   and ENVIADOS[0]["document"]["filename"] == "FVE-88.pdf" and "FVE-88" in ENVIADOS[0]["document"]["caption"],
+   "con PDF: un solo mensaje, el archivo con su nombre y el número en el pie")
+A.update(doc_ruta="7/op.jpg", doc_mime="image/jpeg", doc_nombre="op.jpg")
+r = correr("documento")
+ok(r["ok"] and [m["type"] for m in ENVIADOS] == ["image"] and "FVE-88" in ENVIADOS[0]["image"]["caption"], "con foto: la imagen con el pie")
+for k in ("doc_ruta", "doc_mime", "doc_nombre"):
+    A.pop(k, None)
+
 print(f"\n{n - fallos}/{n} pruebas bien")
 sys.exit(1 if fallos else 0)

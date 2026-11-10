@@ -5,7 +5,7 @@ import { Icono, type ClaveIcono } from '@/components/Iconos'
 import { MOTIVOS_CANCELAR } from '@/components/MotivoPerdida'
 import { clienteNavegador, subirConAvance } from '@/lib/supabase/navegador'
 import { OportunidadesCliente, type Embudo, type Etapa } from '../../../bandeja/OportunidadesCliente'
-import { autorizarVideoCorregido, cancelarPedido, corregirDocumento, enviarAlCliente, guardarDocumento, marcarEntregado, registrarGuia, type Resultado } from '../../../servicio-tecnico/acciones'
+import { autorizarVideoCorregido, cancelarPedido, corregirDocumento, enviarAlCliente, guardarDocumento, marcarEntregado, registrarGuia, subirArchivoDocumento, type Resultado } from '../../../servicio-tecnico/acciones'
 import { CHECKLIST, ESTADO, hora } from '../../../servicio-tecnico/ServicioTecnico'
 import { VideosEquipo, type Video } from '../../../servicio-tecnico/VideosEquipo'
 import { PagosPedido, saldo, type Pago } from './PagosPedido'
@@ -97,7 +97,7 @@ export function PedidoCliente({ lead, puedeDocumento, puedeCorregir, puedePagos 
   const cargar = useCallback(async () => {
     const sb = clienteNavegador()
     const { data, error } = await sb.from('alistamientos')
-      .select('id, numero, oportunidad_id, equipos, doc_tipo, doc_numero, estado, tecnico, tomado_en, listo_en, listo_por, checklist, creado_en, ' +
+      .select('id, numero, oportunidad_id, equipos, doc_tipo, doc_numero, doc_ruta, doc_nombre, estado, tecnico, tomado_en, listo_en, listo_por, checklist, creado_en, ' +
         'oportunidades(estado, valor_estimado, etapas(nombre)), leads(atributos), transportadora, numero_guia, guia_en, guia_enviada_en, ' +
         'documento_enviado_en, video_enviado_en, primer_documento_en, primer_video_en, aviso_tienda_en, entregado_en, cancelado_en, cancelado_motivo, ' +
         'correccion_documento_en, correccion_video_autorizada_en, correccion_video_motivo, correccion_video_en, ' +
@@ -293,7 +293,10 @@ export function PedidoCliente({ lead, puedeDocumento, puedeCorregir, puedePagos 
             <button className="btn primary chico" disabled={ocupado || !numero.trim() || (numero.trim() === fila.doc_numero && tipo === fila.doc_tipo)}>Guardar</button>
           </form>
         ) : fila.doc_numero && <b>{fila.doc_tipo} {fila.doc_numero}</b>}
-        {!fila.doc_numero && !cerrado && <small className="ped-aviso">El técnico no puede marcar «listo para despachar» hasta que pongas el documento.</small>}
+        {/* F4·63: el PDF o la foto del documento (contabilidad), que el cliente recibe al enviarlo */}
+        <ArchivoDocumento id={fila.id} lead={lead} ruta={fila.doc_ruta ?? null} nombre={fila.doc_nombre ?? null}
+          puede={puedeDocumento && !cancelado && (!cerrado || corregible)} cerrado={cerrado} alCambiar={() => { cargar(); alCambiar() }} />
+        {!fila.doc_numero && !cerrado && <small className="muted">No detiene al servicio técnico: ponlo cuando contabilidad lo tenga y envíalo al cliente.</small>}
       </Seccion>
 
       <Seccion id="enviar" icono="enviar" titulo="Enviar al cliente" ir={ir} defecto={!cancelado && listo && sig?.tono !== 'ok'}
@@ -390,6 +393,51 @@ export function PedidoCliente({ lead, puedeDocumento, puedeCorregir, puedePagos 
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+// F4·63: subir, ver o reemplazar el PDF o la foto del OP / FVE.
+function ArchivoDocumento({ id, lead, ruta, nombre, puede, cerrado, alCambiar }: {
+  id: number; lead: number; ruta: string | null; nombre: string | null; puede: boolean; cerrado: boolean; alCambiar: () => void
+}) {
+  const entrada = useRef<HTMLInputElement>(null)
+  const [ocupado, setOcupado] = useState(false)
+  const [aviso, setAviso] = useState<Resultado>({})
+  async function ver() {
+    if (!ruta) return
+    const { data } = await clienteNavegador().storage.from('documentos').createSignedUrl(ruta, 300)
+    if (data?.signedUrl) window.open(data.signedUrl, '_blank', 'noopener')
+    else setAviso({ error: 'No se pudo abrir el archivo.' })
+  }
+  async function subir(f: File | undefined) {
+    if (!f) return
+    if (cerrado && !confirm('El pedido está cerrado: reemplazar el documento queda como corrección y habilita un envío más. ¿Seguir?')) return
+    setOcupado(true)
+    const datos = new FormData()
+    datos.append('archivo', f)
+    let r: Resultado
+    try { r = await subirArchivoDocumento(id, lead, datos) } catch { r = { error: 'No se pudo subir el archivo.' } }
+    setOcupado(false)
+    setAviso(r)
+    if (!r.error) alCambiar()
+  }
+  return (
+    <div style={{ display: 'grid', gap: 6 }}>
+      <div className="row" style={{ gap: 6 }}>
+        {ruta ? (
+          <>
+            <span className="chip ok">📎 {nombre || 'Documento'}</span>
+            <button type="button" className="btn chico" onClick={ver}>Ver</button>
+            {puede && <button type="button" className="btn chico" disabled={ocupado} onClick={() => entrada.current?.click()}>{ocupado ? 'Subiendo…' : 'Reemplazar'}</button>}
+          </>
+        ) : puede ? (
+          <button type="button" className="btn chico" disabled={ocupado} onClick={() => entrada.current?.click()}>{ocupado ? 'Subiendo…' : '📎 Subir PDF o foto del documento'}</button>
+        ) : <small className="muted">Sin archivo del documento.</small>}
+        <input ref={entrada} type="file" hidden accept="application/pdf,image/jpeg,image/png" onChange={(e) => { subir(e.target.files?.[0]); e.target.value = '' }} />
+      </div>
+      {!ruta && puede && <small className="muted">PDF, JPG o PNG hasta 10 MB. Al enviar el documento, el cliente recibe el archivo con el número como pie.</small>}
+      {(aviso.error || aviso.ok) && <small className={aviso.error ? 'bad' : 'muted'}>{aviso.error ?? aviso.ok}</small>}
     </div>
   )
 }

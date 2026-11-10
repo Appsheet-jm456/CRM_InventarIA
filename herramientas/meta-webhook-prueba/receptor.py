@@ -655,7 +655,16 @@ def _enviar_alistamiento(pedido):
         if not enviados_video:
             return {"ok": False, "error": "No hay videos listos para enviar."}
     elif que == "documento":
-        mensajes.append(alistamiento.texto_documento(a, corregido))
+        texto = alistamiento.texto_documento(a, corregido)
+        if a.get("doc_ruta"):  # F4·63: el PDF o la foto que subió el asesor, con el texto de siempre como pie
+            nombre = a.get("doc_nombre") or a["doc_ruta"].rsplit("/", 1)[-1]
+            mime = a.get("doc_mime") or "application/pdf"
+            media_id = subir_a_meta(db.descargar("documentos", a["doc_ruta"]), mime, nombre)
+            pie = texto["text"]["body"][:1024]
+            mensajes.append({"type": "document", "document": {"id": media_id, "filename": nombre, "caption": pie}} if mime == "application/pdf"
+                            else {"type": "image", "image": {"id": media_id, "caption": pie}})
+        else:
+            mensajes.append(texto)
     elif que == "guia":
         nombre = a["guia_ruta"].rsplit("/", 1)[-1]
         mime = "image/png" if nombre.lower().endswith(".png") else "image/jpeg"

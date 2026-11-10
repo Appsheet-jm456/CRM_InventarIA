@@ -203,3 +203,19 @@ El dueño pidió que **Servicio técnico** se vea como el módulo **Pedidos**: e
 
 **Por confirmar al construir:** (a) si «enviar el OP o FVE al cliente» es solo el número o también el archivo (se prevén ambos); (b) que la falta del
 OP o FVE detenga el botón del técnico (lo dejé así); (c) que la pantalla «Servicio técnico» sea una vista aparte y no el embudo completo.
+
+
+## Documento sin bloqueo y con archivo (F4·63, 10 nov 2026, migración 0068)
+
+**Pedido del dueño:** el servicio técnico marca «Revisado, listo para despachar» **sin esperar el OP o la FVE**; contabilidad lo hace
+después, el asesor lo sube y lo envía al cliente. Cambia RAL-03 (antes el documento era obligatorio para «listo»).
+
+- **RAL-11 · El documento no detiene al técnico.** «Listo» pide solo la revisión y un video por equipo. El «Siguiente paso» del pedido
+  pide el documento cuando el equipo ya está revisado. Para **enviar** el documento al cliente sigue haciendo falta el número.
+- **RAL-12 · Archivo del documento.** En Ficha → Oportunidades → Documento: «📎 Subir PDF o foto del documento» (PDF, JPG o PNG hasta
+  10 MB, bucket privado `documentos`), «Ver» y «Reemplazar». Al enviarlo, el cliente recibe **el archivo** con el texto de siempre
+  («Tu FVE es la N.° …») como pie. Sin archivo, sale solo el texto, como antes.
+- **RAL-13 · Pedido cerrado:** reemplazar el archivo pide `corregir_pedidos`, queda como corrección y habilita un envío más (RPD-31).
+- Construido: migración 0068 (`alistamiento_listo` sin el documento, `alistamiento_documento_archivo`, 6 pruebas; 0054 a 0060 siguen en
+  verde), `receptor._enviar_alistamiento` (documento con archivo; `prueba_envios_alistamiento.py` 17/17), `subirArchivoDocumento` y
+  `ArchivoDocumento` en `PedidoCliente.tsx`, Servicio técnico sin el aviso de bloqueo. App y receptor reiniciados.
