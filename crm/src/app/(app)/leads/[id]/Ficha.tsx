@@ -7,6 +7,7 @@ import { clienteNavegador } from '@/lib/supabase/navegador'
 import { asignar, cerrar, liberar, reanudarBot, responder, tomar } from '../../bandeja/acciones'
 import { Entrega, Media, hora, iniciales, partirOpciones, type Mensaje } from '../../bandeja/Bandeja'
 import { ComprobanteCliente } from '../../bandeja/ComprobanteCliente'
+import { useHerramientas } from '../../bandeja/Herramientas'
 import { PedidoCliente } from './pedido/PedidoCliente'
 import { type Embudo, type Etapa } from '../../bandeja/OportunidadesCliente'
 import { ComponerPlantilla } from '../../bandeja/Plantilla'
@@ -301,9 +302,11 @@ export function Ficha({ lead: inicial, yo, usuarios, asesores, embudos, etapas, 
 
   const ultimoCliente = [...(mensajes ?? [])].reverse().find((m) => m.lado === 'cliente')
   const enVentana = !!ultimoCliente && Date.now() - new Date(ultimoCliente.creado_en).getTime() < VENTANA_MS
-  const busquedaRapida = caja === 'chat' ? /^\/(\S*)$/.exec(escrito) : null
-  const coincidencias = busquedaRapida
-    ? rapidas.filter((r) => `${r.atajo} ${r.titulo}`.toLowerCase().includes(busquedaRapida[1].toLowerCase())).slice(0, 6) : []
+  // «/» o ⚡ (F4·61): respuestas rápidas, catálogos, acciones y flujos; solo en la pestaña Chat y dentro de las 24 h.
+  const herramientas = useHerramientas({
+    lead: lead.id, texto: escrito, setTexto: setEscrito, nombreCliente: lead.nombre ?? '', rapidas, activo: caja === 'chat' && enVentana,
+    alEnviar: (r) => { setAviso(r); cargar(); router.refresh() },
+  })
 
   async function enviar() {
     if (!escrito.trim() || ocupado) return
@@ -632,24 +635,14 @@ export function Ficha({ lead: inicial, yo, usuarios, asesores, embudos, etapas, 
             <>
               {caja === 'chat' && lead.estado_chat !== 'asignada' && <small className="muted">Al responder tomas la conversación y el bot deja de contestarle.</small>}
               {caja === 'nota' && <small className="muted">La nota solo la ve el equipo; no le llega al cliente.</small>}
-              {coincidencias.length > 0 && (
-                <div role="listbox" aria-label="Respuestas rápidas" style={{ display: 'grid', gap: 2, border: '1px solid var(--line)', borderRadius: 10, padding: 4, marginBottom: 6 }}>
-                  {coincidencias.map((r) => (
-                    <button key={r.id} type="button" role="option" aria-selected="false" className="btn chico" style={{ justifyContent: 'flex-start' }}
-                      onClick={() => setEscrito(r.texto.replaceAll('{nombre}', (lead.nombre ?? '').trim().split(/\s+/)[0] || 'cliente'))}>
-                      <strong>/{r.atajo}</strong> · {r.titulo}
-                    </button>
-                  ))}
-                </div>
-              )}
+              {herramientas.panel}
               <div className="b-caja">
+                {herramientas.botonRayo}
                 <textarea rows={2} value={escrito} onChange={(e) => setEscrito(e.target.value)}
-                  placeholder={caja === 'chat' ? 'Escribe tu respuesta · Enter envía, Shift+Enter salto de línea · / respuestas rápidas' : 'Nota para el equipo'}
+                  placeholder={caja === 'chat' ? 'Escribe tu respuesta · Enter envía, Shift+Enter salto de línea · / catálogos, acciones y respuestas rápidas' : 'Nota para el equipo'}
                   onKeyDown={(e) => {
-                    if ((e.key === 'Enter' || e.key === 'Tab') && !e.shiftKey && coincidencias.length > 0) {
-                      e.preventDefault()
-                      setEscrito(coincidencias[0].texto)
-                    } else if (e.key === 'Enter' && !e.shiftKey) {
+                    if (herramientas.tecla(e)) return
+                    if (e.key === 'Enter' && !e.shiftKey) {
                       e.preventDefault()
                       enviar()
                     }

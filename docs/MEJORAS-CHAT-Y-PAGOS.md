@@ -7,7 +7,7 @@
 |---|---|---|---|
 | **F4·59** | Pago completo o pago parcial (abono) al validar el comprobante | Bandeja, Ficha → Chat, Ficha → Oportunidades | Sí |
 | **F4·60** ✅ | Catálogos: modificar el enlace o el PDF, desactivar y eliminar | Inventario → Catálogos (y acceso desde Bot) | 0063 |
-| **F4·61** | El asesor envía catálogos y dispara acciones desde el chat con «/» | Bandeja y Ficha → Chat | Sí (pequeña) |
+| **F4·61** 🔵 | El asesor envía catálogos y dispara acciones desde el chat con «/» | Bandeja y Ficha → Chat | 0064 |
 | **F4·62** | Emojis, documentos, imágenes y audios desde el chat | Bandeja y Ficha → Chat | No |
 
 ---
@@ -175,10 +175,27 @@ Además, un botón **⚡** junto a la caja abre la misma lista para quien no use
   «⚡ Ubicación del local»), se ve en la línea de tiempo y cuenta en `acciones_registro`.
 - **RB-12 · Mismas reglas del chat:** responder toma la conversación (RB-01) y solo dentro de las 24 h de WhatsApp (RB-02).
 
-### Construcción prevista
+### Construida el 10 nov 2026 🔵 (falta la prueba del dueño por WhatsApp)
 
-Ruta nueva del receptor `/interno/enviar` que reutiliza `enviar_catalogo` y los pasos de las Acciones (no se duplica la lógica en la
-pantalla). Migración pequeña: columna «Disponible para el asesor» en `acciones` (encendida por defecto en las de envío).
+- **Base (migración 0064, 11 pruebas SQL):** `herramientas_chat()` arma la lista y `herramienta_chat(lead, tipo, ref, al_terminar)` revisa
+  el permiso `atender_bandeja`, que la conversación sea del asesor y las 24 h; deja el chat como corresponde y lo anota en la línea de
+  tiempo (evento «herramienta»). No hizo falta la columna «Disponible para el asesor»: salen las Acciones **activas que solo envían**
+  (texto, ficha de conocimiento, cuentas, archivo, catálogo, etiqueta). Hoy: Cuentas para pagar, Ubicación, Garantía, Devoluciones,
+  Horario y Línea P Lenovo. «Pasar a asesor», «Quiero comprar» y «Cotización» no salen como acción (las dos últimas están en Flujos).
+- **Flujos disponibles:** Iniciar compra, Cotización y **cada bot publicado** desde su inicio (Datos de despacho, Avi Ventas, Distribuidor).
+- **Receptor:** ruta `/interno/herramienta` (`receptor.herramienta`). Catálogo y acción salen **como mensajes del asesor** (con su
+  nombre en el chat); un flujo sale como mensajes del bot. «Vuelve a mí» (`estado_bot.volver_a`, 24 h): cuando el bot pasa a asesor,
+  el chat queda asignado a quien disparó el flujo y no en la cola. `prueba_herramientas.py` 16/16.
+- **Pantalla:** `bandeja/Herramientas.tsx` (lo usan la Bandeja y la Ficha → Chat). «/» abre la lista por grupos y filtra por palabras
+  («/catalogo lenovo», «/cat len», «/ubic»); botón **⚡** junto a la caja; Enter elige el primero; confirmación con Enter (Esc cancela).
+- **Diferencia con lo documentado (RB-10):** la confirmación muestra **qué** se va a enviar (nombre y tipo), no el contenido completo
+  del mensaje. Si el dueño quiere ver el texto y la imagen antes de enviar, es un bloque aparte.
+- App y receptor compilados y reiniciados el 10 nov 2026.
+
+**Para probarlo (dueño), con un número de prueba que haya escrito hace menos de 24 h:**
+1. Bandeja → abrir el chat → escribir `/cat len` → Enter → Enter. Llega el texto y el enlace del catálogo, a tu nombre.
+2. `/ubic` → Enter → Enter: llega la ubicación con su imagen.
+3. ⚡ → Flujos → Bot «Datos de despacho» → «Vuelve a mí» → Iniciar flujo: el bot pregunta; al terminar, el chat vuelve a ti.
 
 ---
 

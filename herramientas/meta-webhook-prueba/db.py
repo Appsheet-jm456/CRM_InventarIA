@@ -449,8 +449,11 @@ def subir_media(ruta, contenido, mime):
 # Mensajes
 # --------------------------------------------------------------------------- #
 
-def guardar_mensaje(lead_id, lado, texto, tipo="text", meta_id=None, media=None, cuadro=None, desde_error=False, automatico=False):
+def guardar_mensaje(lead_id, lado, texto, tipo="text", meta_id=None, media=None, cuadro=None, desde_error=False, automatico=False,
+                    usuario=None):
     fila = {"lead_id": lead_id, "lado": lado, "texto": texto, "tipo": tipo}
+    if usuario:  # F4·61 (RB-11): lo envió un asesor desde el chat con «/» (catálogo o acción)
+        fila["usuario_id"] = usuario
     if automatico:  # F4·45 (RT-09): «¿Sigues necesitando ayuda?» o el aviso de demora
         fila["automatico"] = True
     if cuadro:  # el cuadro del bot que lo envió, para «Error al enviar» (RF-22)

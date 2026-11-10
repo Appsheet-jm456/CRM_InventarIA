@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { clienteNavegador, prepararTiempoReal } from '@/lib/supabase/navegador'
 import { asignar, cerrar, liberar, reanudarBot, responder, tomar, type Resultado } from './acciones'
 import { ComprobanteCliente } from './ComprobanteCliente'
+import { useHerramientas } from './Herramientas'
 import { OportunidadesCliente, type Embudo, type Etapa } from './OportunidadesCliente'
 import { ComponerPlantilla } from './Plantilla'
 import { SeguimientosCliente } from './SeguimientosCliente'
@@ -286,15 +287,11 @@ export function Bandeja({ yo, usuarios, asesores, embudos, etapas, rapidas, inic
     return !r.error
   }
 
-  // Respuestas rápidas (RBOT-08): "/" al inicio abre la lista; al elegir, el texto queda para revisarlo.
-  const busquedaRapida = /^\/(\S*)$/.exec(texto)
-  const coincidencias = busquedaRapida
-    ? rapidas.filter((r) => `${r.atajo} ${r.titulo}`.toLowerCase().includes(busquedaRapida[1].toLowerCase())).slice(0, 6)
-    : []
-  function usarRapida(r: { texto: string }) {
-    const primero = (lead?.nombre ?? '').trim().split(/\s+/)[0]
-    setTexto(r.texto.replaceAll('{nombre}', primero || 'cliente'))
-  }
+  // «/» o ⚡ (RBOT-08 y F4·61): respuestas rápidas (el texto queda para revisarlo), catálogos, acciones y flujos.
+  const herramientas = useHerramientas({
+    lead: lead?.id ?? 0, texto, setTexto, nombreCliente: lead?.nombre ?? '', rapidas, activo: !!lead && enVentana,
+    alEnviar: (r) => { setAviso(r); if (lead) cargarMensajes(lead.id); cargarLista() },
+  })
 
   async function enviar() {
     if (!lead || !texto.trim() || ocupado) return
@@ -419,26 +416,17 @@ export function Bandeja({ yo, usuarios, asesores, embudos, etapas, rapidas, inic
                   {lead.estado_chat !== 'asignada' && (
                     <small className="muted">Al responder tomas la conversación y el bot deja de contestarle.</small>
                   )}
-                  {coincidencias.length > 0 && (
-                    <div role="listbox" aria-label="Respuestas rápidas" style={{ display: 'grid', gap: 2, border: '1px solid var(--line, #d1d5db)', borderRadius: 10, padding: 4, marginBottom: 6 }}>
-                      {coincidencias.map((r) => (
-                        <button key={r.id} type="button" role="option" aria-selected="false" className="btn chico" style={{ textAlign: 'left', justifyContent: 'flex-start' }} onClick={() => usarRapida(r)}>
-                          <strong>/{r.atajo}</strong> · {r.titulo} <span className="muted"> — {r.texto.slice(0, 60)}</span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
+                  {herramientas.panel}
                   <div className="b-caja">
+                    {herramientas.botonRayo}
                     <textarea
                       rows={2}
-                      placeholder="Escribe tu respuesta · Enter envía, Shift+Enter hace salto de línea · / para respuestas rápidas"
+                      placeholder="Escribe tu respuesta · Enter envía, Shift+Enter hace salto de línea · / para catálogos, acciones y respuestas rápidas"
                       value={texto}
                       onChange={(e) => setTexto(e.target.value)}
                       onKeyDown={(e) => {
-                        if ((e.key === 'Enter' || e.key === 'Tab') && !e.shiftKey && coincidencias.length > 0) {
-                          e.preventDefault()
-                          usarRapida(coincidencias[0])
-                        } else if (e.key === 'Enter' && !e.shiftKey) {
+                        if (herramientas.tecla(e)) return
+                        if (e.key === 'Enter' && !e.shiftKey) {
                           e.preventDefault()
                           enviar()
                         }

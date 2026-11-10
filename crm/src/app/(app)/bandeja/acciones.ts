@@ -137,3 +137,39 @@ export async function reintentarAviso(lead: number): Promise<Resultado> {
   const r = await avisarReceptor(lead)
   return r.error ? { error: r.error } : { ok: r.aviso ?? 'Listo: se le escribió al cliente.' }
 }
+
+// --------------------------------------------------------------------------- //
+// F4·61 (RB-07 a RB-12): catálogos, acciones y flujos que el asesor dispara desde el chat con «/» o el botón ⚡
+// --------------------------------------------------------------------------- //
+export type Herramienta = { tipo: 'catalogo' | 'accion' | 'flujo'; ref: string; nombre: string; detalle: string }
+
+export async function herramientasChat(): Promise<{ herramientas: Herramienta[]; error?: string }> {
+  const { data, error } = await crearCliente().rpc('herramientas_chat')
+  if (error) return { herramientas: [], error: error.message }
+  const d = (data ?? {}) as Record<string, Omit<Herramienta, 'tipo'>[]>
+  const de = (tipo: Herramienta['tipo'], filas?: Omit<Herramienta, 'tipo'>[]) => (filas ?? []).map((f) => ({ ...f, detalle: f.detalle ?? '', tipo }))
+  return { herramientas: [...de('catalogo', d.catalogos), ...de('accion', d.acciones), ...de('flujo', d.flujos)] }
+}
+
+// La base revisa permiso, que la conversación sea de quien pide y las 24 h, y deja el chat como corresponde; el receptor envía.
+export async function usarHerramienta(lead: number, h: Pick<Herramienta, 'tipo' | 'ref'>, alTerminar: 'asesor' | 'bot' = 'asesor'): Promise<Resultado> {
+  if (!process.env.CRM_INTERNO_URL || !process.env.CRM_INTERNO_TOKEN) return { error: 'Falta la conexión con el receptor del bot.' }
+  const { data, error } = await crearCliente().rpc('herramienta_chat', { p_lead: lead, p_tipo: h.tipo, p_ref: h.ref, p_al_terminar: alTerminar })
+  if (error) return { error: error.message }
+  const pedido = data as { usuario: string; detalle: string }
+  try {
+    const r = await fetch(`${process.env.CRM_INTERNO_URL}/interno/herramienta`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Interno-Token': process.env.CRM_INTERNO_TOKEN },
+      body: JSON.stringify({ lead, tipo: h.tipo, ref: h.ref, usuario: pedido.usuario }),
+      cache: 'no-store',
+      signal: AbortSignal.timeout(60000),
+    })
+    if (!r.ok) return { error: `El receptor del bot respondió ${r.status}: no se envió.` }
+    const d = (await r.json()) as { ok: boolean; error?: string }
+    if (!d.ok) return { error: d.error ?? 'No se pudo enviar.' }
+  } catch {
+    return { error: 'El receptor del bot no responde: no se envió.' }
+  }
+  return { ok: h.tipo === 'flujo' ? `${pedido.detalle}. El bot atiende este tramo; si escribes, vuelve a ti.` : `Enviado: ${pedido.detalle}` }
+}

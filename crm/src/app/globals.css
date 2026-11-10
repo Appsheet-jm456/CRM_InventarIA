@@ -951,3 +951,11 @@ details.columnas > .panel { right: 0; top: calc(100% + 4px); min-width: 220px }
 .st-check { display: grid; gap: 8px }
 .st-check .check { display: flex; align-items: center; gap: 8px; font-size: 13.5px }
 
+
+/* F4·61: lista «/» y confirmación de catálogos, acciones y flujos en el chat (Bandeja y Ficha) */
+.herr-lista { display: grid; gap: 4px; border: 1px solid var(--line); border-radius: 10px; padding: 6px; max-height: 280px; overflow-y: auto; background: var(--surface) }
+.herr-grupo { display: grid; gap: 1px }
+.herr-grupo > small { padding: 4px 8px 2px; color: var(--muted, #6b7280); font-weight: 600 }
+.herr-grupo button { text-align: left; border: 0; background: none; padding: 6px 8px; border-radius: 6px; font: inherit; font-size: 13.5px; color: var(--ink); cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.herr-grupo button:hover, .herr-grupo button.on { background: var(--bg) }
+.herr-confirmar { display: grid; gap: 8px; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: var(--surface) }

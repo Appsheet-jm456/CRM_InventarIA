@@ -11,6 +11,7 @@ Qué hace:
   POST /interno/buscar  Chat InventarIA de la app (token CRM_INTERNO_TOKEN; no responde por el túnel)
   POST /interno/simular Simulador del lienzo: el motor sobre una versión, sin escribir ni enviar (mismo token)
   POST /interno/agente  «Probar» de Configuración → Agente: un turno de Avi sin escribir ni enviar (mismo token)
+  POST /interno/herramienta  F4·61: catálogo, acción o flujo que el asesor eligió en el chat (mismo token)
   POST /webhook  valida la firma X-Hub-Signature-256 con META_APP_SECRET, anota el evento en
                  eventos.log y responde con el árbol de respuesta de prueba (flujo.py)
 
@@ -296,7 +297,7 @@ _candados = {}
 def cargar_estado(lead):
     guardado = lead.get("estado_bot") or {}
     st = flujo.estado_vacio()
-    st.update({k: v for k, v in guardado.items() if k in ("campos", "rango", "marcas", "valor", "compra", "cotizacion", "agente")})
+    st.update({k: v for k, v in guardado.items() if k in ("campos", "rango", "marcas", "valor", "compra", "cotizacion", "agente", "volver_a")})
     st.update(nodo=lead["paso_menu"] or None, etapa=lead["etapa"], errores=lead["errores_bot"],
               pausa=lead["pausar_bot"], bot=lead.get("bot_id"))
     st["atributos"] = dict(lead.get("atributos") or {})  # datos de la ficha: las Preguntas y las marcas {dato} (F4·34)
@@ -309,6 +310,9 @@ def guardar_estado(lead, st, visible, nombre, del_cliente=True):
     """del_cliente=False: lo movió el reloj de la Pausa, no un mensaje del cliente (no toca su último mensaje)."""
     campos = st["campos"]
     etiquetas = list(lead.get("etiquetas") or [])
+    # F4·61 (RB-09b): el asesor disparó un flujo con «Vuelve a mí». Cuando el bot pasa a asesor, el chat vuelve a él y no a la cola.
+    volver_a = st.pop("volver_a", None) if st["pausa"] else None
+    a_quien = volver_a.get("usuario") if volver_a and not lead["pausar_bot"] and _vigente_hasta(volver_a.get("hasta")) else None
     if campos.get("Etiqueta") and campos["Etiqueta"] not in etiquetas:
         etiquetas.append(campos["Etiqueta"])
     cambios = {
@@ -319,11 +323,14 @@ def guardar_estado(lead, st, visible, nombre, del_cliente=True):
         "presupuesto": campos.get("Presupuesto", lead["presupuesto"]),
         "marca_interes": campos.get("Marca interés", lead["marca_interes"]),
         "cotiz_producto": campos.get("Código producto", lead["cotiz_producto"]),
-        "estado_bot": {k: st[k] for k in ("campos", "rango", "marcas", "valor", "compra", "cotizacion", "agente") if k in st},
+        "estado_bot": {k: st[k] for k in ("campos", "rango", "marcas", "valor", "compra", "cotizacion", "agente", "volver_a") if k in st},
         "espera_vence_en": st.get("espera_hasta"), "espera_cuadro": st["nodo"] if st.get("espera_hasta") else None,
         # En el principal se guarda null: si el principal cambia, el cliente sigue al nuevo (RF-16).
         "bot_id": None if st.get("bot") in (None, db.principal()) else st["bot"],
     }
+    if a_quien:
+        cambios.update(estado_chat="asignada", asignado_a=a_quien, en_cola_desde=datetime.now().astimezone().isoformat(),
+                       primera_respuesta_en=None)  # cuenta para el SLA: el cliente espera a ese asesor
     if del_cliente:
         cambios.update(ultimo_mensaje=visible[:500], fecha_ultimo_contacto=datetime.now().astimezone().isoformat())
     if st.get("valor"):
@@ -476,6 +483,89 @@ def revisar_retorno():
             enviar_retorno(candidato, cfg)
         except Exception as e:
             anotar(f"  ✗ no se pudo enviar el mensaje automático a {candidato.get('telefono')}: {e!r}")
+
+
+def _vigente_hasta(hasta):
+    try:
+        return bool(hasta) and datetime.fromisoformat(str(hasta)) > datetime.now(timezone.utc)
+    except ValueError:
+        return False
+
+
+HERRAMIENTA_PASOS = {"texto", "conocimiento", "cuentas", "archivo", "catalogo", "etiqueta"}  # igual que accion_solo_envia (0064)
+
+
+def enviar_como_asesor(numero, lead, mensajes, usuario):
+    """F4·61 (RB-11): envía y guarda como mensajes del asesor que los pidió. Devuelve (enviados, error)."""
+    enviados, ultimo = 0, ""
+    for m in mensajes:
+        m.pop("_cuadro", None)
+        m = resolver(m)
+        if not m:
+            continue
+        wamid = enviar(numero, m)
+        if not wamid:
+            return enviados, "WhatsApp no aceptó uno de los mensajes."
+        ultimo = visor.texto_saliente(m)
+        db.guardar_mensaje(lead["id"], "asesor", ultimo, m["type"], wamid if wamid != "enviado" else None, usuario=usuario)
+        enviados += 1
+    if enviados:
+        db.actualizar_lead(lead["id"], {"ultimo_mensaje": ultimo[:500], "fecha_ultimo_contacto": datetime.now().astimezone().isoformat()})
+    return enviados, None
+
+
+def herramienta(pedido):
+    """F4·61 (/interno/herramienta, RB-07 a RB-12): el asesor eligió en el chat un catálogo, una acción o un flujo y la base ya lo
+    permitió (`herramienta_chat`: permiso, conversación suya, 24 h) y dejó el chat como corresponde. Arma los mensajes y los envía.
+    Catálogo y acción salen como mensajes del asesor; un flujo, como mensajes del bot, que sigue con el cliente."""
+    lead_id, tipo, ref, usuario = int(pedido["lead"]), str(pedido["tipo"]), str(pedido["ref"]), pedido.get("usuario")
+    numero = db.telefono_de(lead_id)
+    if not numero or tipo not in ("catalogo", "accion", "flujo"):
+        raise LookupError(lead_id)
+    with _candados.setdefault(numero, threading.Lock()):
+        lead = db.lead(numero)
+        if not lead or lead["id"] != lead_id:
+            raise LookupError(lead_id)
+        st = cargar_estado(lead)
+        st["bot"] = st.get("bot") or db.principal()
+        flujo._hilo.bot, flujo._hilo.saltos = st["bot"], 0
+        try:
+            if tipo == "catalogo":
+                mensajes = acciones.mensajes_catalogo({"modo": "lista", "catalogo_id": int(ref), "texto": "Te envío nuestro catálogo 📚"}, {}, st, lead)
+            elif tipo == "accion":
+                a = next((x for x in db.acciones_todas() if str(x["id"]) == ref and x.get("activa")), None)
+                if not a:
+                    return {"ok": False, "error": "Esa acción ya no está activa."}
+                a = {**a, "hacer": [p for p in a.get("hacer") or [] if p.get("tipo") in HERRAMIENTA_PASOS]}
+                r = acciones._ejecutar(a, st, lead, False, "")
+                mensajes, etiquetas = (r[0], r[2]) if r else ([], [])
+                nuevas = [e for e in etiquetas if e not in (lead.get("etiquetas") or [])]
+                if nuevas:
+                    db.actualizar_lead(lead_id, {"etiquetas": list(lead.get("etiquetas") or []) + nuevas})
+            elif ref == "compra":
+                mensajes = compra.iniciar(st, "", lead)
+            elif ref == "cotizacion":
+                mensajes = cotizacion.iniciar(st, "", lead)
+            elif ref.startswith("bot:"):
+                mensajes = flujo.cambiar_de_bot(st, int(ref[4:]))
+            else:
+                raise LookupError(ref)
+        finally:
+            flujo._hilo.bot, flujo._hilo.saltos = None, 0
+        if not mensajes:
+            return {"ok": False, "error": "No hubo nada que enviar (¿el catálogo o la ficha están vacíos?)."}
+        if tipo == "flujo":
+            rechazado = enviar_mensajes(numero, lead, mensajes)
+            if rechazado:
+                st = seguir_error_de_envio(numero, lead, st, rechazado)
+            guardar_estado(lead, st, "", None, del_cliente=False)
+            anotar(f"🧭 {numero}: el asesor disparó el flujo {ref} → {len(mensajes)} mensaje(s) · nodo {st['nodo']}")
+            return {"ok": True, "enviados": len(mensajes)}
+        enviados, error = enviar_como_asesor(numero, lead, mensajes, usuario)
+        anotar(f"⚡ {numero}: el asesor envió {tipo} {ref} → {enviados} mensaje(s)")
+        if error:
+            return {"ok": False, "error": f"Se enviaron {enviados}; {error}"}
+        return {"ok": True, "enviados": enviados}
 
 
 def resolver_comprobante(pedido):
@@ -952,6 +1042,8 @@ class Webhook(BaseHTTPRequestHandler):
             return self.interno(resolver_comprobante)
         if ruta == "/interno/alistamiento":  # F4·50: video, OP/FVE, guía o «listo para recoger» al cliente (lo permitió la base)
             return self.interno(resolver_alistamiento)
+        if ruta == "/interno/herramienta":  # F4·61: catálogo, acción o flujo que el asesor eligió en el chat (lo permitió la base)
+            return self.interno(herramienta)
         if ruta == "/interno/acciones":  # «Probar con una frase» (F4·24, RAG-26)
             return self.interno(lambda p: acciones.probar(str(p["texto"])[:500]))
         if urlparse(self.path).path != "/webhook":
