@@ -160,6 +160,12 @@ Además, un botón **⚡** junto a la caja abre la misma lista para quien no use
 
 - **RB-07 · Catálogo desde el chat.** Envía lo mismo que enviaría el bot: el texto del catálogo y su enlace de Drive o el PDF adjunto.
   Solo salen los catálogos activos.
+- **RB-07b · Mensaje propio de cada catálogo** *(pedido del dueño el 10 nov 2026, tras probar; migración 0065)*. En Inventario →
+  Catálogos → Acciones ▾ → Modificar hay un campo «Mensaje al enviarlo desde el chat» (hasta 1.500 caracteres). Acepta `{nombre}`
+  (primer nombre del cliente) y `{enlace}` (dónde va el enlace de Drive; sin la marca, va al final). Vacío: «Te envío nuestro
+  catálogo 📚» con el nombre y el enlace. Solo aplica al envío del asesor: los cuadros del bot y las Acciones usan su propio texto.
+  El Catálogo Unificado quedó cargado con el texto que dio el dueño (precios de distribución, $80.000 de configuración, «Asesor» y
+  la comunidad de WhatsApp). `receptor.catalogo_del_asesor`, `prueba_herramientas.py` 18/18.
 - **RB-08 · Acciones desde el chat.** El asesor puede disparar cualquier Acción activa cuya respuesta sea enviar algo (texto, ficha de
   Conocimiento con imagen, archivo, catálogo). Se envía tal cual la tiene configurada en Agente → Acciones: **el asesor no reescribe**.
   Las acciones que solo sirven al bot («Pasar a asesor») no aparecen.

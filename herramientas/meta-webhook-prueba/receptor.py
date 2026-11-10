@@ -514,6 +514,22 @@ def enviar_como_asesor(numero, lead, mensajes, usuario):
     return enviados, None
 
 
+def catalogo_del_asesor(c, lead):
+    """RB-07 y RB-07b: el catálogo que el asesor envía desde el chat, con el mensaje propio del catálogo (Inventario → Catálogos →
+    Modificar). {nombre} es el primer nombre del cliente y {enlace} dónde va el enlace de Drive (sin la marca, al final). Sin mensaje,
+    el texto por defecto con el nombre del catálogo."""
+    if not c:
+        return []
+    propio = (c.get("mensaje") or "").strip()
+    nombre = ((lead or {}).get("nombre") or "").split(" ")[0]
+    texto = acciones._limpio(propio.replace("{nombre}", nombre)) if propio else "Te envío nuestro catálogo 📚"
+    if c["tipo"] == "pdf":
+        return [flujo.m_texto(texto.replace("{enlace}", "").strip()), {"_pdf": c}]
+    if not propio:
+        return [flujo.m_texto(f"{texto}\n📚 *{c['nombre']}*\n{c['url']}")]
+    return [flujo.m_texto(texto.replace("{enlace}", c["url"]) if "{enlace}" in texto else f"{texto}\n\n📚 {c['url']}")]
+
+
 def herramienta(pedido):
     """F4·61 (/interno/herramienta, RB-07 a RB-12): el asesor eligió en el chat un catálogo, una acción o un flujo y la base ya lo
     permitió (`herramienta_chat`: permiso, conversación suya, 24 h) y dejó el chat como corresponde. Arma los mensajes y los envía.
@@ -531,7 +547,7 @@ def herramienta(pedido):
         flujo._hilo.bot, flujo._hilo.saltos = st["bot"], 0
         try:
             if tipo == "catalogo":
-                mensajes = acciones.mensajes_catalogo({"modo": "lista", "catalogo_id": int(ref), "texto": "Te envío nuestro catálogo 📚"}, {}, st, lead)
+                mensajes = catalogo_del_asesor(db.catalogo(int(ref)), lead)
             elif tipo == "accion":
                 a = next((x for x in db.acciones_todas() if str(x["id"]) == ref and x.get("activa")), None)
                 if not a:

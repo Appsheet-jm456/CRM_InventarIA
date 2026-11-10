@@ -6,7 +6,7 @@ import { Aviso } from '@/components/Aviso'
 import { MenuAcciones } from '@/components/MenuAcciones'
 import { activarCatalogo, borrarCatalogo, crearCatalogo, modificarCatalogo, usosCatalogo, type Resultado } from '../acciones'
 
-export type CatalogoEditable = { id: number; nombre: string; categoria: string; marca: string; tipo: 'pdf' | 'drive'; archivo: string; url: string; todos: boolean; activo: boolean }
+export type CatalogoEditable = { id: number; nombre: string; categoria: string; marca: string; tipo: 'pdf' | 'drive'; archivo: string; url: string; todos: boolean; activo: boolean; mensaje: string }
 export type OpcionesCatalogo = { categorias: string[]; marcas: string[] }
 
 function Guardar({ editando }: { editando: boolean }) {
@@ -71,6 +71,11 @@ export function FormCatalogo({ alCrear, catalogo, opciones, alTerminar }: {
             )
             : <label className="field">Enlace<input type="url" name="url" required placeholder="https://drive.google.com/…" defaultValue={catalogo?.url} /></label>}
         </div>
+        <label className="field">Mensaje al enviarlo desde el chat (opcional)
+          <textarea name="mensaje" rows={5} maxLength={1500} defaultValue={catalogo?.mensaje}
+            placeholder={'📎 Te envío el catálogo con *todos nuestros portátiles usados*:\n\n🤖 Escribe "Asesor" si quieres una atención personalizada.'} />
+          <small className="muted">Es el texto que acompaña al catálogo cuando el asesor lo envía con «/» o ⚡. Puedes usar {'{nombre}'} (nombre del cliente) y {'{enlace}'} (dónde va el enlace; si no lo pones, va al final). Vacío: «Te envío nuestro catálogo 📚».</small>
+        </label>
         {opciones && (
           <>
             <datalist id={`${listas}-cat`}>{opciones.categorias.map((c) => <option key={c} value={c} />)}</datalist>

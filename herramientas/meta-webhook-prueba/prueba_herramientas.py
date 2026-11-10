@@ -83,6 +83,18 @@ ok(GUARDADOS and GUARDADOS[0][0][1] == "asesor" and GUARDADOS[0][1].get("usuario
    "queda guardado como mensaje del asesor que lo pidió (RB-11)")
 ok("ultimo_mensaje" in CAMBIOS and "pausar_bot" not in CAMBIOS, "actualiza el último mensaje sin tocar quién atiende el chat")
 
+# RB-07b: mensaje propio del catálogo
+CATALOGOS[7]["mensaje"] = "📎 Hola {nombre}, te envío el catálogo de *portátiles usados*.\n\n🤖 Escribe \"Asesor\" si quieres atención personalizada."
+cliente()
+receptor.herramienta({"lead": 9, "tipo": "catalogo", "ref": "7", "usuario": ASESORA})
+ok(cuerpo(ENV[0]).startswith("📎 Hola Ana, te envío") and cuerpo(ENV[0]).endswith("📚 https://drive.google.com/lenovo")
+   and "*Portatiles Lenovo*" not in cuerpo(ENV[0]), "con mensaje propio: sale ese texto con el nombre del cliente y el enlace al final")
+CATALOGOS[7]["mensaje"] = "Míralo aquí 👉 {enlace}\n\nCualquier duda me cuentas."
+cliente()
+receptor.herramienta({"lead": 9, "tipo": "catalogo", "ref": "7", "usuario": ASESORA})
+ok(cuerpo(ENV[0]) == "Míralo aquí 👉 https://drive.google.com/lenovo\n\nCualquier duda me cuentas.", "{enlace} pone el enlace donde el dueño quiere")
+CATALOGOS[7]["mensaje"] = ""
+
 # RB-08: acción con solo los pasos que envían
 cliente()
 r = receptor.herramienta({"lead": 9, "tipo": "accion", "ref": "5", "usuario": ASESORA})

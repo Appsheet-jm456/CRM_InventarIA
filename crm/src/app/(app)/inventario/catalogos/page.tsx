@@ -19,7 +19,7 @@ export default async function Catalogos() {
   const administra = puede(sesion, ['administrar_inventario'])
   const supabase = crearCliente()
   const [{ data }, { data: productos }] = await Promise.all([
-    supabase.from('catalogos').select('id, nombre, categoria, marca, tipo, archivo, url, todos, activo').order('todos', { ascending: false }).order('id'),
+    supabase.from('catalogos').select('id, nombre, categoria, marca, tipo, archivo, url, todos, activo, mensaje').order('todos', { ascending: false }).order('id'),
     supabase.from('productos').select('categoria, marca').limit(2000),
   ])
   const catalogos = (data ?? []) as CatalogoEditable[]

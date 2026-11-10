@@ -195,7 +195,7 @@ async function subirPdf(pdf: File): Promise<string | Resultado> {
 }
 
 // Lo que comparten Agregar y Modificar: nombre, tipo, categoría, marca y el enlace (el PDF se resuelve aparte).
-type DatosCatalogo = { nombre: string; tipo: string; todos: boolean; categoria: string; marca: string; url: string }
+type DatosCatalogo = { nombre: string; tipo: string; todos: boolean; categoria: string; marca: string; url: string; mensaje: string }
 async function leerCatalogo(datos: FormData): Promise<{ error: string } | { fila: DatosCatalogo }> {
   const nombre = String(datos.get('nombre') ?? '').trim()
   const tipo = String(datos.get('tipo') ?? '')
@@ -208,8 +208,10 @@ async function leerCatalogo(datos: FormData): Promise<{ error: string } | { fila
     url = String(datos.get('url') ?? '').trim()
     if (!/^https:\/\/(drive|docs)\.google\.com\//.test(url)) return { error: 'Pega un enlace de Google Drive (https://drive.google.com/…).' }
   }
+  const mensajeChat = String(datos.get('mensaje') ?? '').replace(/\r\n/g, '\n').trim()
+  if (mensajeChat.length > 1500) return { error: 'El mensaje del chat es muy largo (máximo 1.500 caracteres).' }
   return { fila: {
-    nombre, tipo, todos, url,
+    nombre, tipo, todos, url, mensaje: mensajeChat,
     categoria: todos ? '' : await comoExiste('categoria', String(datos.get('categoria') ?? '').trim()),
     marca: todos ? '' : await comoExiste('marca', String(datos.get('marca') ?? '').trim()),
   } }
