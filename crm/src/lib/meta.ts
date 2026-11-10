@@ -115,3 +115,40 @@ export async function crearPlantilla(nombre: string, categoria: string, cuerpo: 
     return { error: 'No se pudo conectar con Meta.' }
   }
 }
+
+// ------------------------------------------------------------------ archivos del asesor (F4·62, RB-14 a RB-18)
+
+export type TipoArchivo = 'image' | 'document' | 'video' | 'audio'
+
+// Sube el archivo a Meta y lo envía por su id. El pie va en imagen, video y documento (el audio no lleva pie en WhatsApp).
+export async function enviarArchivo(numero: string, archivo: Blob, nombre: string, mime: string, tipo: TipoArchivo, pie: string):
+  Promise<{ wamid?: string; error?: string }> {
+  const conexion = await conexionMeta()
+  if (!conexion) return { error: 'Falta la conexión con Meta: configúrala en Configuración → Meta.' }
+  const { token, phoneNumberId: telefono } = conexion
+  try {
+    const form = new FormData()
+    form.append('messaging_product', 'whatsapp')
+    form.append('type', mime)
+    form.append('file', new Blob([archivo], { type: mime }), nombre)
+    const subida = await fetch(`${API}/${telefono}/media`, {
+      method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: form, cache: 'no-store',
+    })
+    const s = await subida.json()
+    if (!subida.ok || !s?.id) return { error: `Meta no aceptó el archivo: ${s?.error?.message ?? subida.status}` }
+    const cuerpo: Record<string, unknown> = { id: s.id }
+    if (tipo !== 'audio' && pie) cuerpo.caption = pie
+    if (tipo === 'document') cuerpo.filename = nombre
+    const r = await fetch(`${API}/${telefono}/messages`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messaging_product: 'whatsapp', ...destino(numero), type: tipo, [tipo]: cuerpo }),
+      cache: 'no-store',
+    })
+    const datos = await r.json()
+    if (!r.ok) return { error: `Meta no lo aceptó: ${datos?.error?.message ?? r.status}` }
+    return { wamid: datos?.messages?.[0]?.id ?? '' }
+  } catch {
+    return { error: 'No se pudo conectar con Meta. Intenta de nuevo.' }
+  }
+}

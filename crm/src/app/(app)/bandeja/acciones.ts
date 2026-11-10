@@ -1,6 +1,7 @@
 'use server'
 
-import { enviarPlantilla, enviarTexto, listarPlantillas, llenarPlantilla, type Plantilla } from '@/lib/meta'
+import { enviarArchivo, enviarPlantilla, enviarTexto, listarPlantillas, llenarPlantilla, type Plantilla, type TipoArchivo } from '@/lib/meta'
+import { crearClienteAdmin } from '@/lib/supabase/admin'
 import { crearCliente } from '@/lib/supabase/server'
 
 export type Resultado = { error?: string; ok?: string }
@@ -172,4 +173,66 @@ export async function usarHerramienta(lead: number, h: Pick<Herramienta, 'tipo' 
     return { error: 'El receptor del bot no responde: no se envió.' }
   }
   return { ok: h.tipo === 'flujo' ? `${pedido.detalle}. El bot atiende este tramo; si escribes, vuelve a ti.` : `Enviado: ${pedido.detalle}` }
+}
+
+// --------------------------------------------------------------------------- //
+// F4·62 (RB-14 a RB-18): imágenes, documentos, videos y audios desde el chat
+// --------------------------------------------------------------------------- //
+// Formatos y tamaños que acepta WhatsApp (el envío por la app tiene además el tope de 21 MB de next.config.js).
+const ARCHIVOS: Record<string, { tipo: TipoArchivo; ext: string; max: number }> = {
+  'image/jpeg': { tipo: 'image', ext: 'jpg', max: 5 }, 'image/png': { tipo: 'image', ext: 'png', max: 5 },
+  'video/mp4': { tipo: 'video', ext: 'mp4', max: 16 }, 'video/3gpp': { tipo: 'video', ext: '3gp', max: 16 },
+  'audio/mpeg': { tipo: 'audio', ext: 'mp3', max: 16 }, 'audio/mp4': { tipo: 'audio', ext: 'm4a', max: 16 },
+  'audio/aac': { tipo: 'audio', ext: 'aac', max: 16 }, 'audio/ogg': { tipo: 'audio', ext: 'ogg', max: 16 },
+  'audio/amr': { tipo: 'audio', ext: 'amr', max: 16 },
+  'application/pdf': { tipo: 'document', ext: 'pdf', max: 20 },
+  'application/msword': { tipo: 'document', ext: 'doc', max: 20 },
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': { tipo: 'document', ext: 'docx', max: 20 },
+  'application/vnd.ms-excel': { tipo: 'document', ext: 'xls', max: 20 },
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': { tipo: 'document', ext: 'xlsx', max: 20 },
+  'application/vnd.ms-powerpoint': { tipo: 'document', ext: 'ppt', max: 20 },
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation': { tipo: 'document', ext: 'pptx', max: 20 },
+  'text/plain': { tipo: 'document', ext: 'txt', max: 20 },
+}
+// Lo que algunos navegadores dicen de un m4a o un mp3.
+const ALIAS: Record<string, string> = { 'audio/x-m4a': 'audio/mp4', 'audio/m4a': 'audio/mp4', 'audio/mp3': 'audio/mpeg', 'audio/x-mpeg': 'audio/mpeg' }
+
+export async function responderConArchivo(lead: number, datos: FormData): Promise<Resultado> {
+  const archivo = datos.get('archivo')
+  const pie = String(datos.get('pie') ?? '').trim().slice(0, 1024)
+  if (!(archivo instanceof File) || archivo.size === 0) return { error: 'Elige un archivo.' }
+  const mime = ALIAS[archivo.type] ?? archivo.type
+  const regla = ARCHIVOS[mime]
+  if (!regla) return { error: 'WhatsApp no acepta ese tipo de archivo. Sirven: JPG, PNG, PDF, Word, Excel, PowerPoint, MP4, MP3, M4A y OGG.' }
+  if (archivo.size > regla.max * 1024 * 1024) return { error: `El archivo pesa más de ${regla.max} MB, el máximo de WhatsApp para ese tipo.` }
+
+  const supabase = crearCliente()
+  const { data: fila } = await supabase.from('leads').select('telefono').eq('id', lead).maybeSingle()
+  if (!fila) return { error: 'Esta conversación la atiende otro asesor.' }
+  const { data: ultimo } = await supabase.from('mensajes').select('creado_en').eq('lead_id', lead).eq('lado', 'cliente')
+    .order('creado_en', { ascending: false }).limit(1).maybeSingle()
+  if (!ultimo || Date.now() - new Date(ultimo.creado_en).getTime() > VENTANA_MS)
+    return { error: 'Pasaron más de 24 horas desde el último mensaje del cliente: Meta solo deja escribirle con una plantilla.' }
+
+  // RB-17: el archivo se guarda en el bucket privado `media` antes de enviarlo; si Meta no lo acepta, se borra (RB-03).
+  const admin = crearClienteAdmin()
+  const ruta = `${lead}/asesor-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${regla.ext}`
+  const { error: errSubida } = await admin.storage.from('media').upload(ruta, archivo, { contentType: mime })
+  if (errSubida) return { error: `No se pudo guardar el archivo: ${errSubida.message}` }
+  const nombre = archivo.name || `archivo.${regla.ext}`
+  const envio = await enviarArchivo(fila.telefono, archivo, nombre, mime, regla.tipo, pie)
+  if (envio.error) {
+    await admin.storage.from('media').remove([ruta])
+    return { error: envio.error }
+  }
+  if (regla.tipo === 'audio' && pie) { // el audio no lleva pie: el texto va aparte
+    const t = await enviarTexto(fila.telefono, pie)
+    if (!t.error) await supabase.rpc('registrar_mensaje_asesor', { p_lead: lead, p_texto: pie, p_wamid: t.wamid ?? '' })
+  }
+  const { error } = await supabase.rpc('registrar_mensaje_asesor_archivo', {
+    p_lead: lead, p_texto: regla.tipo === 'audio' ? '' : pie, p_wamid: envio.wamid ?? '', p_tipo: regla.tipo,
+    p_ruta: ruta, p_mime: mime, p_nombre: nombre,
+  })
+  if (error) return { error: `Se envió, pero no se pudo registrar: ${error.message}` }
+  return {}
 }

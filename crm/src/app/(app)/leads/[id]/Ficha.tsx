@@ -8,6 +8,7 @@ import { asignar, cerrar, liberar, reanudarBot, responder, tomar } from '../../b
 import { Entrega, Media, hora, iniciales, partirOpciones, type Mensaje } from '../../bandeja/Bandeja'
 import { ComprobanteCliente } from '../../bandeja/ComprobanteCliente'
 import { useHerramientas } from '../../bandeja/Herramientas'
+import { useAdjuntos } from '../../bandeja/Adjuntos'
 import { PedidoCliente } from './pedido/PedidoCliente'
 import { type Embudo, type Etapa } from '../../bandeja/OportunidadesCliente'
 import { ComponerPlantilla } from '../../bandeja/Plantilla'
@@ -305,6 +306,12 @@ export function Ficha({ lead: inicial, yo, usuarios, asesores, embudos, etapas, 
   // «/» o ⚡ (F4·61): respuestas rápidas, catálogos, acciones y flujos; solo en la pestaña Chat y dentro de las 24 h.
   const herramientas = useHerramientas({
     lead: lead.id, texto: escrito, setTexto: setEscrito, nombreCliente: lead.nombre ?? '', rapidas, activo: caja === 'chat' && enVentana,
+    alEnviar: (r) => { setAviso(r); cargar(); router.refresh() },
+  })
+  // 😊 y 📎 (F4·62): emojis y archivos; también arrastrando o pegando con Ctrl+V.
+  const cajaTexto = useRef<HTMLTextAreaElement>(null)
+  const adjuntos = useAdjuntos({
+    lead: lead.id, activo: caja === 'chat' && enVentana, setTexto: setEscrito, area: cajaTexto,
     alEnviar: (r) => { setAviso(r); cargar(); router.refresh() },
   })
 
@@ -621,7 +628,7 @@ export function Ficha({ lead: inicial, yo, usuarios, asesores, embudos, etapas, 
           })}
         </div>
 
-        <div className="b-responder">
+        <div className={`b-responder${adjuntos.encima ? ' adj-encima' : ''}`} {...adjuntos.zona}>
           <div className="pastillas" role="tablist" style={{ marginBottom: 6 }}>
             {([['chat', 'Chat'], ['nota', 'Nota'], ['tarea', 'Tarea']] as const).map(([k, t]) => (
               <button key={k} role="tab" aria-selected={caja === k} className={`pastilla${caja === k ? ' activa' : ''}`} onClick={() => setCaja(k)}>{t}</button>
@@ -636,9 +643,11 @@ export function Ficha({ lead: inicial, yo, usuarios, asesores, embudos, etapas, 
               {caja === 'chat' && lead.estado_chat !== 'asignada' && <small className="muted">Al responder tomas la conversación y el bot deja de contestarle.</small>}
               {caja === 'nota' && <small className="muted">La nota solo la ve el equipo; no le llega al cliente.</small>}
               {herramientas.panel}
+              {adjuntos.panel}
               <div className="b-caja">
+                {adjuntos.botones}
                 {herramientas.botonRayo}
-                <textarea rows={2} value={escrito} onChange={(e) => setEscrito(e.target.value)}
+                <textarea rows={2} ref={cajaTexto} onPaste={adjuntos.alPegar} value={escrito} onChange={(e) => setEscrito(e.target.value)}
                   placeholder={caja === 'chat' ? 'Escribe tu respuesta · Enter envía, Shift+Enter salto de línea · / catálogos, acciones y respuestas rápidas' : 'Nota para el equipo'}
                   onKeyDown={(e) => {
                     if (herramientas.tecla(e)) return

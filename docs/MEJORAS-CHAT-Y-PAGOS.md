@@ -8,7 +8,7 @@
 | **F4·59** | Pago completo o pago parcial (abono) al validar el comprobante | Bandeja, Ficha → Chat, Ficha → Oportunidades | Sí |
 | **F4·60** ✅ | Catálogos: modificar el enlace o el PDF, desactivar y eliminar | Inventario → Catálogos (y acceso desde Bot) | 0063 |
 | **F4·61** 🔵 | El asesor envía catálogos y dispara acciones desde el chat con «/» | Bandeja y Ficha → Chat | 0064 |
-| **F4·62** | Emojis, documentos, imágenes y audios desde el chat | Bandeja y Ficha → Chat | No |
+| **F4·62** 🔵 | Emojis, documentos, imágenes y audios desde el chat | Bandeja y Ficha → Chat | 0066 |
 
 ---
 
@@ -227,10 +227,22 @@ Además, un botón **⚡** junto a la caja abre la misma lista para quien no use
   queda guardado en el almacenamiento privado `media`.
 - **RB-18 · Mismas reglas del chat:** RB-01, RB-02 y RB-03 (si Meta no lo acepta, no se guarda).
 
-### Construcción prevista
+### Bloque 1 construido el 10 nov 2026 🔵 (falta la prueba del dueño por WhatsApp)
 
-Sin migración. Acción `responderConArchivo` en la Bandeja: sube el archivo a Storage, lo sube a Meta y envía por identificador.
-El receptor ya sabe enviar imagen, documento y video (catálogos, guías, videos del técnico); falta el audio.
+- **Base (migración 0066, 6 pruebas SQL):** `registrar_mensaje_asesor_archivo`, como `registrar_mensaje_asesor` (permiso, conversación
+  suya, el asesor la toma) más el archivo (`media_ruta`, tipo y nombre). Solo acepta rutas de esa conversación.
+- **Servidor:** `responderConArchivo` (Bandeja → `acciones.ts`) revisa formato, tamaño y 24 h; guarda el archivo en el bucket privado
+  `media` (`<lead>/asesor-….ext`), lo sube a Meta y lo envía por id (`enviarArchivo` en `lib/meta.ts`), y solo si Meta lo acepta lo
+  registra; si no, borra el archivo (RB-03). El audio no lleva pie en WhatsApp: el texto sale aparte.
+- **Pantalla:** `bandeja/Adjuntos.tsx` (Bandeja y Ficha → Chat): **😊** con buscador en español («precio», «envío», «gracias») y
+  recientes del navegador; **📎**, arrastrar al chat o **Ctrl+V** con vista previa (imagen, video, audio) y pie opcional.
+- **Límite real de documentos: 20 MB** (no 100 MB): la app recibe hasta 21 MB por envío (`next.config.js`). Para documentos más
+  grandes, enviar el enlace de Drive.
+- **Sin probar de punta a punta:** compilado, tipos y pruebas SQL en verde, pero no se envió ningún archivo real a WhatsApp.
+- **Bloque 2 (pendiente):** 🎤 grabar nota de voz desde el navegador (RB-16).
+
+**Para probarlo (dueño):** recargar con Ctrl+Shift+R; en un chat de prueba con menos de 24 h: 😊 → buscar «gracias» → Enter; 📎 → una
+foto con pie; arrastrar un PDF al chat; pegar una captura con Ctrl+V; un MP3 o M4A. Todo debe verse en el chat a tu nombre.
 
 ---
 

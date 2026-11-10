@@ -5,6 +5,7 @@ import { clienteNavegador, prepararTiempoReal } from '@/lib/supabase/navegador'
 import { asignar, cerrar, liberar, reanudarBot, responder, tomar, type Resultado } from './acciones'
 import { ComprobanteCliente } from './ComprobanteCliente'
 import { useHerramientas } from './Herramientas'
+import { useAdjuntos } from './Adjuntos'
 import { OportunidadesCliente, type Embudo, type Etapa } from './OportunidadesCliente'
 import { ComponerPlantilla } from './Plantilla'
 import { SeguimientosCliente } from './SeguimientosCliente'
@@ -292,6 +293,12 @@ export function Bandeja({ yo, usuarios, asesores, embudos, etapas, rapidas, inic
     lead: lead?.id ?? 0, texto, setTexto, nombreCliente: lead?.nombre ?? '', rapidas, activo: !!lead && enVentana,
     alEnviar: (r) => { setAviso(r); if (lead) cargarMensajes(lead.id); cargarLista() },
   })
+  // 😊 y 📎 (F4·62): emojis y archivos; también arrastrando al chat o pegando con Ctrl+V.
+  const caja = useRef<HTMLTextAreaElement>(null)
+  const adjuntos = useAdjuntos({
+    lead: lead?.id ?? 0, activo: !!lead && enVentana, setTexto, area: caja,
+    alEnviar: (r) => { setAviso(r); if (lead) cargarMensajes(lead.id); cargarLista() },
+  })
 
   async function enviar() {
     if (!lead || !texto.trim() || ocupado) return
@@ -370,7 +377,7 @@ export function Bandeja({ yo, usuarios, asesores, embudos, etapas, rapidas, inic
         </div>
       </div>
 
-      <div className="col b-chat">
+      <div className={`col b-chat${adjuntos.encima ? ' adj-encima' : ''}`} {...adjuntos.zona}>
         {!lead ? (
           <p className="vacio">Elige una conversación.</p>
         ) : (
@@ -417,9 +424,13 @@ export function Bandeja({ yo, usuarios, asesores, embudos, etapas, rapidas, inic
                     <small className="muted">Al responder tomas la conversación y el bot deja de contestarle.</small>
                   )}
                   {herramientas.panel}
+                  {adjuntos.panel}
                   <div className="b-caja">
+                    {adjuntos.botones}
                     {herramientas.botonRayo}
                     <textarea
+                      ref={caja}
+                      onPaste={adjuntos.alPegar}
                       rows={2}
                       placeholder="Escribe tu respuesta · Enter envía, Shift+Enter hace salto de línea · / para catálogos, acciones y respuestas rápidas"
                       value={texto}

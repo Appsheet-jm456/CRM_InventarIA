@@ -959,3 +959,14 @@ details.columnas > .panel { right: 0; top: calc(100% + 4px); min-width: 220px }
 .herr-grupo button { text-align: left; border: 0; background: none; padding: 6px 8px; border-radius: 6px; font: inherit; font-size: 13.5px; color: var(--ink); cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
 .herr-grupo button:hover, .herr-grupo button.on { background: var(--bg) }
 .herr-confirmar { display: grid; gap: 8px; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: var(--surface) }
+
+/* F4·62: emojis y archivos en el chat (Bandeja y Ficha) */
+.adj-emojis, .adj-previa { display: grid; gap: 8px; border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; background: var(--surface) }
+.adj-emojis input, .adj-previa input { border: 1px solid var(--line); background: var(--bg); border-radius: 6px; padding: 7px 9px; font: 13.5px var(--f-body); color: var(--ink) }
+.adj-rejilla { display: flex; flex-wrap: wrap; gap: 2px; max-height: 220px; overflow-y: auto; align-content: flex-start }
+.adj-rejilla small { flex-basis: 100%; color: var(--muted); font-weight: 600; padding: 4px 2px 0 }
+.adj-rejilla button { border: 0; background: none; font-size: 22px; line-height: 1; width: 36px; height: 36px; border-radius: 6px; cursor: pointer }
+.adj-rejilla button:hover { background: var(--bg) }
+.adj-cosa { display: flex; gap: 10px; align-items: center; flex-wrap: wrap }
+.adj-cosa img, .adj-cosa video { max-height: 160px; max-width: 260px; border-radius: 8px; border: 1px solid var(--line) }
+.adj-encima { outline: 2px dashed var(--brand, #2563eb); outline-offset: -6px }
