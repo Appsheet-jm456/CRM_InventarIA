@@ -974,3 +974,5 @@ details.columnas > .panel { right: 0; top: calc(100% + 4px); min-width: 220px }
 /* F4·59: tarjeta del comprobante junto al chat de la Ficha */
 .ficha-comprobante { padding: 8px 12px 0; max-height: 45vh; overflow-y: auto }
 .ficha-comprobante:empty { display: none }
+.bandeja .ficha-comprobante { padding: 8px clamp(14px, 4%, 56px) 0; background: var(--surface) }
+.ficha-comprobante .m-img { max-height: 120px; width: auto }

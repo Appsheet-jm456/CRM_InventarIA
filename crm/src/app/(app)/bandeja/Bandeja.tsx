@@ -410,6 +410,12 @@ export function Bandeja({ yo, usuarios, asesores, embudos, etapas, rapidas, inic
                 )
               })}
             </div>
+            {/* F4·59: validar el pago desde el chat, encima de la caja de respuesta */}
+            {yo.validarPagos && (
+              <div className="ficha-comprobante">
+                <ComprobanteCliente key={`pago-${lead.id}`} lead={lead.id} version={versionOps} alCambiar={cargarLista} />
+              </div>
+            )}
             <div className="b-responder">
               {aviso.error && <div className="aviso bad" role="alert">{aviso.error}</div>}
               {aviso.ok && <div className="aviso ok">{aviso.ok}</div>}
@@ -491,7 +497,6 @@ export function Bandeja({ yo, usuarios, asesores, embudos, etapas, rapidas, inic
                 </select>
               </label>
             )}
-            {yo.validarPagos && <ComprobanteCliente key={`pago-${lead.id}`} lead={lead.id} version={versionOps} alCambiar={cargarLista} />}
             <OportunidadesCliente key={`op-${lead.id}`} lead={lead.id} embudos={embudos} etapas={etapas} puede={yo.moverEtapas}
               version={versionOps} alCambiar={cargarLista} />
             <Dato titulo="Busca" valor={lead.categoria_interes} />
