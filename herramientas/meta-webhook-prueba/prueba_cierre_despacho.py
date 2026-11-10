@@ -80,6 +80,7 @@ ok(len(m) == 1 and cuerpo(m[0]) == POLITICA_TIENDA, "«Recojo en tienda» envía
 ok(st["pausa"] and st["nodo"] == "B-ASESOR" and st["atributos"].get("venta_online") is False,
    "el chat pasa a la cola, con el bot pausado y Venta tienda marcada")
 ok("fuera de horario" not in cuerpo(m[0]), "no llega el aviso de «fuera de horario»")
+ok(st.get("resumen_pedido") is True, "F4·64: el cierre de tienda deja la marca para enviar el resumen del pedido (RF-46)")
 
 # 2. Envío: 5 preguntas, confirmación y política de envío
 st = nuevo()
@@ -91,12 +92,14 @@ ok(st["nodo"] == "M1" and "Juan Pérez Gómez" in cuerpo(m[0]) and "Cra 10 # 20-
    "tras las 5 preguntas muestra la confirmación con los datos (RF-41)")
 m, st = flujo.responder(st, "1")
 ok(len(m) == 1 and cuerpo(m[0]) == POLITICA_ENVIO and st["pausa"], "«Sí, correctos» envía solo la política de despacho y pasa a la cola")
+ok(st.get("resumen_pedido") is True, "F4·64: el cierre de envío también deja la marca del resumen del pedido (RF-46)")
 
 # 3. Pedir asesor a mitad de las preguntas: aviso de siempre (no hay texto de cierre)
 st = nuevo()
 m, st = flujo.responder(st, "1")
 m, st = flujo.responder(st, "asesor")
 ok(st["pausa"] and "fuera de horario" in cuerpo(m[0]), "«asesor» a mitad de camino da el aviso de horario de siempre")
+ok(not st.get("resumen_pedido"), "F4·64: pedir asesor no manda el resumen del pedido (RF-49)")
 
 # 4. Sin la casilla, todo como antes: el texto de la flecha va en cursiva antes del aviso
 FLUJO["cuadros"] = despacho(solo_motivo=False)
@@ -110,6 +113,7 @@ st = nuevo()
 for _ in range(3):
     m, st = flujo.responder(st, "xyz")
 ok(st["pausa"] and "fuera de horario" in cuerpo(m[-1]), "tres respuestas no reconocidas siguen con el aviso de horario")
+ok(not st.get("resumen_pedido"), "F4·64: tres respuestas no reconocidas no mandan el resumen (RF-49)")
 
 print(f"\n{n - fallos}/{n} pruebas bien")
 sys.exit(1 if fallos else 0)

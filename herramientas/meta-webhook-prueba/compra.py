@@ -506,6 +506,53 @@ def _con_total(texto, c):
     return texto
 
 
+def _si(v):
+    return str(v).strip().lower() in ("true", "si", "sí", "1", "yes")
+
+
+def resumen_pedido(lead, st):
+    """F4·64 (RF-46 a RF-51): el «🧾 Resumen de tu pedido» que sale justo después de la política de despacho. Todo sale de la base: el
+    pedido (número y equipos), los pagos validados, el total de la oportunidad y los datos de la ficha. Una sola vez por pedido y solo
+    si el cliente tiene un pedido con equipos. Devuelve la lista de mensajes (vacía si no corresponde)."""
+    cfg = _cfg()
+    plantilla = (cfg.get("texto_resumen_pedido") or "").strip()
+    if not cfg.get("resumen_pedido_activo", True) or not plantilla:
+        return []
+    filas = db.pedir(f"alistamientos?lead_id=eq.{int(lead['id'])}&cancelado_en=is.null&order=creado_en.desc&limit=1"
+                     "&select=id,numero,equipos,oportunidad_id,resumen_enviado_en") or []
+    if not filas or filas[0].get("resumen_enviado_en") or not (filas[0].get("equipos") or []):
+        return []
+    a = filas[0]
+    op = (db.pedir(f"oportunidades?id=eq.{int(a['oportunidad_id'])}&select=valor_estimado") or [{}])[0]
+    pagos = db.pedir(f"pagos?oportunidad_id=eq.{int(a['oportunidad_id'])}&anulado_en=is.null&select=valor") or []
+    total = float(op.get("valor_estimado") or lead.get("valor_estimado") or 0)
+    pagado = sum(float(x["valor"]) for x in pagos)
+    saldo = max(total - pagado, 0)
+    datos = {**(lead.get("atributos") or {}), **(st.get("atributos") or {})}
+    envio = datos.get("venta_online")
+    envio = _si(envio) if envio not in (None, "") else bool(str(datos.get("direccion_entrega") or "").strip())
+    equipos = "\n".join(f"💻 {e.get('nombre') or 'Equipo'} ({e['codigo']})" if e.get("codigo") else f"💻 {e.get('nombre') or 'Equipo'}"
+                        for e in a["equipos"])
+    lineas = []
+    if envio:
+        for icono, clave in (("👤", "nombre_completo"), ("📱", "celular"), ("📍", "direccion_entrega")):
+            if str(datos.get(clave) or "").strip():
+                lineas.append(f"{icono} {str(datos[clave]).strip()}")
+    marcas = {
+        "pedido": f"PED-{int(a['numero']):04d}" if a.get("numero") else "",
+        "equipos": equipos, "total": flujo.cop(total), "pagado": flujo.cop(pagado),
+        "saldo": f"\n⏳ Saldo pendiente: *{flujo.cop(saldo)}*" if saldo > 0 else "",
+        "entrega": "🚚 Envío por transportadora" if envio else "🏬 Recojo en tienda",
+        "datos": "\n".join(lineas), "nombre": ((lead.get("nombre") or "").split(" ")[0] or "").strip(),
+    }
+    texto = plantilla
+    for k, v in marcas.items():
+        texto = texto.replace("{" + k + "}", v)
+    texto = re.sub(r"[ \t]+\n", "\n", re.sub(r"\n{3,}", "\n\n", texto)).strip()
+    db.pedir(f"alistamientos?id=eq.{int(a['id'])}", "PATCH", {"resumen_enviado_en": "now"}, "return=minimal")  # RF-50: una sola vez
+    return [flujo.m_texto(texto[:4096])]
+
+
 def _soporte_recibido(st, c, tipo, cfg):
     """RAG-63: solo acusa recibo (no confirma el pago), deja la compra en «pago por confirmar» y el chat en la cola. «Ya pagué» sin
     foto ni PDF pide el soporte."""

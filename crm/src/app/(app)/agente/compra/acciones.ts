@@ -25,6 +25,8 @@ export type DatosCompra = {
   texto_validado: string
   texto_rechazado: string
   texto_abono: string // F4·59 (RPD-44)
+  resumen_pedido_activo: boolean // F4·64 (RF-48)
+  texto_resumen_pedido: string
   motivos_rechazo: string[]
 }
 
@@ -61,6 +63,11 @@ export async function guardarCompra(d: DatosCompra): Promise<Resultado> {
     const otras = [...d[campo].matchAll(/\{([^{}]*)\}/g)].map((m) => m[1]).filter((m) => !(marcas as readonly string[]).includes(m))
     if (otras.length) return { error: `En «${nombre}» el bot solo reemplaza {${marcas.join('}, {')}}; no {${otras.join('}, {')}}.` }
   }
+  if (!d.texto_resumen_pedido.trim()) return { error: 'El texto del resumen del pedido no puede quedar vacío.' }
+  if (d.texto_resumen_pedido.length > 1500) return { error: 'El texto del resumen del pedido tiene máximo 1.500 caracteres.' }
+  const marcasResumen = ['pedido', 'equipos', 'total', 'pagado', 'saldo', 'entrega', 'datos', 'nombre']
+  const rarasResumen = [...d.texto_resumen_pedido.matchAll(/\{([^{}]*)\}/g)].map((m) => m[1]).filter((m) => !marcasResumen.includes(m))
+  if (rarasResumen.length) return { error: `En «resumen del pedido» el bot solo reemplaza {${marcasResumen.join('}, {')}}; no {${rarasResumen.join('}, {')}}.` }
   const motivos = [...new Set(d.motivos_rechazo.map((m) => m.trim()).filter(Boolean))]
   if (!motivos.length) return { error: 'Deja al menos un motivo para rechazar un comprobante.' }
   if (motivos.some((m) => m.length > 200)) return { error: 'Cada motivo tiene máximo 200 caracteres.' }
@@ -83,6 +90,8 @@ export async function guardarCompra(d: DatosCompra): Promise<Resultado> {
     texto_validado: d.texto_validado.trim(),
     texto_rechazado: d.texto_rechazado.trim(),
     texto_abono: d.texto_abono.trim(),
+    resumen_pedido_activo: d.resumen_pedido_activo,
+    texto_resumen_pedido: d.texto_resumen_pedido.trim(),
     motivos_rechazo: motivos,
   }).eq('id', 1).select('id')
   if (error) return { error: error.message }

@@ -720,6 +720,7 @@ def asesor(st, etiqueta="Escalado-Asesor", motivo=None, de_flecha=False):
     st["campos"]["Etiqueta"] = etiqueta
     st["pausa"], st["nodo"] = True, del_tipo("asesor")
     if de_flecha and motivo and (cuadros()[st["nodo"]].get("ajustes") or {}).get("solo_motivo"):
+        st["resumen_pedido"] = True  # F4·64 (RF-49): el receptor agrega el resumen del pedido (no se guarda en la base)
         return [m_texto(motivo)]
     aviso = f"_{motivo}_\n\n" if motivo else ""
     abierto, cuando = proxima_apertura()

@@ -925,6 +925,11 @@ def _contestar(numero, entrada, visible, nombre, tipo, meta_id, media=None, guar
         except Exception as e:  # una falla del árbol o de la base no debe tumbar el receptor
             anotar(f"  ✗ el árbol falló: {e!r}")
             return
+        if st.pop("resumen_pedido", None) and mensajes:  # F4·64 (RF-46): el resumen del pedido va justo después de la política de despacho
+            try:
+                mensajes = list(mensajes) + compra.resumen_pedido(lead, st)
+            except Exception as e:  # si el resumen falla, el cliente igual recibe la política
+                anotar(f"  ✗ no se pudo armar el resumen del pedido: {e!r}")
         if mensajes and responde_a and espera:  # RAG-36: no contesta al instante; si preparar la respuesta tardó, no espera de más
             time.sleep(max(0, espera - (time.monotonic() - empezo)))
         rechazado = enviar_mensajes(numero, lead, mensajes, responde_a=responde_a)
@@ -1154,6 +1159,7 @@ def simular(pedido):
                         avisos.append("📄 «Cotizar este pedido» genera y guarda un PDF: pruébalo por WhatsApp.")
             if r is None:
                 mensajes, st = flujo.responder(st, texto, avisos.append)
+    st.pop("resumen_pedido", None)  # F4·64: el simulador no tiene pedido real; el resumen solo sale por WhatsApp
     for m in mensajes:
         m.pop("_cuadro", None)
     if st.get("bot") != antes:  # "Ir a otro bot", o "hola" desde otro bot: se avisa a quien prueba

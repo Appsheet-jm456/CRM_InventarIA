@@ -122,6 +122,25 @@ export function Compra({ datos, etapas, disparo, bots }: {
             </small>
           </label>
           <fieldset className="f-seccion" disabled={ocupado}>
+            <legend>🧾 Resumen del pedido (después de la política de despacho)</legend>
+            <label className="inline">
+              <input type="checkbox" checked={d.resumen_pedido_activo} onChange={(e) => poner('resumen_pedido_activo', e.target.checked)} />
+              Enviar el resumen del pedido al terminar «Datos de despacho»
+            </label>
+            <small className="muted">
+              Justo después de la política de envío o de recojo en tienda, el cliente recibe qué equipos compró, cuánto pagó y cómo se le entrega, con
+              los datos de la base (nunca se inventan). Sale una sola vez por pedido y solo si el cierre llega por la flecha con texto del cuadro Asesor.
+            </small>
+            <label className="field">
+              Texto del resumen
+              <textarea rows={11} value={d.texto_resumen_pedido} maxLength={1500} onChange={(e) => poner('texto_resumen_pedido', e.target.value)} />
+              <small className="muted">
+                Marcas: {'{pedido}'} (PED-0078), {'{equipos}'} (uno por línea), {'{total}'}, {'{pagado}'}, {'{saldo}'} (solo si queda saldo), {'{entrega}'}
+                (envío o recojo en tienda), {'{datos}'} (nombre, celular y dirección; vacío en tienda) y {'{nombre}'}. Una marca sin dato no deja huecos.
+              </small>
+            </label>
+          </fieldset>
+          <fieldset className="f-seccion" disabled={ocupado}>
             <legend>🛒 Carrito: comprar varios equipos</legend>
             <label className="inline">
               <input type="checkbox" checked={d.carrito_activo} onChange={(e) => poner('carrito_activo', e.target.checked)} />

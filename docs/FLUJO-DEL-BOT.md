@@ -593,6 +593,57 @@ que había si no llega (pruebas 5 a 8 de `0052_asesor_solo_motivo.sql`).
 **Fuera de esta tarea:** usar el número de WhatsApp como celular y leer los datos de una foto de la cédula (simplificaciones futuras), y la
 plantilla de Meta para clientes fuera de las 24 h (F4·46).
 
+## Resumen del pedido después del cierre (F4·64, migración 0069)
+
+**Pedido del dueño, 10 nov 2026.** Después de la política de despacho («🏬 Política de entrega en tienda» o «🚚 Política de despacho») el
+cliente no tiene escrito qué equipo se le va a entregar ni cuánto pagó. **Objetivo:** que el cliente tenga claro el pedido que se le
+enviará y que quedó confirmado con el pago.
+
+- **RF-46 · Un mensaje más, justo después del cierre.** Cuando el cliente termina «Datos de despacho» (por *Envío transportadora* o por
+  *Recojo en tienda*) y sale la política, **el bot envía enseguida el «🧾 Resumen de tu pedido»**. Va en el mismo envío, después de la
+  política y antes de que el chat quede con el asesor.
+- **RF-47 · Qué dice.** Número de pedido (PED-0078), los **equipos** (nombre y código), **total, pagado y saldo** (con un abono, F4·59,
+  el saldo pendiente se ve), **cómo se entrega** y, si es envío, **los datos de despacho** (nombre, celular y dirección); si es tienda,
+  «Recojo en tienda». Todo sale de la base (el pedido, los pagos validados y la ficha del cliente), **nunca** se escribe a mano ni lo
+  inventa la IA.
+- **RF-48 · El dueño lo edita.** En Configuración → Agente → Compra: un interruptor **«Enviar el resumen del pedido»** (encendido por
+  defecto) y el texto, con las marcas `{pedido}`, `{equipos}`, `{total}`, `{pagado}`, `{saldo}`, `{entrega}`, `{datos}` y `{nombre}`
+  (primer nombre del cliente). Una marca sin dato (por ejemplo `{datos}` en tienda) deja la línea fuera, sin huecos.
+- **RF-49 · Solo al cerrar una compra.** Sale cuando el cierre llega por la flecha con texto del cuadro Asesor (`solo_motivo`, RF-43) y el
+  cliente tiene un pedido con equipos. Si el cliente escribe *asesor*, tiene tres respuestas no reconocidas o no hay pedido, **no sale**.
+  Los demás bots y el simulador del lienzo no cambian (el simulador no tiene pedido real).
+- **RF-50 · Se envía una sola vez.** Queda marcado en el pedido (`alistamientos.resumen_enviado_en`): si el cliente vuelve a recorrer el
+  bot, no se repite.
+- **RF-51 · No cambia nada del bot publicado.** No hay que editar ni publicar el bot «Datos de despacho»: el resumen lo arma el receptor.
+
+**Texto por defecto**
+```
+🧾 *Resumen de tu pedido* {pedido}
+
+💻 *Equipos*
+{equipos}
+
+💰 Total: *{total}*
+✅ Pagado: *{pagado}*{saldo}
+
+📦 *Entrega:* {entrega}
+{datos}
+
+Si algo no está correcto, escríbelo por aquí y un asesor te ayuda. 🙌
+```
+(`{saldo}` sale como «\n⏳ Saldo pendiente: *$…*» solo si queda saldo.)
+
+**Construido el 10 nov 2026 🔵 (falta la prueba del dueño por WhatsApp).** Migración **0069** (`agente_config.resumen_pedido_activo` y
+`texto_resumen_pedido`, `alistamientos.resumen_enviado_en`). `flujo.asesor` deja la marca transitoria `resumen_pedido` cuando el cierre llega por
+la flecha con texto (no se guarda en la base) y `receptor._contestar` agrega `compra.resumen_pedido(lead, st)` al final del mismo envío; si armarlo
+falla, el cliente igual recibe la política. Agente → Compra tiene el bloque **🧾 Resumen del pedido** (interruptor y texto, con validación de
+marcas). Pruebas: `prueba_resumen_pedido.py` 16/16, `prueba_resumen_receptor.py` 9/9 (punta a punta con el receptor) y `prueba_cierre_despacho.py`
+13/13; compra, carrito, validación, cuentas y tipo de cliente siguen en verde. No hubo que tocar ni publicar el bot «Datos de despacho».
+El resumen no incluye la cédula ni el correo (el cliente ya los confirmó en el paso anterior).
+
+**Cómo probarlo (dueño).** Compra de prueba → validar el pago → recorrer *Recojo en tienda* y, en otra compra, *Envío transportadora*: después
+de la política debe llegar el resumen con los equipos, el total, lo pagado y los datos.
+
 ## Arranques y pruebas (F4·14 y F4·15, decisión 0028)
 
 **Lienzo.** "+ Mensaje" pasa a **"+ Agregar ▾"** con los cinco cuadros (Ir a otro bot es el quinto: un desplegable con los bots y una sola flecha de entrada); cada uno se crea en el centro de la vista y
