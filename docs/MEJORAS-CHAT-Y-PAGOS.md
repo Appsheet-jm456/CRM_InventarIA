@@ -116,6 +116,13 @@ Eliminar en uno que use el bot (sale la lista de cuadros) y pulsar Cancelar.
   Unificado (312). El bot busca el catálogo **por marca** con la categoría «Portátiles» (Acciones con «el catálogo de la marca» y
   la ruta de marcas del menú), así que **Lenovo, HP y Gamer nunca salen por esa vía**. Los cuadros de Avi Ventas sí funcionan porque
   eligen el catálogo por número. Arreglo: Modificar y poner la categoría «Portatiles» en esos cinco.
+- **Corregido el 10 nov 2026 con OK del dueño:** Lenovo (305) y HP (307) pasaron a «Portatiles»; los Gamer (308, 309, 311) a
+  «Portatiles Gamer» (con «Portatiles» Lenovo elegía el Gamer Lenovo, por ser el más nuevo con la misma categoría y marca); el Unificado
+  (312) quedó **sin marca** (con «Multimarca» el bot no lo tomaba como general y el modo «Unificado» no enviaba nada). Verificado con
+  `db.catalogo_para`: Lenovo, HP y Dell dan su catálogo; otra marca o sin marca da el Unificado; Gamer + Lenovo da el Gamer Lenovo.
+  **Regla para cargar los demás:** la categoría igual a la del inventario, la marca solo si el catálogo es de una marca, y el
+  catálogo general de cada categoría **sin marca**. 308 y 311 son dos Gamer multimarca: el bot por categoría nunca elige uno de los dos
+  si tienen marca; el dueño decide cuál queda.
 - El cuadro «Catálogo Dell» del bot **Distribuidor** (versión publicada) apunta al catálogo 39, que ya no existe: no envía nada.
 
 **Categorías que el dueño va a cargar:** Portátiles usados, Portátiles nuevos, Torres Tiny, SFF, Combos, Portátiles Gamer, Monitores
