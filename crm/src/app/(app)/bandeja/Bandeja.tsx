@@ -122,6 +122,7 @@ export function Bandeja({ yo, usuarios, asesores, embudos, etapas, rapidas, inic
   const [ocupado, setOcupado] = useState(false)
   const [aviso, setAviso] = useState<Resultado>({})
   const [vivo, setVivo] = useState(false)
+  const vivoRef = useRef(false)
   const [abiertas, setAbiertas] = useState<Map<number, string[]>>(new Map())
   const [versionOps, setVersionOps] = useState(0)
   const [verFicha, setVerFicha] = useState(false)
@@ -184,11 +185,16 @@ export function Bandeja({ yo, usuarios, asesores, embudos, etapas, rapidas, inic
       .eq('lead_id', id)
       .order('creado_en')
       .limit(500)
-    if (selRef.current === id) setMensajes((data ?? []) as Mensaje[])
+    if (selRef.current !== id) return
+    const nuevos = (data ?? []) as Mensaje[]
+    // Solo si algo cambió: el respaldo de cada 5 s no debe mover el chat si estás leyendo más arriba.
+    const firma = (ms: Mensaje[]) => ms.map((m) => `${m.id}:${m.estado_entrega}`).join(',')
+    setMensajes((ms) => (firma(ms) === firma(nuevos) ? ms : nuevos))
   }, [])
 
   // Tiempo real: cada cambio en leads trae solo ese chat (el RLS decide qué llega); los cambios de 250 ms se juntan en una
-  // consulta. Un mensaje nuevo de la conversación abierta se agrega al chat. Cada 30 s se recarga todo, por si la conexión se cayó.
+  // consulta. Un mensaje nuevo de la conversación abierta se agrega al chat. Respaldo: el chat abierto cada 5 s y la lista cada 30 s
+  // (cada 5 s si se cayó el tiempo real).
   useEffect(() => {
     let espera: ReturnType<typeof setTimeout> | undefined
     const pendientes = new Set<number>()
@@ -210,15 +216,21 @@ export function Bandeja({ yo, usuarios, asesores, embudos, etapas, rapidas, inic
       if (!vigente) return
       canal = supabase
       .channel('bandeja')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'leads' }, (p: { new?: Record<string, unknown>; old?: Record<string, unknown> }) => programar(p))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'leads' }, (p: { new?: Record<string, unknown>; old?: Record<string, unknown> }) => {
+        // F4·59: un soporte nuevo o un abono cambian la compra del cliente abierto: la tarjeta del comprobante se refresca al instante.
+        if (Number(p.new?.id ?? p.old?.id) === selRef.current) setVersionOps((v) => v + 1)
+        programar(p)
+      })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'oportunidades' }, (p: { new?: Record<string, unknown>; old?: Record<string, unknown> }) => {
         setVersionOps((v) => v + 1)
         programar(p, 'lead_id')
       })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'mensajes' }, (p: { new: Record<string, unknown> }) => {
         const nuevo = p.new as unknown as Mensaje & { lead_id: number }
-        if (nuevo.lead_id === selRef.current)
+        if (nuevo.lead_id === selRef.current) {
           setMensajes((ms) => (ms.some((m) => m.id === nuevo.id) ? ms : [...ms, nuevo]))
+          setVersionOps((v) => v + 1)
+        }
         programar(p, 'lead_id')
       })
       // El estado de entrega llega después, como una actualización del mensaje (RM-07).
@@ -228,12 +240,16 @@ export function Bandeja({ yo, usuarios, asesores, embudos, etapas, rapidas, inic
           setMensajes((ms) => ms.map((m) => (m.id === cambio.id
             ? { ...m, estado_entrega: cambio.estado_entrega, error_meta: cambio.error_meta } : m)))
       })
-      .subscribe((estado: string) => setVivo(estado === 'SUBSCRIBED'))
+      .subscribe((estado: string) => { vivoRef.current = estado === 'SUBSCRIBED'; setVivo(vivoRef.current) })
     })
+    // Respaldo del tiempo real: el chat abierto cada 5 s; la lista cada 30 s en vivo, o cada 5 s si se cayó la conexión.
+    let vueltas = 0
     const respaldo = setInterval(() => {
-      cargarLista()
+      if (document.visibilityState !== 'visible') return
+      vueltas++
       if (selRef.current) cargarMensajes(selRef.current)
-    }, 30000)
+      if (!vivoRef.current || vueltas % 6 === 0) cargarLista()
+    }, 5000)
     const reloj = setInterval(() => tic((n) => n + 1), 30000)
     return () => {
       clearTimeout(espera)

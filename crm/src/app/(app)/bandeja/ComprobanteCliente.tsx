@@ -42,7 +42,14 @@ export function ComprobanteCliente({ lead, version, alCambiar }: { lead: number;
     setMotivos((cfg?.motivos_rechazo as string[] | undefined) ?? [])
   }, [lead])
 
-  useEffect(() => { setAviso({}); setModo(''); setAbono(''); setRazon(''); cargar() }, [cargar, version])
+  // Al cambiar de cliente se limpia; un cambio en tiempo real (version) o el respaldo de cada 5 s solo recargan, sin borrar lo que
+  // el asesor está escribiendo (el valor del abono o el motivo).
+  useEffect(() => { setAviso({}); setModo(''); setAbono(''); setRazon('') }, [lead])
+  useEffect(() => { cargar() }, [cargar, version])
+  useEffect(() => {
+    const reloj = setInterval(() => { if (document.visibilityState === 'visible') cargar() }, 5000)
+    return () => clearInterval(reloj)
+  }, [cargar])
 
   async function hacer(accion: () => Promise<{ error?: string; ok?: string }>, pregunta?: string) {
     if (pregunta && !confirm(pregunta)) return
