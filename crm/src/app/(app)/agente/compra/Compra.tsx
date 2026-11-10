@@ -92,6 +92,7 @@ export function Compra({ datos, etapas, disparo, bots }: {
               ['texto_soporte', 'Soporte recibido (no confirma el pago)', '{proxima} = «en breve» o «mañana a las 8:00 am», {horario}, {total} = total de la compra'],
               ['texto_validado', 'Pago confirmado (al validar)', 'Después sale el bot de abajo («¿Cómo recibes tu equipo?»). {total}'],
               ['texto_rechazado', 'Comprobante no válido', '{motivo} = el que elija el asesor, {total}'],
+              ['texto_abono', 'Abono recibido (pago parcial)', 'Sale al validar un pago parcial; la compra sigue esperando el resto. {abono} = lo que pagó ahora, {pagado} = lo pagado en total, {saldo} = lo que falta, {total}'],
             ] as const).map(([k, titulo, ayuda]) => (
               <label key={k} className="field">
                 {titulo}

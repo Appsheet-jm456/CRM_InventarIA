@@ -970,3 +970,7 @@ details.columnas > .panel { right: 0; top: calc(100% + 4px); min-width: 220px }
 .adj-cosa { display: flex; gap: 10px; align-items: center; flex-wrap: wrap }
 .adj-cosa img, .adj-cosa video { max-height: 160px; max-width: 260px; border-radius: 8px; border: 1px solid var(--line) }
 .adj-encima { outline: 2px dashed var(--brand, #2563eb); outline-offset: -6px }
+
+/* F4·59: tarjeta del comprobante junto al chat de la Ficha */
+.ficha-comprobante { padding: 8px 12px 0; max-height: 45vh; overflow-y: auto }
+.ficha-comprobante:empty { display: none }

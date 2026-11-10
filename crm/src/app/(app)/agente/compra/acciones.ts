@@ -24,6 +24,7 @@ export type DatosCompra = {
   texto_soporte: string
   texto_validado: string
   texto_rechazado: string
+  texto_abono: string // F4·59 (RPD-44)
   motivos_rechazo: string[]
 }
 
@@ -53,7 +54,8 @@ export async function guardarCompra(d: DatosCompra): Promise<Resultado> {
     if (otras.length) return { error: `En «${nombre}» el bot solo reemplaza {n}, {max} y {nombre}; no {${otras.join('}, {')}}.` }
   }
   for (const [campo, nombre, marcas] of [['texto_soporte', 'soporte recibido', ['proxima', 'horario', 'total']],
-    ['texto_validado', 'pago confirmado', ['total']], ['texto_rechazado', 'comprobante no válido', ['motivo', 'total']]] as const) {
+    ['texto_validado', 'pago confirmado', ['total']], ['texto_rechazado', 'comprobante no válido', ['motivo', 'total']],
+    ['texto_abono', 'abono recibido', ['abono', 'pagado', 'saldo', 'total']]] as const) {
     if (!d[campo].trim()) return { error: `El texto de ${nombre} no puede quedar vacío.` }
     if (d[campo].length > 1024) return { error: `El texto de ${nombre} tiene máximo 1.024 caracteres.` }
     const otras = [...d[campo].matchAll(/\{([^{}]*)\}/g)].map((m) => m[1]).filter((m) => !(marcas as readonly string[]).includes(m))
@@ -80,6 +82,7 @@ export async function guardarCompra(d: DatosCompra): Promise<Resultado> {
     texto_soporte: d.texto_soporte.trim(),
     texto_validado: d.texto_validado.trim(),
     texto_rechazado: d.texto_rechazado.trim(),
+    texto_abono: d.texto_abono.trim(),
     motivos_rechazo: motivos,
   }).eq('id', 1).select('id')
   if (error) return { error: error.message }

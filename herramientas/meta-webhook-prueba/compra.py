@@ -500,7 +500,10 @@ def espera_soporte(st, tipo):
 
 
 def _con_total(texto, c):
-    return texto.replace("{total}", flujo.cop(c.get("total") or 0))
+    """{total} y, con abonos (F4·59), {abono}, {pagado} y {saldo}."""
+    for clave in ("total", "abono", "pagado", "saldo"):
+        texto = texto.replace("{" + clave + "}", flujo.cop(c.get(clave) or 0))
+    return texto
 
 
 def _soporte_recibido(st, c, tipo, cfg):
@@ -517,6 +520,7 @@ def _soporte_recibido(st, c, tipo, cfg):
     st["campos"]["Etiqueta"] = "Comprobante-Por-Validar"
     nota = (f"💳 Comprobante por validar: {_que_lleva(c)} · "
             f"{'distribuidor' if c.get('tipo') == 'distribuidor' else 'cliente final'} · total {flujo.cop(c.get('total', 0))} · "
+            f"{('ya abonó ' + flujo.cop(c['pagado']) + ', saldo ' + flujo.cop(c.get('saldo') or 0) + ' · ') if float(c.get('pagado') or 0) > 0 else ''}"
             f"llegó {ahora:%d/%m %H:%M}. Revisa la cuenta bancaria y pulsa ✅ Comprobante validado o ❌ No es válido en la Bandeja.")
     texto = flujo.con_horario(_con_total((cfg.get("texto_soporte") or "📄 Recibimos tu soporte. Un asesor está validando el pago "
                                                                     "y te confirma por aquí {proxima}.").strip(), c))
@@ -528,14 +532,14 @@ def resolver_validacion(st, lead=None):
     Devuelve (mensajes, resultado) o None si no hay una validación pendiente. Con el bot del cliente en el hilo."""
     c = st.get("compra") or {}
     v = c.get("validacion")
-    if c.get("paso") != "pago_por_confirmar" or v not in ("validado", "rechazado"):
+    if c.get("paso") != "pago_por_confirmar" or v not in ("validado", "rechazado", "abono"):
         return None
     st.setdefault("bot", None)
     if st["bot"] is None:
         st["bot"] = db.principal()
     flujo._hilo.bot, flujo._hilo.saltos = st["bot"], 0
     try:
-        return (_validado(st, c) if v == "validado" else _rechazado(st, c)), v
+        return ({"validado": _validado, "rechazado": _rechazado, "abono": _abono}[v](st, c)), v
     finally:
         flujo._hilo.bot, flujo._hilo.saltos = None, 0
 
@@ -544,7 +548,10 @@ def _validado(st, c):
     """RAG-65: «✅ Recibimos tu comprobante.» y sigue el despacho: la flecha «Pedido pagado» del cuadro Carrito, el bot de después
     del comprobante (Agente → Compra) o, sin ninguno, el asesor."""
     cfg = _cfg()
-    primero = [flujo.m_texto(_con_total((cfg.get("texto_validado") or "✅ Recibimos tu comprobante.").strip(), c))]
+    texto = _con_total((cfg.get("texto_validado") or "✅ Recibimos tu comprobante.").strip(), c)
+    if c.get("con_saldo") and float(c.get("saldo") or 0) > 0:  # F4·59 (RPD-45b): se despacha con saldo pendiente
+        texto += f"\n\nQueda pendiente un saldo de *{flujo.cop(c['saldo'])}*."
+    primero = [flujo.m_texto(texto)]
     _limpiar(st)
     st["pausa"] = False
     st["campos"]["Etiqueta"] = "Pago-Validado"
@@ -556,6 +563,20 @@ def _validado(st, c):
         return primero + flujo.cambiar_de_bot(st, despues)
     st["pausa"], st["nodo"] = True, flujo.del_tipo("asesor")  # sin bot de despacho: sigue el asesor
     return primero
+
+
+def _abono(st, c):
+    """F4·59 (RPD-44 a RPD-46): una persona validó un abono. Le dice al cliente cuánto abonó y el saldo, y la compra vuelve a esperar
+    el siguiente soporte (sin despacho todavía). La compra conserva lo pagado y el saldo para el próximo comprobante."""
+    cfg = _cfg()
+    texto = _con_total((cfg.get("texto_abono") or "✅ Recibimos tu abono de *{abono}*. Queda pendiente un saldo de *{saldo}*. "
+                                                  "Quedamos atentos al soporte faltante. 🙌").strip(), c)
+    c["paso"] = "esperando_pago"
+    for k in ("validacion", "comprobante_en", "motivo"):
+        c.pop(k, None)
+    st["pausa"], st["nodo"] = False, NODO
+    st["espera_hasta"] = (datetime.now(timezone.utc) + timedelta(hours=int(cfg.get("horas_sin_respuesta") or 12))).isoformat()
+    return [flujo.m_texto(texto)]
 
 
 def _rechazado(st, c):

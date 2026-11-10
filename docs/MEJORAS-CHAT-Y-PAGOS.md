@@ -5,7 +5,7 @@
 
 | Tarea | Mejora | Dónde se ve | Migración |
 |---|---|---|---|
-| **F4·59** | Pago completo o pago parcial (abono) al validar el comprobante | Bandeja, Ficha → Chat, Ficha → Oportunidades | Sí |
+| **F4·59** 🔵 | Pago completo o pago parcial (abono) al validar el comprobante | Bandeja, Ficha → Chat, Ficha → Oportunidades | 0067 |
 | **F4·60** ✅ | Catálogos: modificar el enlace o el PDF, desactivar y eliminar | Inventario → Catálogos (y acceso desde Bot) | 0063 |
 | **F4·61** 🔵 | El asesor envía catálogos y dispara acciones desde el chat con «/» | Bandeja y Ficha → Chat | 0064 |
 | **F4·62** 🔵 | Emojis, documentos, imágenes y audios desde el chat | Bandeja y Ficha → Chat | 0066 |
@@ -77,11 +77,24 @@ Total $2.000.000 − Pagado $1.000.000 = Saldo $1.000.000
   por crear) o queda «sin avisar» con el botón «Avisar al cliente», como hoy.
 - **Sin cambio de reglas:** el embudo no se mueve solo y siempre valida una persona (RAG-21).
 
-### Construcción prevista
+### Construida el 10 nov 2026 🔵 (falta la prueba del dueño por WhatsApp)
 
-Migración nueva: `validar_comprobante(p_lead, p_valor)` (sin valor = pago completo), textos `texto_abono` en `agente_config` con sus
-permisos por columna, etiqueta Saldo-Pendiente y pruebas SQL. Receptor: `/interno/comprobante` con el caso «abono».
-Pantalla: `ComprobanteCliente.tsx` (ya se usa en los tres sitios).
+- **Base (migración 0067, 10 pruebas SQL; 0050 y 0061 siguen en verde):** `validar_comprobante(lead, valor)`: sin valor es pago
+  completo **por el saldo** que falte (solo ese valor entra a `pagos`); con valor menor que el saldo es abono (`validacion = 'abono'`,
+  `pagado`, `saldo`, etiqueta Saldo-Pendiente, oportunidad en Esperando pago). Lo pagado se toma de la tabla `pagos` del pedido (cuenta
+  también los pagos a mano). `despachar_con_saldo(lead, motivo)` (RPD-45b). `agente_config.texto_abono` con su permiso por columna.
+- **Bot (`compra.py`):** `_abono` envía el texto del abono y la compra vuelve a «esperando pago» (sin despacho; conserva lo pagado);
+  el siguiente soporte vuelve a la tarjeta. Con el saldo en cero, como siempre. Con «despachar con saldo», la confirmación recuerda
+  el saldo. `prueba_validacion.py` 20/20; compra, carrito, despacho, cuentas, tipo de cliente y pregunta siguen en verde.
+- **Pantalla:** `ComprobanteCliente.tsx` en la Bandeja, en Ficha → Oportunidades y ahora también **junto al chat de la Ficha**:
+  *Total · Pagado · Saldo*, botones **✅ Pago completo $saldo**, **◐ Pago parcial** (pide el valor y muestra *saldo − abono = queda*)
+  y **❌ No es válido**. Tras un abono la tarjeta pasa a **«◐ Saldo pendiente»** con **🚚 Despachar con saldo pendiente** (motivo).
+  El texto del abono se edita en Agente → Compra → «Abono recibido (pago parcial)».
+- App y receptor compilados y reiniciados.
+
+**Para probarlo (dueño), con una compra de prueba de $2.000.000:** mandar un comprobante → ◐ Pago parcial → $1.000.000 → Enviar: el
+cliente recibe el saldo de $1.000.000 y la tarjeta queda «Saldo pendiente». Mandar otro comprobante → ✅ Pago completo $1.000.000:
+sigue Datos de despacho. En Pedidos se ven los dos pagos.
 
 ---
 

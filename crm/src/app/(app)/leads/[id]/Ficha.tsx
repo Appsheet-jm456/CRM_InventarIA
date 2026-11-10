@@ -628,6 +628,12 @@ export function Ficha({ lead: inicial, yo, usuarios, asesores, embudos, etapas, 
           })}
         </div>
 
+        {/* F4·59: la tarjeta del comprobante también junto al chat (en Oportunidades ya está arriba del pedido) */}
+        {yo.validarPagos && pestana !== 'oportunidades' && (
+          <div className="ficha-comprobante">
+            <ComprobanteCliente lead={lead.id} version={version} alCambiar={() => { cargar(); router.refresh() }} />
+          </div>
+        )}
         <div className={`b-responder${adjuntos.encima ? ' adj-encima' : ''}`} {...adjuntos.zona}>
           <div className="pastillas" role="tablist" style={{ marginBottom: 6 }}>
             {([['chat', 'Chat'], ['nota', 'Nota'], ['tarea', 'Tarea']] as const).map(([k, t]) => (

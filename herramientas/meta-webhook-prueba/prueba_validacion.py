@@ -172,5 +172,30 @@ t = turno("asesor", "image")
 ok(len(t) == 1 and t[0].startswith("¿Cómo recibes tu equipo?"), "casilla apagada: el despacho arranca al recibir la foto, como antes")
 CFG["validar_comprobante"] = True
 
+# 12. F4·59 (RPD-44): abono → el cliente recibe el saldo y la compra vuelve a esperar el siguiente soporte, sin despacho
+CFG["texto_abono"] = "✅ Recibimos tu abono de *{abono}*. Queda pendiente un saldo de *{saldo}* (total {total})."
+con_compra("pago_por_confirmar", pausa=True)
+r, t = validar("abono", abono=2000000, pagado=2000000, saldo=2080000)
+ok(r["ok"] and r["resultado"] == "abono" and t == ["✅ Recibimos tu abono de *$2.000.000*. Queda pendiente un saldo de *$2.080.000* (total $4.080.000)."],
+   "abono: un solo mensaje con lo abonado, el saldo y el total")
+c = LEAD["estado_bot"]["compra"]
+ok(c["paso"] == "esperando_pago" and "validacion" not in c and c["pagado"] == 2000000 and LEAD["pausar_bot"] is False
+   and LEAD["bot_id"] is None, "la compra vuelve a esperar el pago (conserva lo pagado) y no arranca el despacho (RPD-45)")
+
+# 13. El segundo soporte llega a la tarjeta con lo que ya abonó (RPD-46)
+t = turno("asesor", "image")
+ok(LEAD["estado_bot"]["compra"]["paso"] == "pago_por_confirmar" and LEAD["estado_bot"]["compra"]["pagado"] == 2000000,
+   "el segundo soporte vuelve a quedar por validar, sin perder lo abonado")
+
+# 14. Pago completo del saldo: sigue el despacho como siempre (RPD-47)
+r, t = validar("validado", pagado=4080000, saldo=0)
+ok(r["ok"] and t[0] == "✅ Recibimos tu comprobante." and t[1].startswith("¿Cómo recibes tu equipo?"), "con el saldo pagado arranca el despacho")
+
+# 15. Excepción: despachar con saldo pendiente avisa el saldo (RPD-45b)
+con_compra("pago_por_confirmar", pausa=True, pagado=2000000)
+r, t = validar("validado", con_saldo=True, saldo=2080000)
+ok(t[0] == "✅ Recibimos tu comprobante.\n\nQueda pendiente un saldo de *$2.080.000*." and t[1].startswith("¿Cómo recibes tu equipo?"),
+   "con saldo pendiente autorizado: confirma, recuerda el saldo y arranca el despacho")
+
 print(f"\n{n - fallos}/{n} en verde" if not fallos else f"\n{fallos} de {n} fallaron")
 sys.exit(1 if fallos else 0)

@@ -115,12 +115,25 @@ async function avisarReceptor(lead: number): Promise<{ error?: string; aviso?: s
   }
 }
 
-export async function validarComprobante(lead: number): Promise<Resultado> {
-  const { error } = await crearCliente().rpc('validar_comprobante', { p_lead: lead })
+// F4·59 (RPD-41 a RPD-43): sin valor = pago completo (por el saldo que falte); con valor = abono, y el pedido espera el resto.
+export async function validarComprobante(lead: number, abono?: number): Promise<Resultado> {
+  const { error } = await crearCliente().rpc('validar_comprobante', abono ? { p_lead: lead, p_valor: abono } : { p_lead: lead })
   if (error) return { error: error.message }
   const r = await avisarReceptor(lead)
-  if (r.error) return { error: `Quedó validado, pero no se le pudo escribir al cliente: ${r.error} Pulsa de nuevo «Avisar al cliente».` }
-  return { ok: r.aviso ?? 'Pago validado: el cliente recibió la confirmación y sigue con los datos de despacho.' }
+  if (r.error) return { error: `Quedó ${abono ? 'registrado el abono' : 'validado'}, pero no se le pudo escribir al cliente: ${r.error} Pulsa de nuevo «Avisar al cliente».` }
+  return { ok: r.aviso ?? (abono ? 'Abono registrado: el cliente recibió el saldo pendiente y el pedido espera el soporte que falta.'
+    : 'Pago validado: el cliente recibió la confirmación y sigue con los datos de despacho.') }
+}
+
+// RPD-45b: excepción del dueño, despachar sin el saldo completo (con motivo).
+export async function despacharConSaldo(lead: number, motivo: string): Promise<Resultado> {
+  const limpio = motivo.trim()
+  if (!limpio) return { error: 'Escribe el motivo.' }
+  const { error } = await crearCliente().rpc('despachar_con_saldo', { p_lead: lead, p_motivo: limpio })
+  if (error) return { error: error.message }
+  const r = await avisarReceptor(lead)
+  if (r.error) return { error: `Quedó autorizado, pero no se le pudo escribir al cliente: ${r.error} Pulsa de nuevo «Avisar al cliente».` }
+  return { ok: r.aviso ?? 'Despacho autorizado con saldo pendiente: el cliente sigue con los datos de despacho.' }
 }
 
 export async function rechazarComprobante(lead: number, motivo: string): Promise<Resultado> {
