@@ -1,7 +1,7 @@
 # Pago parcial, catálogos editables y herramientas del asesor en el chat (F4·59 a F4·62)
 
 > **Estado:** 📝 documentadas el 10 nov 2026 por pedido del dueño. **Ninguna está construida; se construyen cuando el dueño dé la orden.**
-> Hay preguntas abiertas en la sección 6: cada una trae una propuesta, que vale hasta que el dueño diga otra cosa.
+> Las cuatro preguntas quedaron respondidas por el dueño el 10 nov 2026 (sección 6).
 
 | Tarea | Mejora | Dónde se ve | Migración |
 |---|---|---|---|
@@ -62,8 +62,12 @@ Total $2.000.000 − Pagado $1.000.000 = Saldo $1.000.000
 - **RPD-44 · Mensaje al cliente con el saldo.** Texto editable en Configuración → Agente → Compra, con las marcas `{abono}`, `{pagado}`,
   `{saldo}` y `{total}`. Propuesta:
   > ✅ Recibimos tu abono de **$1.000.000**. Queda pendiente un saldo de **$1.000.000**. Quedamos atentos al soporte faltante. 🙌
-- **RPD-45 · El pedido espera el saldo.** Con un abono, el cliente queda con la etiqueta **Saldo-Pendiente**, el bot sigue esperando el
-  siguiente comprobante y **no arranca «Datos de despacho»** *(propuesta; pregunta 1)*.
+- **RPD-45 · El pedido espera el saldo** *(decidido por el dueño el 10 nov 2026)*. Con un abono, el cliente queda con la etiqueta
+  **Saldo-Pendiente**, el bot sigue esperando el siguiente comprobante y **no arranca «Datos de despacho»**.
+- **RPD-45b · Excepción: despachar con saldo pendiente.** Para clientes excepcionales, en la tarjeta del abono hay un botón
+  «🚚 Despachar con saldo pendiente» que pide un **motivo** obligatorio (p. ej. «cliente frecuente, paga contraentrega»), arranca
+  «Datos de despacho» y deja la etiqueta Saldo-Pendiente y la alerta «Saldo pendiente» en Pedidos hasta que el saldo llegue a cero.
+  Lo puede hacer quien tiene `validar_pagos` y queda en la línea de tiempo con su nombre.
 - **RPD-46 · El segundo soporte muestra lo que falta.** La tarjeta vuelve a salir con *Pagado $1.000.000 · Saldo $1.000.000* y el botón
   dice «✅ Pago completo $1.000.000». Se puede abonar otra vez (tres o más soportes).
 - **RPD-47 · Cuando el saldo llega a cero** pasa lo de hoy: mensaje de pago confirmado, se quita Saldo-Pendiente, queda Pago-Validado y
@@ -93,7 +97,8 @@ Pantalla: `ComprobanteCliente.tsx` (ya se usa en los tres sitios).
   («Lo usa el bot Avi Ventas, cuadro Lenovo») y propone **desactivar** en su lugar.
 - **RI-15 · Categoría y marca de una lista**, no escritas a mano, para que no vuelva a pasar «Portatiles» y «Portatil». La lista sale
   de las categorías y marcas del inventario, con opción de agregar una nueva.
-- **RI-16 · Dónde vive** *(pregunta 2)*: se queda en Inventario → Catálogos y se agrega un acceso «Catálogos» en el menú de Bot.
+- **RI-16 · Dónde vive** *(decidido por el dueño el 10 nov 2026)*: se queda en Inventario → Catálogos, con un acceso «Catálogos» en el
+  menú de Bot. Lo importante para el dueño es **enviarlos desde el chat** (F4·61).
 - **Quién:** el permiso `administrar_inventario`, como hoy.
 
 **Categorías que el dueño va a cargar:** Portátiles usados, Portátiles nuevos, Torres Tiny, SFF, Combos, Portátiles Gamer, Monitores
@@ -134,7 +139,10 @@ Además, un botón **⚡** junto a la caja abre la misma lista para quien no use
   Las acciones que solo sirven al bot («Pasar a asesor») no aparecen.
 - **RB-09 · Flujos desde el chat.** «Iniciar compra» arranca el cierre de compra con el equipo o el carrito del cliente (cuentas para
   pagar → comprobante → validación → despacho) y «Datos de despacho» arranca ese bot. Disparar un flujo **devuelve ese tramo al bot**:
-  el bot hace las preguntas y, al terminar, la conversación vuelve al asesor *(propuesta; pregunta 3)*.
+  el bot hace las preguntas.
+- **RB-09b · Híbrido: el asesor elige qué pasa al terminar** *(decidido por el dueño el 10 nov 2026)*. Al disparar el flujo, la vista
+  previa trae «Al terminar: **Vuelve a mí**» (por defecto) o «**Sigue el bot**». Mientras el bot hace el tramo, el asesor ve el chat en
+  vivo y puede **escribir en cualquier momento**: si escribe, el flujo se detiene y la conversación vuelve a él (RB-01).
 - **RB-10 · Vista previa antes de enviar.** Al elegir, el asesor ve qué va a salir (texto, imagen, enlace) y confirma con Enter.
   Las respuestas rápidas siguen igual: el texto queda en la caja para revisarlo.
 - **RB-11 · Queda registrado.** Lo enviado se guarda como mensaje del asesor con la marca de qué fue («📚 Catálogo Lenovo»,
@@ -164,7 +172,8 @@ pantalla). Migración pequeña: columna «Disponible para el asesor» en `accion
 
   Si el archivo no cumple, la pantalla lo dice antes de subir.
 - **RB-16 · Nota de voz** *(pregunta 4)*: botón 🎤 que graba desde el navegador y la envía como nota de voz de WhatsApp. El servidor la
-  convierte al formato que pide Meta con `ffmpeg` (ya instalado). **Propuesta: construirla en un segundo bloque**, después de los adjuntos.
+  convierte al formato que pide Meta con `ffmpeg` (ya instalado). **Se construye en un segundo bloque**, después de los adjuntos
+  (decidido por el dueño el 10 nov 2026).
 - **RB-17 · Lo enviado se ve en el chat** igual que lo que manda el cliente (imagen, reproductor de audio, documento para abrir) y
   queda guardado en el almacenamiento privado `media`.
 - **RB-18 · Mismas reglas del chat:** RB-01, RB-02 y RB-03 (si Meta no lo acepta, no se guarda).
@@ -176,14 +185,14 @@ El receptor ya sabe enviar imagen, documento y video (catálogos, guías, videos
 
 ---
 
-## 6. Preguntas para el dueño
+## 6. Decisiones del dueño (10 nov 2026)
 
-| # | Pregunta | Propuesta |
+| # | Pregunta | Respuesta del dueño |
 |---|---|---|
-| 1 | Con un **pago parcial**, ¿el pedido espera el saldo o ya arranca Datos de despacho y el alistamiento? | Espera el saldo completo |
-| 2 | ¿Los **catálogos** se quedan en Inventario → Catálogos o se mudan al módulo Bot? | Se quedan, con acceso desde Bot |
-| 3 | Al **disparar un flujo** desde el chat (compra, despacho), ¿el bot retoma ese tramo solo? | Sí, y al terminar vuelve al asesor |
-| 4 | **Audios:** ¿adjuntar archivos de audio alcanza, o también grabar nota de voz desde el CRM? | Adjuntar primero; grabar en un segundo bloque |
+| 1 | Con un **pago parcial**, ¿el pedido espera el saldo o arranca Datos de despacho? | **Espera el saldo**; con clientes excepcionales se puede despachar con saldo pendiente (RPD-45b) |
+| 2 | ¿Los **catálogos** se quedan en Inventario → Catálogos o se mudan al módulo Bot? | **Se quedan**; lo importante es enviarlos desde el chat |
+| 3 | Al **disparar un flujo** desde el chat, ¿el bot retoma ese tramo solo? | **El asesor activa flujos, y es híbrido** (RB-09b: el asesor elige si vuelve a él o sigue el bot) |
+| 4 | **Audios:** ¿adjuntar o también grabar nota de voz? | **En ese orden**: adjuntar primero, grabar después |
 
 ## 7. Orden sugerido de construcción
 
