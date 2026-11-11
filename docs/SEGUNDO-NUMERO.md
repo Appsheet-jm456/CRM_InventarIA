@@ -1,13 +1,44 @@
 # Segunda línea de venta con otro número de WhatsApp (F4·69)
 
-> **Estado:** 📝 documentada el 11 nov 2026 por pedido del dueño. **Sin construir.** Se construye cuando el dueño responda las preguntas
-> de la sección 7 y dé la orden. Migración prevista: **0076** (revisar `ls supabase/migrations` antes de numerar).
+> **Estado:** 📝 documentada el 11 nov 2026 por pedido del dueño, con sus respuestas del mismo día (Cliente Final y Distribuidor).
+> **Sin construir.** Falta: confirmar el número, la pregunta 1 de la sección 7 y la orden del dueño. Migración prevista: **0076** (revisar `ls supabase/migrations` antes de numerar).
 
 **Pedido del dueño (11 nov 2026):** «Otra línea de venta con otro número. ¿Sería el mismo bot o se revisaría qué flujo tendría?»
 
 **Respuesta corta:** las dos cosas son posibles. **Cada número elige su bot** en Configuración → Meta: puede ser el mismo
 «Avi Ventas» o un bot propio (por ejemplo, uno solo para equipos nuevos o para distribuidores). Inventario, asesores,
 embudos, pedidos y respaldos siguen siendo **uno solo** para las dos líneas.
+
+### Respuestas del dueño (11 nov 2026)
+
+| Pregunta | Respuesta |
+|---|---|
+| ¿Qué es cada línea? | **Línea 1 · Cliente Final** (el 318 de hoy) y **Línea 2 · Distribuidor** |
+| ¿Mismo bot? | **Flujos diferentes**: cada línea con su bot |
+| ¿Mismos asesores? | **Sí, los mismos** (*«son los mismos»*; confirmar que se refería a los asesores) |
+| ¿Portafolio de Meta? | **El mismo**, «Ventas Virtual Colombia» (misma WABA, mismo token: el caso sencillo) |
+| ¿Qué número? | **Por confirmar** |
+| Mismo cliente en las dos líneas | **Sin responder**; se propone la opción A (dos chats), ver RLN-07 |
+
+**Lo que ya existe y se aprovecha** (revisado en la base el 11 nov 2026): el embudo **Distribuidor** (id 3), el bot **Distribuidor**
+(id 78, versión 1 publicada, sin uso desde que «Avi Ventas» es el principal; **revisarlo antes**, porque apuntaba al catálogo 39, que ya no existe),
+y el dato **Tipo de cliente** de la ficha (F4·48: «Cliente final» o «Distribuidor», que ya decide si se cobra la configuración).
+
+Con eso, la línea define el tipo de cliente:
+
+| | Línea 1 · Cliente Final | Línea 2 · Distribuidor |
+|---|---|---|
+| Bot | «Avi Ventas» (el principal de hoy) | «Distribuidor» (por revisar o rehacer) |
+| Tipo de cliente | Cliente final (como hoy, con la pregunta si hace falta) | **Distribuidor automático**, sin preguntar |
+| Embudo de la oportunidad | Cliente Final | **Distribuidor** |
+| Configuración $80.000 | Una vez por pedido, en usados (F4·48) | Nunca (F4·48) |
+| Asesores | Los mismos | Los mismos |
+| Inventario, catálogos, cuentas | Compartidos | Compartidos (catálogos propios si el bot lo pide) |
+
+- **RLN-13 · La línea fija el tipo de cliente.** Un cliente nuevo de la línea Distribuidor nace con «Tipo de cliente: Distribuidor» y su
+  oportunidad en el embudo Distribuidor. El bot no pregunta «¿distribuidor o cliente final?». El asesor puede corregirlo en la ficha, como hoy.
+- **RLN-14 · Antes de encender la línea 2**, el bot «Distribuidor» se revisa en el lienzo: catálogos vigentes, compra, cotización y paso al asesor.
+  Es trabajo de configuración, no de código, y se puede hacer mientras se construye F4·69.
 
 ---
 
