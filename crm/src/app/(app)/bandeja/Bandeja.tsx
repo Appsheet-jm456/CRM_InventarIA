@@ -451,6 +451,7 @@ export function Bandeja({ yo, usuarios, asesores, embudos, etapas, rapidas, inic
                   <div className="b-caja">
                     {adjuntos.entrada}
                     <MenuMas activo={!!lead && enVentana} abrirArchivo={adjuntos.abrirArchivo} abrirGrupo={herramientas.abrir}
+                      abrirCarrito={() => { window.location.href = `/leads/${lead.id}?pestana=carrito` }}
                       alAbrir={() => { adjuntos.cerrarEmojis(); herramientas.cerrar() }} />
                     {adjuntos.botonEmojis}
                     <textarea

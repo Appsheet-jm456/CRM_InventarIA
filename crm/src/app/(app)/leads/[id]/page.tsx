@@ -6,7 +6,7 @@ import { Ficha, type LeadFicha } from './Ficha'
 
 // F4·30 D: ficha del lead a pantalla completa (datos y atributos a la izquierda, línea de tiempo y chat a la derecha).
 // El RLS de leads decide si se ve: el asesor, sus leads y los sin asignar.
-export default async function PaginaFicha({ params }: { params: { id: string } }) {
+export default async function PaginaFicha({ params, searchParams }: { params: { id: string }; searchParams: { pestana?: string } }) {
   const sesion = (await obtenerSesion())!
   if (!puede(sesion, ['atender_bandeja'])) return <SinPermiso />
   const id = Number(params.id)
@@ -59,6 +59,7 @@ export default async function PaginaFicha({ params }: { params: { id: string } }
       tiposTarea={(tipos ?? []).map((t) => t.nombre)}
       etiquetas={(etiquetas ?? []) as unknown as string[]}
       cotizaciones={cotizaciones ?? []}
+      pestanaInicial={searchParams.pestana}
     />
   )
 }

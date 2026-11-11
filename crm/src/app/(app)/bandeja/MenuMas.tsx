@@ -12,16 +12,18 @@ const ICONOS: Record<string, JSX.Element> = {
   fotos: <path d="M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Zm-1 11 5-5 4 4 3-3 6 6M15.5 9.5h.01" />,
   audio: <path d="M12 3a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3Zm-7 9a7 7 0 0 0 14 0M12 19v3" />,
   catalogo: <path d="M4 4h6a2 2 0 0 1 2 2v14a2 2 0 0 0-2-2H4Zm16 0h-6a2 2 0 0 0-2 2v14a2 2 0 0 1 2-2h6Z" />,
+  carrito: <path d="M3 4h2l2.4 11.2a1 1 0 0 0 1 .8h8.9a1 1 0 0 0 1-.8L20 8H6.2M9 20h.01M17 20h.01" />,
   equipo: <path d="M5 5h14a1 1 0 0 1 1 1v9H4V6a1 1 0 0 1 1-1Zm-3 10h20l-1.5 3a1 1 0 0 1-.9.5H4.4a1 1 0 0 1-.9-.5Z" />,
   accion: <path d="M13 2 4 14h7l-1 8 9-12h-7Z" />,
   flujo: <path d="M4 6h9a3 3 0 0 1 0 6h-2a3 3 0 0 0 0 6h9m-3-3 3 3-3 3" />,
   rapida: <path d="M4 5h16v10H9l-5 4Z" />,
 }
 
-const OPCIONES: { clave: string; texto: string; color: string; archivo?: TipoArchivo; grupo?: Grupo; ayuda: string }[] = [
+const OPCIONES: { clave: string; texto: string; color: string; archivo?: TipoArchivo; grupo?: Grupo; carrito?: true; ayuda: string }[] = [
   { clave: 'documento', texto: 'Documento', color: '#7F66FF', archivo: 'documento', ayuda: 'PDF, Word, Excel o PowerPoint · hasta 20 MB' },
   { clave: 'fotos', texto: 'Fotos y videos', color: '#007BFC', archivo: 'fotos', ayuda: 'Imagen JPG o PNG 5 MB · video MP4 16 MB' },
   { clave: 'audio', texto: 'Audio', color: '#FA6533', archivo: 'audio', ayuda: 'Hasta 16 MB' },
+  { clave: 'carrito', texto: 'Carrito del cliente', color: '#F05A28', carrito: true, ayuda: 'Armar el pedido (inventario, productos libres y precios) y enviarlo' },
   { clave: 'catalogo', texto: 'Catálogos', color: '#02A698', grupo: 'catalogo', ayuda: 'Los de Inventario → Catálogos' },
   { clave: 'equipo', texto: 'Ficha del equipo', color: '#1E88E5', grupo: 'equipo', ayuda: 'Ficha técnica con código, especificaciones y fotos de un equipo con stock' },
   { clave: 'accion', texto: 'Acciones', color: '#E5A00D', grupo: 'accion', ayuda: 'Ubicación, Cuentas para pagar, Garantía…' },
@@ -29,10 +31,11 @@ const OPCIONES: { clave: string; texto: string; color: string; archivo?: TipoArc
   { clave: 'rapida', texto: 'Respuestas rápidas', color: '#FFB21A', grupo: 'rapida', ayuda: 'También escribiendo / en la caja' },
 ]
 
-export function MenuMas({ activo, abrirArchivo, abrirGrupo, alAbrir }: {
+export function MenuMas({ activo, abrirArchivo, abrirGrupo, abrirCarrito, alAbrir }: {
   activo: boolean
   abrirArchivo: (tipo: TipoArchivo) => void
   abrirGrupo: (grupo: Grupo) => void
+  abrirCarrito?: () => void // F4·72: la pestaña 🛒 Carrito de la Ficha
   alAbrir?: () => void // cierra los otros paneles (emojis, lista de herramientas) al abrir el menú
 }) {
   const [abierto, setAbierto] = useState(false)
@@ -52,7 +55,8 @@ export function MenuMas({ activo, abrirArchivo, abrirGrupo, alAbrir }: {
 
   function elegir(o: (typeof OPCIONES)[number]) {
     setAbierto(false)
-    if (o.archivo) abrirArchivo(o.archivo)
+    if (o.carrito) abrirCarrito?.()
+    else if (o.archivo) abrirArchivo(o.archivo)
     else if (o.grupo) abrirGrupo(o.grupo)
   }
 
@@ -64,7 +68,7 @@ export function MenuMas({ activo, abrirArchivo, abrirGrupo, alAbrir }: {
       </button>
       {abierto && (
         <div className="mas-menu" role="menu">
-          {OPCIONES.map((o, i) => (
+          {OPCIONES.filter((o) => !o.carrito || abrirCarrito).map((o, i) => (
             <span key={o.clave} style={{ display: 'contents' }}>
               {i === 3 && <hr />}
               <button type="button" role="menuitem" title={o.ayuda} onClick={() => elegir(o)} autoFocus={i === 0}>

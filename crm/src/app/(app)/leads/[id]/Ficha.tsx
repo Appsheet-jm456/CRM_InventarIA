@@ -11,6 +11,7 @@ import { useHerramientas } from '../../bandeja/Herramientas'
 import { useAdjuntos } from '../../bandeja/Adjuntos'
 import { MenuMas } from '../../bandeja/MenuMas'
 import { PedidoCliente } from './pedido/PedidoCliente'
+import { CarritoCliente } from './Carrito'
 import { type Embudo, type Etapa } from '../../bandeja/OportunidadesCliente'
 import { ComponerPlantilla } from '../../bandeja/Plantilla'
 import { archivoLead, borrarYa, crearTarea, cumplirTarea, etiquetaLead, guardarFicha, notaLead, type Resultado } from './acciones'
@@ -126,7 +127,7 @@ function CampoAtributo({ a, valor, cambiar, ocupado, error }: { a: Atributo; val
 // ---------------------------------------------------------------------------------------------------------------------- //
 // La ficha
 // ---------------------------------------------------------------------------------------------------------------------- //
-export function Ficha({ lead: inicial, yo, usuarios, asesores, embudos, etapas, rapidas, atributos, tiposTarea, etiquetas, cotizaciones }: {
+export function Ficha({ lead: inicial, yo, usuarios, asesores, embudos, etapas, rapidas, atributos, tiposTarea, etiquetas, cotizaciones, pestanaInicial }: {
   lead: LeadFicha
   yo: { id: string; verTodas: boolean; moverEtapas: boolean; eliminar: boolean; validarPagos: boolean; corregirPedidos: boolean; esAdmin?: boolean }
   usuarios: Persona[]
@@ -138,13 +139,15 @@ export function Ficha({ lead: inicial, yo, usuarios, asesores, embudos, etapas, 
   tiposTarea: string[]
   etiquetas: string[]
   cotizaciones: Cotizacion[]
+  pestanaInicial?: string // F4·72: «+» → Carrito desde la Bandeja abre /leads/{id}?pestana=carrito
 }) {
   const router = useRouter()
   const [lead, setLead] = useState(inicial)
   const [mensajes, setMensajes] = useState<Mensaje[] | null>(null)
   const [eventos, setEventos] = useState<Evento[]>([])
   const [tareas, setTareas] = useState<Tarea[]>([])
-  const [pestana, setPestana] = useState<'principal' | 'oportunidades' | 'tareas' | 'cotizaciones' | 'archivos' | 'estadisticas'>('principal')
+  const [pestana, setPestana] = useState<'principal' | 'oportunidades' | 'carrito' | 'tareas' | 'cotizaciones' | 'archivos' | 'estadisticas'>(
+    pestanaInicial === 'carrito' ? 'carrito' : 'principal')
   const [caja, setCaja] = useState<'chat' | 'nota' | 'tarea'>('chat')
   const [escrito, setEscrito] = useState('')
   const [tarea, setTarea] = useState({ tipo: tiposTarea[0] ?? 'Seguimiento', que: '', vence: hoyMas(24), asignado: '' })
@@ -427,7 +430,7 @@ export function Ficha({ lead: inicial, yo, usuarios, asesores, embudos, etapas, 
           </div>
 
           <div className="pastillas" role="tablist">
-            {([['principal', 'Principal'], ['oportunidades', 'Oportunidades'], ['tareas', `Tareas${pendientes.length ? ` (${pendientes.length})` : ''}`],
+            {([['principal', 'Principal'], ['oportunidades', 'Oportunidades'], ['carrito', '🛒 Carrito'], ['tareas', `Tareas${pendientes.length ? ` (${pendientes.length})` : ''}`],
               ['cotizaciones', `Cotizaciones${cotizaciones.length ? ` (${cotizaciones.length})` : ''}`], ['archivos', `Archivos${archivos.length ? ` (${archivos.length})` : ''}`],
               ['estadisticas', 'Estadísticas']] as const).map(([k, t]) => (
               <button key={k} role="tab" aria-selected={pestana === k} className={`pastilla${pestana === k ? ' activa' : ''}`} onClick={() => setPestana(k)}>{t}</button>
@@ -480,6 +483,10 @@ export function Ficha({ lead: inicial, yo, usuarios, asesores, embudos, etapas, 
             <PedidoCliente lead={lead.id} puedeDocumento={yo.moverEtapas} puedeCorregir={yo.corregirPedidos} puedePagos={yo.validarPagos} puedeEliminar={!!yo.esAdmin} embudos={embudos} etapas={etapas} version={version}
               alCambiar={() => { cargar(); router.refresh() }}
               pago={yo.validarPagos ? <ComprobanteCliente lead={lead.id} version={version} alCambiar={() => { cargar(); router.refresh() }} /> : undefined} />
+          )}
+
+          {pestana === 'carrito' && (
+            <CarritoCliente lead={lead.id} alEnviar={() => { cargar(); router.refresh() }} />
           )}
 
           {pestana === 'tareas' && (
@@ -654,6 +661,7 @@ export function Ficha({ lead: inicial, yo, usuarios, asesores, embudos, etapas, 
               <div className="b-caja">
                 {adjuntos.entrada}
                 <MenuMas activo={caja === 'chat' && enVentana} abrirArchivo={adjuntos.abrirArchivo} abrirGrupo={herramientas.abrir}
+                  abrirCarrito={() => setPestana('carrito')}
                   alAbrir={() => { adjuntos.cerrarEmojis(); herramientas.cerrar() }} />
                 {adjuntos.botonEmojis}
                 <textarea rows={2} ref={cajaTexto} onPaste={adjuntos.alPegar} value={escrito} onChange={(e) => setEscrito(e.target.value)}

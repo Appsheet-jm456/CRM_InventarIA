@@ -86,6 +86,12 @@ def sin_stock(codigos):
     return pedidos - con_stock
 
 
+def carrito(lead_id):
+    """F4·72: el carrito que armó el asesor para el cliente (tabla carritos) o None."""
+    filas = pedir(f"carritos?lead_id=eq.{int(lead_id)}&select=*")
+    return filas[0] if filas else None
+
+
 def olvidar_inventario():
     """F4·66 (RPD-52): tras validar un pago el stock cambió; el siguiente cliente lo ve sin esperar los 30 s de la copia."""
     _cache["t"] = 0

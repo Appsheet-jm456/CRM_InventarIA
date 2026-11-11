@@ -6,6 +6,10 @@ ficha) → distribuidor o cliente final → resumen con el total → cuentas con
 comprobante (foto, PDF o «ya pagué») → Pago por confirmar y el chat pasa al asesor. Cancelar con «ya no quiero».
 Si en 12 h no hay respuesta, el reloj manda «¿Sigues interesado?».
 
+Carrito del asesor (F4·72, docs/CARRITO-DEL-ASESOR.md, RCA-01 a RCA-10): el asesor arma el pedido en la Ficha y lo envía; la
+compra arranca en «confirmar» con sus renglones (c["asesor"]). Sus precios se respetan y los renglones libres (c["equipos"][k]["libre"],
+código LIBRE-n) no cuentan para stock, video ni «Código producto».
+
 Carrito (F4·44, docs/AGENTE.md §4f, RAG-54 a RAG-62): con Agente → Compra → Carrito encendido (o si la compra empieza en un cuadro
 🛒 Carrito del lienzo) la compra pregunta «¿Quieres agregar otro equipo?», arma una lista en st["compra"]["equipos"] y el resumen,
 las cuentas, la nota del asesor y la cotización llevan todos. Apagado, todo sigue con un solo equipo, como antes.
@@ -82,8 +86,9 @@ def _alternativas(vendidos, maximo=3):
 
 
 def _vendidos(c):
-    """F4·66 (RPD-53): los equipos del pedido que ya no tienen stock, según la base en este momento (no la copia de 30 s)."""
-    items = _items(c)
+    """F4·66 (RPD-53): los equipos del pedido que ya no tienen stock, según la base en este momento (no la copia de 30 s).
+    Los renglones libres del carrito del asesor (F4·72) no son del inventario: nunca cuentan."""
+    items = [i for i in _items(c) if not i.get("libre")]
     try:
         agotados = db.sin_stock([i["codigo"] for i in items])
     except Exception:  # si la base no responde, sigue con la copia del inventario como antes
@@ -113,7 +118,7 @@ def _maximo():
 
 def _que_lleva(c):
     """Para las notas del asesor: «Dell Latitude 5420 (100-102-1030-1) + HP 840 (100-101-1050)»."""
-    return " + ".join(f"{i['equipo']} ({i['codigo']})" for i in _items(c)) or "equipo sin elegir"
+    return " + ".join(i["equipo"] if i.get("libre") else f"{i['equipo']} ({i['codigo']})" for i in _items(c)) or "equipo sin elegir"
 
 
 def _marcas(texto, c, nombre=""):
@@ -122,13 +127,22 @@ def _marcas(texto, c, nombre=""):
     return re.sub(r" +([!,.?])", r"\1", t)
 
 
+def _renglon(k, i):
+    if i.get("libre"):  # F4·72 (RCA-03): fuera del inventario, sin código
+        return f"{k}. 📦 {i['equipo']}\n     💰 {flujo.cop(i['precio'])}"
+    return f"{k}. 💻 {i['equipo']} · Código {i['codigo']}\n     💰 {flujo.cop(i['precio'])}"
+
+
 def _resumen(c):
-    if _carrito(c):
+    if _carrito(c) or c.get("asesor"):
         items = _items(c)
         cab = (_cfg().get("carrito_encabezado") or "🛒 *Resumen de tu pedido*").strip()
-        lineas = [cab] + [f"{k}. 💻 {i['equipo']} · Código {i['codigo']}\n     💰 {flujo.cop(i['precio'])}" for k, i in enumerate(items, 1)]
+        lineas = [cab] + [_renglon(k, i) for k, i in enumerate(items, 1)]
         if c["tipo"] == "cliente_final" and c["cargo"]:  # F4·48: una sola vez por pedido, sea cual sea el número de equipos
             lineas.append(f"🔧 Configuración (Windows, programas base, navegadores y Office · 1 sola vez por pedido): {flujo.cop(c['cargo'])}")
+        if c.get("asesor"):  # F4·72: el asesor arma el pedido; el cliente solo confirma
+            return "\n".join(lineas + [f"*Total ({len(items)} {'producto' if len(items) == 1 else 'productos'}): {flujo.cop(c['total'])}*",
+                                        "", "¿Confirmas tu pedido? Te envío los datos para pagar."])
         lineas += [f"*Total ({len(items)} {'equipo' if len(items) == 1 else 'equipos'}): {flujo.cop(c['total'])}*"]
         return "\n".join(lineas)
     lineas = [f"🛒 *Resumen de tu compra*", f"💻 {c['equipo']} · Código {c['codigo']}", f"💰 Precio: {flujo.cop(c['precio'])}"]
@@ -181,11 +195,25 @@ def _confirmar(st):
     c = st["compra"]
     aviso = []
     vendidos = {i["codigo"].upper() for i in _vendidos(c)}  # F4·66 (RPD-53): stock en la base en este momento
-    if vendidos and not _carrito(c):  # RPD-54: el único equipo se vendió mientras compraba
+    if c.get("asesor"):  # F4·72 (RCA-08): precios del asesor; solo se quita lo que se vendió, con aviso
+        vigentes, idos = [], []
+        for i in _items(c):
+            if i.get("libre") or (i["codigo"].upper() not in vendidos and flujo.equipo_por_codigo(i["codigo"])):
+                vigentes.append(i)
+            else:
+                idos.append(i)
+        if not vigentes:
+            _limpiar(st)
+            return _mensajes_agotado(idos)
+        if idos:
+            aviso = [flujo.m_texto(_texto_vendidos(idos, ", lo quité de tu pedido." if len(idos) == 1 else ", los quité de tu pedido."))]
+        c["equipos"] = vigentes
+        c.update(codigo=vigentes[0]["codigo"], equipo=vigentes[0]["equipo"], precio=vigentes[0]["precio"])
+    elif vendidos and not _carrito(c):  # RPD-54: el único equipo se vendió mientras compraba
         idos = _items(c)
         _limpiar(st)
         return _mensajes_agotado(idos)
-    if _carrito(c):  # RAG-57: precios de la base al armar el resumen; un equipo agotado se quita con aviso
+    elif _carrito(c):  # RAG-57: precios de la base al armar el resumen; un equipo agotado se quita con aviso
         vigentes, idos = [], []
         for i in _items(c):
             p = None if i["codigo"].upper() in vendidos else _producto_por_codigo(i["codigo"])
@@ -204,11 +232,19 @@ def _confirmar(st):
         c["equipos"] = vigentes
         c.update(codigo=vigentes[0]["codigo"], equipo=vigentes[0]["equipo"], precio=vigentes[0]["precio"])
     items = _items(c)
-    usados = any(flujo.lleva_configuracion((_producto_por_codigo(i["codigo"]) or {}).get("estado")) for i in items)
+    if c.get("asesor"):  # F4·72 (RCA-05): equipos del inventario de cualquier categoría; los libres no cuentan; el asesor puede quitarla
+        usados = not c.get("sin_configuracion") and any(
+            flujo.lleva_configuracion((flujo.equipo_por_codigo(i["codigo"]) or {}).get("estado")) for i in items if not i.get("libre"))
+    else:
+        usados = any(flujo.lleva_configuracion((_producto_por_codigo(i["codigo"]) or {}).get("estado")) for i in items)
     cargo = int(float(_cfg().get("cargo_configuracion") or 0)) if c["tipo"] == "cliente_final" and usados else 0
     c.update(cargo=cargo, total=sum(int(i["precio"]) for i in items) + cargo, paso="confirmar")  # F4·48: una vez por pedido, solo si hay usados
     st["valor"] = c["total"]
-    st["campos"].update({"Código producto": ", ".join(i["codigo"] for i in items), "Valor estimado": flujo.cop(c["total"])})
+    # Los renglones libres no van en «Código producto»: no son del inventario ni pasan por el Servicio técnico (RCA-03).
+    st["campos"].update({"Código producto": ", ".join(i["codigo"] for i in items if not i.get("libre")), "Valor estimado": flujo.cop(c["total"])})
+    if c.get("asesor"):
+        return aviso + [flujo.m_botones(_resumen(c), [("compra-si", "✅ Sí, confirmar"), ("compra-asesor", "Hablar con asesor"),
+                                                      ("compra-cancelar", "Cancelar")])]
     if _carrito(c):
         opciones = _opciones_resumen(c)
         c["opciones"] = [i for i, _, _ in opciones]
@@ -303,6 +339,24 @@ def _con_equipo(st, p, lead):
     _aplicar_tipo(st, lead)
     if not st["compra"].get("tipo"):
         return _pedir_tipo(st)
+    return _confirmar(st)
+
+
+def desde_asesor(st, carrito, lead=None):
+    """F4·72 (RCA-07 y RCA-08): el asesor envió el carrito que armó en la Ficha. La compra arranca en «confirmar» con sus renglones y
+    precios; el cliente responde Sí → cuentas. `carrito` es la fila de la tabla carritos. Devuelve los mensajes."""
+    items = [{k: v for k, v in i.items() if k in ("codigo", "equipo", "precio", "libre")} for i in (carrito or {}).get("items") or []]
+    if not items:
+        return []
+    for i in items:
+        i["precio"] = int(float(i["precio"]))
+    tipo = {"Distribuidor": "distribuidor", "Cliente final": "cliente_final"}.get((carrito or {}).get("tipo")) or flujo.tipo_cliente(st, lead)
+    st["compra"] = {"paso": "confirmar", "asesor": True, "desde": datetime.now(timezone.utc).isoformat(), "equipos": items,
+                    "tipo": tipo or "cliente_final", "sin_configuracion": bool((carrito or {}).get("sin_configuracion")),
+                    "codigo": items[0]["codigo"], "equipo": items[0]["equipo"], "precio": items[0]["precio"]}
+    st["nodo"] = NODO
+    st.pop("espera_hasta", None)
+    flujo.recordar_tipo(st, st["compra"]["tipo"])
     return _confirmar(st)
 
 

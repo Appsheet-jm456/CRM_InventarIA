@@ -11,7 +11,7 @@ Qué hace:
   POST /interno/buscar  Chat InventarIA de la app (token CRM_INTERNO_TOKEN; no responde por el túnel)
   POST /interno/simular Simulador del lienzo: el motor sobre una versión, sin escribir ni enviar (mismo token)
   POST /interno/agente  «Probar» de Configuración → Agente: un turno de Avi sin escribir ni enviar (mismo token)
-  POST /interno/herramienta  F4·61 y F4·71: catálogo, ficha de un equipo, acción o flujo que el asesor eligió en el chat (mismo token)
+  POST /interno/herramienta  F4·61, F4·71 y F4·72: catálogo, ficha de un equipo, carrito del asesor, acción o flujo que el asesor eligió en el chat (mismo token)
   POST /webhook  valida la firma X-Hub-Signature-256 con META_APP_SECRET, anota el evento en
                  eventos.log y responde con el árbol de respuesta de prueba (flujo.py)
 
@@ -589,7 +589,7 @@ def herramienta(pedido):
     Catálogo y acción salen como mensajes del asesor; un flujo, como mensajes del bot, que sigue con el cliente."""
     lead_id, tipo, ref, usuario = int(pedido["lead"]), str(pedido["tipo"]), str(pedido["ref"]), pedido.get("usuario")
     numero = db.telefono_de(lead_id)
-    if not numero or tipo not in ("catalogo", "accion", "flujo", "equipo"):
+    if not numero or tipo not in ("catalogo", "accion", "flujo", "equipo", "carrito"):
         raise LookupError(lead_id)
     with _candados.setdefault(numero, threading.Lock()):
         lead = db.lead(numero)
@@ -601,6 +601,9 @@ def herramienta(pedido):
         try:
             if tipo == "catalogo":
                 mensajes = catalogo_del_asesor(db.catalogo(int(ref)), lead)
+            elif tipo == "carrito":  # F4·72: el carrito del asesor; la compra arranca en «confirmar» y la sigue el bot
+                db.olvidar_inventario()
+                mensajes = compra.desde_asesor(st, db.carrito(lead_id), lead)
             elif tipo == "equipo":  # F4·71
                 db.olvidar_inventario()  # el stock y las fotos recién cambiados en Inventario se ven ya
                 mensajes = ficha_del_asesor(flujo.equipo_por_codigo(ref), lead, st)
@@ -628,7 +631,7 @@ def herramienta(pedido):
             flujo._hilo.bot, flujo._hilo.saltos = None, 0
         if not mensajes:
             return {"ok": False, "error": "No hubo nada que enviar (¿el catálogo o la ficha están vacíos?)."}
-        if tipo == "flujo":
+        if tipo in ("flujo", "carrito"):
             rechazado = enviar_mensajes(numero, lead, mensajes)
             if rechazado:
                 st = seguir_error_de_envio(numero, lead, st, rechazado)

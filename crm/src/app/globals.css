@@ -1003,3 +1003,33 @@ details.columnas > .panel { right: 0; top: calc(100% + 4px); min-width: 220px }
 /* F4·71: buscador de la lista de herramientas (fichas de equipos, catálogos…) */
 .herr-buscar { position: sticky; top: -6px; z-index: 1; margin: -6px -6px 4px; padding: 9px 12px; border: 0; border-bottom: 1px solid var(--line); border-radius: 10px 10px 0 0; background: var(--surface); font: 13.5px var(--f-body); color: var(--ink) }
 .herr-buscar:focus { outline: none; box-shadow: inset 0 -2px 0 var(--accent) }
+
+/* F4·72: carrito del asesor en la Ficha (docs/CARRITO-DEL-ASESOR.md) */
+.carrito { display: grid; gap: 12px }
+.carrito-cab { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between }
+.carrito-cab b { font: 600 15px var(--f-display) }
+.carrito-buscar { position: relative; display: grid; gap: 4px }
+.carrito-buscar input, .carrito-libre input, .carrito-valor input { border: 1px solid var(--line); background: var(--bg); border-radius: 8px; padding: 8px 10px; font: 13.5px var(--f-body); color: var(--ink); min-width: 0 }
+.carrito-sugeridos { display: grid; gap: 2px; border: 1px solid var(--line); border-radius: 10px; padding: 4px; background: var(--surface); max-height: 260px; overflow-y: auto }
+.carrito-sugeridos button { display: flex; gap: 6px; align-items: baseline; text-align: left; border: 0; background: none; padding: 7px 8px; border-radius: 6px; font: inherit; font-size: 13px; color: var(--ink); cursor: pointer }
+.carrito-sugeridos button:hover, .carrito-sugeridos button:focus-visible { background: var(--bg); outline: none }
+.carrito-sugeridos .muted { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.carrito-precio { margin-left: auto; font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap }
+.carrito-items { display: grid; gap: 6px }
+.carrito-item { display: grid; grid-template-columns: auto 1fr minmax(120px, 160px) auto; gap: 10px; align-items: center; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface) }
+.carrito-item.agotado { border-color: var(--bad, #c0392b) }
+.carrito-nombre { min-width: 0; display: grid }
+.carrito-nombre b { overflow-wrap: anywhere }
+.carrito-valor { display: grid; gap: 2px; text-align: right }
+.carrito-valor input { text-align: right; font-variant-numeric: tabular-nums; width: 100% }
+.carrito-valor input:disabled { opacity: .75 }
+.carrito-libre { display: grid; grid-template-columns: 1fr 140px auto auto; gap: 6px; align-items: center }
+.carrito-totales { display: grid; gap: 6px; padding-top: 8px; border-top: 1px solid var(--line) }
+.carrito-totales label { display: flex; gap: 8px; align-items: center }
+.carrito-total { display: flex; justify-content: space-between; align-items: baseline; font-size: 15px }
+.carrito-total b { font: 700 18px var(--f-display); font-variant-numeric: tabular-nums }
+@media (max-width: 640px) {
+  .carrito-item { grid-template-columns: auto 1fr auto; }
+  .carrito-valor { grid-column: 2 / 3; text-align: left }
+  .carrito-libre { grid-template-columns: 1fr 1fr }
+}
