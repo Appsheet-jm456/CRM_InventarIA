@@ -73,6 +73,12 @@ Total $2.000.000 − Pagado $1.000.000 = Saldo $1.000.000
   dice «✅ Pago completo $1.000.000». Se puede abonar otra vez (tres o más soportes).
 - **RPD-47 · Cuando el saldo llega a cero** pasa lo de hoy: mensaje de pago confirmado, se quita Saldo-Pendiente, queda Pago-Validado y
   arranca «Datos de despacho».
+- **RPD-47b · Saldo pagado a mano** *(11 nov 2026, migración 0077)*. Tras «Despachar con saldo pendiente» la compra ya terminó, así que
+  el soporte del saldo que mande el cliente llega como imagen normal (sin tarjeta). El saldo se registra en **Pedido → Pagos → Registrar
+  pago**: si con ese pago lo pagado llega al total, se quita **Saldo-Pendiente** sola y queda «✅ Saldo pagado» en el historial.
+  No se le escribe al cliente. La alerta «Saldo pendiente» de Pedidos ya se calculaba con total y pagado, y se va sola.
+- **RPD-47c · Si se anula un pago** de un pedido ya validado y vuelve a faltar saldo, vuelve la etiqueta Saldo-Pendiente («◐ Vuelve a
+  quedar saldo pendiente» en el historial).
 - **RPD-48 · Quién:** el mismo permiso `validar_pagos`. Un abono equivocado se **anula** con motivo (RPD-36) y el saldo vuelve a subir.
 - **RPD-49 · Fuera de las 24 h de WhatsApp** el abono se registra igual y el aviso sale con plantilla (`crm_pago_confirmado`, aún
   por crear) o queda «sin avisar» con el botón «Avisar al cliente», como hoy.

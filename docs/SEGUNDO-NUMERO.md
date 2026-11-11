@@ -1,7 +1,7 @@
 # Segunda línea de venta con otro número de WhatsApp (F4·69)
 
 > **Estado:** 📝 documentada el 11 nov 2026 por pedido del dueño, con sus respuestas del mismo día (Cliente Final y Distribuidor).
-> **Sin construir.** Falta: confirmar el número, la pregunta 1 de la sección 7 y la orden del dueño. Migración prevista: **0077** (revisar `ls supabase/migrations` antes de numerar).
+> **Sin construir.** Falta: confirmar el número, la pregunta 1 de la sección 7 y la orden del dueño. Migración prevista: **0078** (revisar `ls supabase/migrations` antes de numerar).
 
 **Pedido del dueño (11 nov 2026):** «Otra línea de venta con otro número. ¿Sería el mismo bot o se revisaría qué flujo tendría?»
 
