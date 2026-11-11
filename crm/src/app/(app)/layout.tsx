@@ -7,12 +7,13 @@ import { obtenerSesion, puede } from '@/lib/sesion'
 import { crearCliente } from '@/lib/supabase/server'
 
 export default async function LayoutApp({ children }: { children: React.ReactNode }) {
-  const sesion = await obtenerSesion()
-  if (!sesion) redirect('/login')
-  const [{ logo }, { data: interruptores }] = await Promise.all([
+  // La sesión, la apariencia y los interruptores van en paralelo (antes la sesión iba primero y sola).
+  const [sesion, { logo }, { data: interruptores }] = await Promise.all([
+    obtenerSesion(),
     leerApariencia(),
     crearCliente().from('bot_config').select('chatbot_activo, menu_activo').eq('id', 1).maybeSingle(),
   ])
+  if (!sesion) redirect('/login')
 
   return (
     <Shell

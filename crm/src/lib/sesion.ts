@@ -22,20 +22,19 @@ export const obtenerSesion = cache(async (): Promise<Sesion | null> => {
 
   const { data: perfil } = await supabase
     .from('usuarios')
-    .select('nombre, activo, rol_id, roles(nombre)')
+    .select('nombre, activo, roles(nombre, rol_permisos(permiso))') // perfil, rol y permisos en un solo viaje
     .eq('id', user.id)
     .maybeSingle()
   if (!perfil?.activo) return null
 
-  const { data: permisos } = await supabase.from('rol_permisos').select('permiso').eq('rol_id', perfil.rol_id)
-  const rol = perfil.roles as unknown as { nombre: string } | null
+  const rol = perfil.roles as unknown as { nombre: string; rol_permisos: { permiso: string }[] | null } | null
 
   return {
     id: user.id,
     usuario: usuarioDeCorreo(user.email),
     nombre: perfil.nombre,
     rol: rol?.nombre ?? '',
-    permisos: (permisos ?? []).map((p) => p.permiso as string),
+    permisos: (rol?.rol_permisos ?? []).map((p) => p.permiso),
   }
 })
 
