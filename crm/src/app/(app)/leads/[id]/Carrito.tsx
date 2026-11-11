@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { pesos } from '@/lib/inventario'
-import { enviarCarrito, guardarCarrito, inventarioCarrito, leerCarrito, type Carrito, type EquipoInventario, type ItemCarrito } from './carritoAcciones'
+import { enviarCarrito, guardarCarrito, inventarioCarrito, leerCarrito, traerDelCliente, type Carrito, type EquipoInventario, type ItemCarrito } from './carritoAcciones'
 
 // F4·72 (docs/CARRITO-DEL-ASESOR.md, RCA-01 a RCA-10): el asesor arma el pedido del cliente en la Ficha y se lo envía.
 // Equipos del inventario (con stock), renglones libres, precios (con el permiso modificar_precios), configuración y tipo de cliente.
@@ -61,6 +61,23 @@ export function CarritoCliente({ lead, alEnviar }: { lead: number; alEnviar?: ()
     setLibre(null)
   }
 
+  // RCA-11: trae lo que el cliente eligió con el bot; no repite lo que ya está y el asesor lo edita como cualquier renglón.
+  async function traer() {
+    setOcupado(true)
+    const r = await traerDelCliente(lead)
+    setOcupado(false)
+    if (r.error) { setAviso({ error: r.error }); return }
+    const nuevos = r.items.filter((n) => !items.some((i) => (n.libre ? i.libre && i.equipo === n.equipo : i.codigo.toUpperCase() === n.codigo.toUpperCase())))
+    if (r.items.length === 0) { setAviso({ error: 'Este cliente todavía no ha elegido ningún equipo con el bot.' }); return }
+    if (nuevos.length === 0) { setAviso({ ok: 'Todo lo que eligió el cliente ya está en el carrito.' }); return }
+    const cabe = nuevos.slice(0, MAXIMO - items.length)
+    setItems([...items, ...cabe.map((n) => (n.libre ? { ...n, codigo: `LIBRE-${Date.now()}-${n.codigo}` } : n))])
+    if (!tipo && r.tipo) setTipo(r.tipo)
+    setCambiado(true)
+    const vendidos = cabe.filter((n) => !n.libre && (n.stock ?? 0) <= 0).length
+    setAviso({ ok: `Traído de ${r.origen}: ${cabe.length} producto(s). Edita precios o quita lo que no va y envía.${vendidos ? ` ${vendidos} ya no tiene stock (vendido): quítalo para enviar.` : ''}` })
+  }
+
   async function hacer(enviar: boolean) {
     if (enviar && !confirm(`¿Enviar el carrito al cliente? Total ${pesos(subtotal + cargo)}. El bot atiende la compra y, si pide asesor, vuelve a ti.`)) return
     setOcupado(true)
@@ -102,6 +119,7 @@ export function CarritoCliente({ lead, alEnviar }: { lead: number; alEnviar?: ()
         {palabras.length > 0 && sugeridos.length === 0 && inventario !== null && <small className="muted">Nada con «{buscar}» entre los equipos con stock.</small>}
       </div>
 
+      <button type="button" className="btn chico" disabled={ocupado || lleno} onClick={traer}>🧾 Traer lo que eligió el cliente</button>
       {items.length === 0 && <small className="muted">El carrito está vacío. Busca un equipo o agrega un producto fuera del inventario.</small>}
       <div className="carrito-items">
         {items.map((i, k) => {

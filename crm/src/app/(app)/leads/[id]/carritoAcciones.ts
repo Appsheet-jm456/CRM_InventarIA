@@ -29,6 +29,14 @@ export async function leerCarrito(lead: number): Promise<RespuestaCarrito> {
   return { carrito: data as Carrito }
 }
 
+// F4·72b (RCA-11): lo que el cliente eligió con el bot (compra en curso, pedido abierto o último equipo cotizado); no guarda nada.
+export async function traerDelCliente(lead: number): Promise<{ items: ItemCarrito[]; origen: string | null; tipo: Carrito['tipo']; error?: string }> {
+  const { data, error } = await crearCliente().rpc('carrito_traer', { p_lead: lead })
+  if (error) return { items: [], origen: null, tipo: null, error: mensaje(error) }
+  const d = data as { items: ItemCarrito[]; origen: string | null; tipo: Carrito['tipo'] }
+  return { items: d.items ?? [], origen: d.origen, tipo: d.tipo }
+}
+
 export async function inventarioCarrito(): Promise<{ equipos: EquipoInventario[]; error?: string }> {
   const { data, error } = await crearCliente().rpc('carrito_inventario')
   if (error) return { equipos: [], error: mensaje(error) }

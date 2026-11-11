@@ -77,6 +77,13 @@ validación del asesor (F4·46 / F4·59) → stock (F4·66) → Datos de despach
   revisa el **stock** antes de las cuentas: si un equipo se vendió, lo quita del pedido y avisa (como RPD-53).
 - **RCA-09 · Registro:** en el historial queda «🛒 Carrito enviado por <asesor>: N productos · total». En el chat se ve el resumen
   como mensaje del bot.
+- **RCA-11 · Traer lo que eligió el cliente:** botón 🧾 en el carrito. Junta lo que el cliente armó con el bot, en este orden: compra en curso
+  (uno o varios equipos y renglones libres, con el precio cotizado), pedido abierto (códigos del campo producto) o último equipo cotizado.
+  Solo lee; no repite lo que ya está y respeta el máximo de 10. Si el cliente era Cliente final/Distribuidor, lo deja elegido.
+- **RCA-12 · Editable:** lo traído se edita igual que el resto (quitar, agregar, precio con el permiso `modificar_precios`). Sin el permiso,
+  trae el precio del inventario. Así el asesor puede dar un descuento autorizado por gerencia: lo cambia quien tenga el permiso y queda en el historial.
+- **RCA-13 · Ya vendido:** si el equipo ya no tiene stock (p. ej. pedido pagado), se trae marcado «sin stock» para verlo, pero no se puede enviar
+  hasta quitarlo. Corregir un pedido ya pagado se hace en Oportunidades/Pedidos, no aquí.
 - **RCA-10 · El carrito se puede volver a enviar** (después de cambiarlo); el último envío reemplaza la compra en curso del cliente.
   No se puede reenviar si el cliente ya tiene una compra **esperando pago o por validar** (para no pisar un pago).
 
@@ -84,6 +91,7 @@ validación del asesor (F4·46 / F4·59) → stock (F4·66) → Datos de despach
 
 | Pieza | Cambio |
 |---|---|
+| Base (0080) | `carrito_traer(lead)` (solo lectura). |
 | Base (0078) | Permiso `modificar_precios` (administrador). Tabla `carritos` (un renglón por cliente; sin acceso directo). `carrito_de(lead)`, `carrito_guardar(lead, items, tipo, sin_configuracion)` y `carrito_enviar(lead)`, que valida y deja el chat al bot con «vuelve a mí». |
 | Receptor | `/interno/herramienta` con tipo `carrito`: arma la compra (`compra.desde_asesor`) en el paso «confirmar» con los renglones del asesor y envía el resumen. `compra.py`: los renglones con precio del asesor y los libres no se vuelven a leer de Inventario; los libres no cuentan para stock, video ni «Código producto». |
 | CRM | Pestaña 🛒 Carrito en la Ficha (`leads/[id]/Carrito.tsx`) y «+» → Carrito del cliente en el chat. |
