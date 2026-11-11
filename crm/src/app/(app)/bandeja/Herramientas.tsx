@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { herramientasChat, usarHerramienta, type Herramienta, type Resultado } from './acciones'
 
-// F4·61 (RB-07 a RB-12): con «/» o el botón ⚡ el asesor envía un catálogo, dispara una Acción (Ubicación, Cuentas para pagar…) o
+// F4·61 (RB-07 a RB-12): con «/» o el menú «+» (F4·70) el asesor envía un catálogo, dispara una Acción (Ubicación, Cuentas para pagar…) o
 // un flujo (compra, cotización, un bot), además de las respuestas rápidas de siempre. La usan la Bandeja y la Ficha del lead.
 export type Rapida = { id: number; atajo: string; titulo: string; texto: string }
 type Item = (Herramienta & { rapida?: undefined }) | { tipo: 'rapida'; ref: string; nombre: string; detalle: string; rapida: Rapida }
@@ -24,7 +24,8 @@ export function useHerramientas({ lead, texto, setTexto, nombreCliente, rapidas,
   alEnviar: (r: Resultado) => void
 }) {
   const [lista, setLista] = useState<Herramienta[]>(guardadas ?? [])
-  const [boton, setBoton] = useState(false) // abierta con ⚡ (sin escribir «/»)
+  const [boton, setBoton] = useState(false) // abierta desde el menú «+» (sin escribir «/»)
+  const [grupo, setGrupo] = useState<Item['tipo'] | null>(null) // el menú «+» abre un solo grupo (Catálogos, Acciones…)
   const [pendiente, setPendiente] = useState<Herramienta | null>(null)
   const [alTerminar, setAlTerminar] = useState<'asesor' | 'bot'>('asesor')
   const [enviando, setEnviando] = useState(false)
@@ -42,13 +43,14 @@ export function useHerramientas({ lead, texto, setTexto, nombreCliente, rapidas,
     if (!abierta) pedido.current = false
   }, [abierta, cargar])
   useEffect(() => { setPendiente(null); setBoton(false) }, [lead])
+  useEffect(() => { if (!abierta) setGrupo(null) }, [abierta])
 
   const palabras = limpio(barra?.[1] ?? '').split(/\s+/).filter(Boolean)
   const todos: Item[] = [
     ...lista,
     ...rapidas.map((r): Item => ({ tipo: 'rapida', ref: String(r.id), nombre: `/${r.atajo} · ${r.titulo}`, detalle: r.texto.slice(0, 60), rapida: r })),
   ]
-  const items = !abierta ? [] : todos.filter((i) => {
+  const items = !abierta ? [] : todos.filter((i) => !grupo || barra || i.tipo === grupo).filter((i) => {
     const donde = limpio(`${GRUPOS.find((g) => g.tipo === i.tipo)!.clave} ${i.nombre}`)
     return palabras.every((p) => donde.split(/[\s/·«»]+/).some((w) => w.startsWith(p)))
   }).slice(0, palabras.length ? 12 : 40)
@@ -86,10 +88,10 @@ export function useHerramientas({ lead, texto, setTexto, nombreCliente, rapidas,
     return false
   }
 
-  const botonRayo = activo ? (
-    <button type="button" className="btn" title="Enviar un catálogo, una acción o iniciar un flujo (también con /)" aria-label="Catálogos, acciones y flujos"
-      aria-expanded={abierta} onClick={() => { setPendiente(null); setBoton(!boton) }}>⚡</button>
-  ) : null
+  // Desde el menú «+»: abre la lista de un grupo (o todos). Con «/» en la caja se sigue buscando en todos.
+  function abrir(tipo: Item['tipo'] | null = null) {
+    setPendiente(null); setGrupo(tipo); setBoton(true)
+  }
 
   const panel = pendiente ? (
     <div className="herr-confirmar" role="dialog" aria-label="Confirmar envío">
@@ -116,7 +118,7 @@ export function useHerramientas({ lead, texto, setTexto, nombreCliente, rapidas,
     </div>
   ) : abierta ? (
     <div className="herr-lista" role="listbox" aria-label="Catálogos, acciones, flujos y respuestas rápidas">
-      {items.length === 0 && <small className="muted" style={{ padding: 6 }}>{guardadas === null ? 'Cargando…' : 'Nada coincide. Prueba «/catalogo», «/accion» o «/flujo».'}</small>}
+      {items.length === 0 && <small className="muted" style={{ padding: 6 }}>{guardadas === null ? 'Cargando…' : grupo && !barra ? 'No hay nada configurado en este grupo.' : 'Nada coincide. Prueba «/catalogo», «/accion» o «/flujo».'}</small>}
       {GRUPOS.map((g) => {
         const del = items.filter((i) => i.tipo === g.tipo)
         if (!del.length) return null
@@ -134,5 +136,5 @@ export function useHerramientas({ lead, texto, setTexto, nombreCliente, rapidas,
     </div>
   ) : null
 
-  return { panel, botonRayo, tecla, abierta: abierta || !!pendiente }
+  return { panel, abrir, cerrar: () => setBoton(false), tecla, abierta: abierta || !!pendiente }
 }

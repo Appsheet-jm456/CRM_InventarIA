@@ -9,6 +9,7 @@ import { Entrega, Media, hora, iniciales, partirOpciones, type Mensaje } from '.
 import { ComprobanteCliente } from '../../bandeja/ComprobanteCliente'
 import { useHerramientas } from '../../bandeja/Herramientas'
 import { useAdjuntos } from '../../bandeja/Adjuntos'
+import { MenuMas } from '../../bandeja/MenuMas'
 import { PedidoCliente } from './pedido/PedidoCliente'
 import { type Embudo, type Etapa } from '../../bandeja/OportunidadesCliente'
 import { ComponerPlantilla } from '../../bandeja/Plantilla'
@@ -651,10 +652,12 @@ export function Ficha({ lead: inicial, yo, usuarios, asesores, embudos, etapas, 
               {herramientas.panel}
               {adjuntos.panel}
               <div className="b-caja">
-                {adjuntos.botones}
-                {herramientas.botonRayo}
+                {adjuntos.entrada}
+                <MenuMas activo={caja === 'chat' && enVentana} abrirArchivo={adjuntos.abrirArchivo} abrirGrupo={herramientas.abrir}
+                  alAbrir={() => { adjuntos.cerrarEmojis(); herramientas.cerrar() }} />
+                {adjuntos.botonEmojis}
                 <textarea rows={2} ref={cajaTexto} onPaste={adjuntos.alPegar} value={escrito} onChange={(e) => setEscrito(e.target.value)}
-                  placeholder={caja === 'chat' ? 'Escribe tu respuesta · Enter envía, Shift+Enter salto de línea · / catálogos, acciones y respuestas rápidas' : 'Nota para el equipo'}
+                  placeholder={caja === 'chat' ? 'Escribe tu respuesta · Enter envía, Shift+Enter salto de línea · + o / adjuntar, catálogos y respuestas rápidas' : 'Nota para el equipo'}
                   onKeyDown={(e) => {
                     if (herramientas.tecla(e)) return
                     if (e.key === 'Enter' && !e.shiftKey) {

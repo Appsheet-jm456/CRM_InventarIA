@@ -985,3 +985,18 @@ details.columnas > .panel { right: 0; top: calc(100% + 4px); min-width: 220px }
 /* F4·67: «Eliminar pedido» al pie de la ficha del pedido, a la vista */
 .ped-eliminar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 12px; border: 1px dashed color-mix(in srgb, var(--bad) 45%, var(--line)); border-radius: 10px }
 
+
+/* F4·70: botón «+» del chat como en WhatsApp: abre hacia arriba Documento, Fotos y videos, Audio, Catálogos, Acciones, Flujos y Respuestas rápidas */
+.b-icono { width: 40px; height: 40px; padding: 0; display: inline-grid; place-items: center; border-radius: 50%; border-color: transparent; background: none; font-size: 19px; color: var(--muted); flex: none }
+.b-icono:hover, .b-icono[aria-expanded="true"] { background: var(--bg); color: var(--ink) }
+.mas { position: relative; flex: none }
+.mas-boton svg { transition: transform .18s ease }
+.mas-boton.on svg { transform: rotate(45deg) }
+.mas-menu { position: absolute; left: 0; bottom: calc(100% + 10px); z-index: 30; min-width: 230px; display: grid; padding: 8px; border: 1px solid var(--line); border-radius: 14px;
+  background: var(--surface); box-shadow: 0 10px 30px rgba(15, 30, 51, .18), 0 2px 6px rgba(15, 30, 51, .08); transform-origin: bottom left; animation: mas-abrir .14s ease-out }
+.mas-menu button { display: flex; align-items: center; gap: 14px; width: 100%; padding: 9px 14px; border: 0; border-radius: 9px; background: none; font: 500 14.5px var(--f-body); color: var(--ink); text-align: left; cursor: pointer }
+.mas-menu button:hover, .mas-menu button:focus-visible { background: var(--bg); outline: none }
+.mas-menu hr { margin: 6px 4px; border: 0; border-top: 1px solid var(--line) }
+@keyframes mas-abrir { from { opacity: 0; transform: translateY(6px) scale(.96) } to { opacity: 1; transform: none } }
+@media (prefers-reduced-motion: reduce) { .mas-menu { animation: none } .mas-boton svg { transition: none } }
+.b-caja { gap: 4px } .bandeja .b-caja { gap: 6px }

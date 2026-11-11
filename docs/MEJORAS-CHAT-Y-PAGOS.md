@@ -338,3 +338,37 @@ en Inventario. B toca «Sí, enviar cuentas»: recibe «se acaba de vender», lo
 antes de validar el de A y mande su soporte después: su tarjeta muestra «⚠ Sin stock». **Ojo:** si se cancela ese pedido, el stock se
 repone a mano en Inventario.
 
+
+
+---
+
+## 9. F4·70 · Botón «+» del chat, como en WhatsApp
+
+> **Estado:** 🔵 construida el 11 nov 2026 por pedido del dueño (sin migración). Falta la prueba del dueño.
+
+Antes la caja del chat tenía tres botones sueltos (😊 emojis, 📎 adjuntar y ⚡ herramientas). Ahora queda como WhatsApp Web:
+
+```
+┌──────────────────────────┐
+│ 📄 Documento              │   morado
+│ 🖼 Fotos y videos         │   azul
+│ 🎤 Audio                  │   naranja
+│ ──────────────────────── │
+│ 📚 Catálogos              │
+│ ⚡ Acciones               │
+│ 🧭 Flujos                 │
+│ 💬 Respuestas rápidas     │
+└──────────────────────────┘
+ [+] [😊]  Escribe tu respuesta…                [Enviar]
+```
+
+- **RB-19 · Un solo botón «+»** a la izquierda de la caja, en la Bandeja y en Ficha → Chat. Un clic abre el menú hacia arriba; otro clic,
+  un clic fuera o Escape lo cierran. El «+» gira a «×» mientras está abierto.
+- **RB-20 · Adjuntar por tipo:** Documento (PDF, Word, Excel, PowerPoint, texto), Fotos y videos (JPG, PNG, MP4) y Audio abren el selector
+  de archivos ya filtrado. Después sale la misma vista previa con pie de foto de F4·62, con los mismos límites.
+- **RB-21 · Herramientas por grupo:** Catálogos, Acciones, Flujos y Respuestas rápidas abren la lista de F4·61 con solo ese grupo, y la
+  misma confirmación antes de enviar. Escribir «/» en la caja sigue buscando en todos.
+- **RB-22 · Sin cambios en lo demás:** 😊 queda al lado del «+»; arrastrar un archivo al chat y pegar con Ctrl+V siguen igual; fuera de las
+  24 h el menú no aparece (sale la plantilla, como hoy).
+
+Archivos: `crm/src/app/(app)/bandeja/MenuMas.tsx` (nuevo), `Adjuntos.tsx`, `Herramientas.tsx`, `Bandeja.tsx`, `leads/[id]/Ficha.tsx` y `globals.css`.

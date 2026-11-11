@@ -6,6 +6,7 @@ import { asignar, cerrar, liberar, reanudarBot, responder, tomar, type Resultado
 import { ComprobanteCliente } from './ComprobanteCliente'
 import { useHerramientas } from './Herramientas'
 import { useAdjuntos } from './Adjuntos'
+import { MenuMas } from './MenuMas'
 import { OportunidadesCliente, type Embudo, type Etapa } from './OportunidadesCliente'
 import { ComponerPlantilla } from './Plantilla'
 import { SeguimientosCliente } from './SeguimientosCliente'
@@ -448,13 +449,15 @@ export function Bandeja({ yo, usuarios, asesores, embudos, etapas, rapidas, inic
                   {herramientas.panel}
                   {adjuntos.panel}
                   <div className="b-caja">
-                    {adjuntos.botones}
-                    {herramientas.botonRayo}
+                    {adjuntos.entrada}
+                    <MenuMas activo={!!lead && enVentana} abrirArchivo={adjuntos.abrirArchivo} abrirGrupo={herramientas.abrir}
+                      alAbrir={() => { adjuntos.cerrarEmojis(); herramientas.cerrar() }} />
+                    {adjuntos.botonEmojis}
                     <textarea
                       ref={caja}
                       onPaste={adjuntos.alPegar}
                       rows={2}
-                      placeholder="Escribe tu respuesta · Enter envía, Shift+Enter hace salto de línea · / para catálogos, acciones y respuestas rápidas"
+                      placeholder="Escribe tu respuesta · Enter envía, Shift+Enter hace salto de línea · + o / para adjuntar, catálogos y respuestas rápidas"
                       value={texto}
                       onChange={(e) => setTexto(e.target.value)}
                       onKeyDown={(e) => {

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { responderConArchivo, type Resultado } from './acciones'
 
 // F4·62 (RB-13 a RB-18): emojis y archivos en el chat (Bandeja y Ficha → Chat).
-// 😊 abre el selector (con buscador y recientes) e inserta donde está el cursor. 📎, arrastrar al chat o pegar con Ctrl+V
+// 😊 abre el selector (con buscador y recientes) e inserta donde está el cursor. el menú «+» (F4·70), arrastrar al chat o pegar con Ctrl+V
 // adjuntan un archivo: se ve antes de enviar, con un pie opcional. La acción del servidor revisa formato, tamaño y las 24 h.
 
 const GRUPOS: { titulo: string; emojis: [string, string][] }[] = [
@@ -45,6 +45,13 @@ function leerRecientes(): string[] {
 }
 
 const ACEPTA = 'image/jpeg,image/png,video/mp4,video/3gpp,audio/*,application/pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt'
+// F4·70: el menú «+» abre el selector de archivos ya filtrado por tipo, como WhatsApp.
+export const ACEPTA_POR_TIPO = {
+  documento: 'application/pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt',
+  fotos: 'image/jpeg,image/png,video/mp4,video/3gpp',
+  audio: 'audio/*',
+} as const
+export type TipoArchivo = keyof typeof ACEPTA_POR_TIPO
 
 export function useAdjuntos({ lead, activo, setTexto, area, alEnviar }: {
   lead: number; activo: boolean; setTexto: (f: (t: string) => string) => void
@@ -109,13 +116,19 @@ export function useAdjuntos({ lead, activo, setTexto, area, alEnviar }: {
   const palabras = sinTildes(buscar).split(/\s+/).filter(Boolean)
   const encontrados = palabras.length ? TODOS.filter(([, n]) => palabras.every((p) => sinTildes(n).split(' ').some((w) => w.startsWith(p)))) : []
 
-  const botones = activo ? (
-    <>
-      <button type="button" className="btn" title="Emojis" aria-label="Emojis" aria-expanded={emojis} onClick={() => { setArchivo(null); setEmojis(!emojis) }}>😊</button>
-      <button type="button" className="btn" title="Adjuntar imagen, documento, video o audio (también arrastrando o con Ctrl+V)" aria-label="Adjuntar archivo"
-        onClick={() => input.current?.click()}>📎</button>
-      <input ref={input} type="file" hidden accept={ACEPTA} onChange={(e) => { elegirArchivo(e.target.files?.[0]); e.target.value = '' }} />
-    </>
+  // El mismo campo de archivo sirve a los tres tipos: se cambia «accept» antes de abrirlo.
+  function abrirArchivo(tipo?: TipoArchivo) {
+    if (!input.current) return
+    input.current.accept = tipo ? ACEPTA_POR_TIPO[tipo] : ACEPTA
+    setEmojis(false)
+    input.current.click()
+  }
+
+  const botonEmojis = activo ? (
+    <button type="button" className="btn b-icono" title="Emojis" aria-label="Emojis" aria-expanded={emojis} onClick={() => { setArchivo(null); setEmojis(!emojis) }}>😊</button>
+  ) : null
+  const entrada = activo ? (
+    <input ref={input} type="file" hidden accept={ACEPTA} onChange={(e) => { elegirArchivo(e.target.files?.[0]); e.target.value = '' }} />
   ) : null
 
   const peso = archivo ? (archivo.size >= 1024 * 1024 ? `${(archivo.size / 1024 / 1024).toFixed(1)} MB` : `${Math.ceil(archivo.size / 1024)} KB`) : ''
@@ -170,5 +183,5 @@ export function useAdjuntos({ lead, activo, setTexto, area, alEnviar }: {
     if (activo && f) { e.preventDefault(); elegirArchivo(f) }
   }
 
-  return { botones, panel, zona, alPegar, encima }
+  return { botonEmojis, entrada, abrirArchivo, cerrarEmojis: () => setEmojis(false), panel, zona, alPegar, encima }
 }
