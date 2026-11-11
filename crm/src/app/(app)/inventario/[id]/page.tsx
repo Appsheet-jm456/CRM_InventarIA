@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { obtenerSesion, puede } from '@/lib/sesion'
 import { crearCliente } from '@/lib/supabase/server'
-import { COLUMNAS_ATRIBUTO, COLUMNAS_PRODUCTO, aplicaA, fotoDe, pesos, textoAtributo, titulo, type AtributoProducto, type Producto } from '@/lib/inventario'
+import { COLUMNAS_ATRIBUTO, COLUMNAS_PRODUCTO, aplicaA, fotoDe, pesos, rutaArchivo, textoAtributo, titulo, type AtributoProducto, type Producto } from '@/lib/inventario'
 import { FormProducto } from '../FormProducto'
 
 export default async function FichaEquipo({ params, searchParams }: { params: { id: string }; searchParams: { editar?: string; creado?: string } }) {
@@ -21,7 +21,8 @@ export default async function FichaEquipo({ params, searchParams }: { params: { 
 
   // La misma ficha que arma el bot (flujo.r11): así la ve el cliente por WhatsApp.
   const ficha = `💻 *${p.marca} ${p.modelo}* · Código ${p.codigo}\n${p.procesador} · ${p.ram} · ${p.almacenamiento}` +
-    `${p.estado ? ` · ${p.estado}` : ''}\n💰 ${pesos(p.precio).replace(/\s/g, '')} · ${p.stock > 0 ? '✅ Disponible' : '❌ Agotado'}`
+    `${p.estado ? ` · ${p.estado}` : ''}\n💰 ${pesos(p.precio).replace(/\s/g, '')} · ${p.stock > 0 ? '✅ Disponible' : '❌ Agotado'}` +
+    (p.fotos_drive ? `\n📷 Más fotos: ${p.fotos_drive}` : '')
   const datos: [string, string][] = [
     ['Código', p.codigo], ['Categoría', p.categoria], ['Marca', p.marca], ['Modelo', p.modelo],
     ['Procesador', p.procesador], ['Generación', p.generacion], ['RAM', p.ram], ['Disco', p.almacenamiento], ['Estado', p.estado],
@@ -45,6 +46,13 @@ export default async function FichaEquipo({ params, searchParams }: { params: { 
           <div className="ficha-foto">
             <div className="foto-caja">{foto ? <img src={foto} alt={`Foto de ${titulo(p)}`} /> : <span className="muted">Sin foto</span>}</div>
             {!p.foto_ruta && p.foto && <small className="muted">Foto por enlace. Súbela a la app para que el bot la envíe sin depender de Drive.</small>}
+            {/* F4·65: fotos 2 y 3, que el bot envía después de la ficha, y la carpeta de Drive */}
+            {p.fotos_extra?.length > 0 && (
+              <div className="fotos-extra">
+                {p.fotos_extra.map((r, i) => <div key={r} className="foto-caja"><img src={rutaArchivo('productos', r)} alt={`Foto ${i + 2} de ${titulo(p)}`} /></div>)}
+              </div>
+            )}
+            {p.fotos_drive && <a className="btn chico" href={p.fotos_drive} target="_blank" rel="noreferrer">📷 Más fotos en Drive</a>}
           </div>
           <div>
             <div className="precio-ficha mono">{pesos(p.precio)}</div>

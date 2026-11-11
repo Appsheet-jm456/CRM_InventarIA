@@ -391,6 +391,10 @@ a.pastilla { text-decoration: none; display: inline-block }
 .ficha-foto { display: flex; flex-direction: column; gap: 8px; align-items: flex-start }
 .ficha-foto .foto-caja { width: 100%; aspect-ratio: 4 / 3; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2); display: grid; place-items: center; overflow: hidden }
 .ficha-foto .foto-caja img { width: 100%; height: 100%; object-fit: contain }
+/* F4·65: tres casillas de foto en la ficha del equipo; la 2 y la 3 en miniatura en la ficha de solo lectura */
+.casilla-foto { display: flex; flex-direction: column; gap: 6px; width: 100% }
+.fotos-extra { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 100% }
+.fotos-extra .foto-caja { aspect-ratio: 1 }
 .panel-b .form-panel { padding: 0; align-content: start }
 .form-panel .span-2 { grid-column: span 2 } .form-panel .span-3 { grid-column: 1 / -1 }
 .solo-lectura { opacity: .7 }

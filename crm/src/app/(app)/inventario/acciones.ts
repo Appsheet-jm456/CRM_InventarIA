@@ -8,11 +8,12 @@ import { promisify } from 'node:util'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { crearCliente } from '@/lib/supabase/server'
-import { CAMPOS_TEXTO } from '@/lib/inventario'
+import { CAMPOS_TEXTO, ENLACE_DRIVE } from '@/lib/inventario'
 
 export type Resultado = { error?: string; ok?: string; id?: number } // id: el catálogo creado (lo elige el lienzo, F4·12)
 
-const FOTOS: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' }
+// RI-11 (F4·65): solo JPG o PNG. WhatsApp no manda WEBP como imagen (es de stickers) y la ficha no le llegaba al cliente.
+const FOTOS: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png' }
 const MAX_FOTO = 5 * 1024 * 1024
 const MAX_PDF = 20 * 1024 * 1024
 const SIN_PERMISO = 'No tienes permiso para cambiar el inventario.'
@@ -30,11 +31,16 @@ function numero(valor: FormDataEntryValue | null) {
   return s === '' ? NaN : Number(s.replace(',', '.'))
 }
 
-async function subirFoto(id: number, archivo: File, anterior: string): Promise<string | Resultado> {
-  const ext = FOTOS[archivo.type]
-  if (!ext) return { error: 'La foto tiene que ser JPG, PNG o WEBP.' }
-  if (archivo.size > MAX_FOTO) return { error: 'La foto pesa más de 5 MB.' }
-  const ruta = `${id}/${Date.now()}.${ext}`
+function revisarFoto(archivo: File, n: number): string | null {
+  if (!FOTOS[archivo.type]) return `La foto ${n} tiene que ser JPG o PNG (WhatsApp no envía WEBP).`
+  if (archivo.size > MAX_FOTO) return `La foto ${n} pesa más de 5 MB.`
+  return null
+}
+
+async function subirFoto(id: number, archivo: File, anterior: string, n = 1): Promise<string | Resultado> {
+  const problema = revisarFoto(archivo, n)
+  if (problema) return { error: problema }
+  const ruta = `${id}/${Date.now()}${n > 1 ? `-${n}` : ''}.${FOTOS[archivo.type]}`
   const supabase = crearCliente()
   const { error } = await supabase.storage.from('productos').upload(ruta, archivo, { contentType: archivo.type })
   if (error) return { error: /policy|security/i.test(error.message) ? SIN_PERMISO : `No se pudo subir la foto: ${error.message}` }
@@ -53,6 +59,16 @@ export async function guardarProducto(_: Resultado, datos: FormData): Promise<Re
 
   const fila: Record<string, unknown> = { precio, stock }
   for (const c of CAMPOS_TEXTO) fila[c] = String(datos.get(c) ?? '').trim()
+  // RI-13: carpeta de Drive con más fotos (opcional).
+  const drive = String(datos.get('fotos_drive') ?? '').trim()
+  if (drive && !ENLACE_DRIVE.test(drive)) return { error: 'El enlace de fotos tiene que ser de Google Drive (https://drive.google.com/…).' }
+  fila.fotos_drive = drive
+  // RI-11: se revisan las tres fotos antes de guardar nada, para no dejar la ficha a medias.
+  const archivos = [1, 2, 3].map((n) => { const f = datos.get(n === 1 ? 'foto_archivo' : `foto_archivo_${n}`); return f instanceof File && f.size > 0 ? f : null })
+  for (const [i, f] of archivos.entries()) {
+    const problema = f && revisarFoto(f, i + 1)
+    if (problema) return { error: problema }
+  }
   const supabase = crearCliente()
 
   // Atributos del producto (F4·41, RI-08): solo los que mostró el formulario; los demás (archivados, otra categoría) se conservan.
@@ -89,8 +105,8 @@ export async function guardarProducto(_: Resultado, datos: FormData): Promise<Re
     fotoAnterior = ''
   }
 
-  const foto = datos.get('foto_archivo')
-  if (foto instanceof File && foto.size > 0) {
+  const foto = archivos[0]
+  if (foto) {
     const subida = await subirFoto(productoId!, foto, fotoAnterior)
     if (typeof subida !== 'string') return subida
     const { error } = await supabase.from('productos').update({ foto_ruta: subida }).eq('id', productoId!)
@@ -99,6 +115,31 @@ export async function guardarProducto(_: Resultado, datos: FormData): Promise<Re
     const { error } = await supabase.from('productos').update({ foto_ruta: '' }).eq('id', productoId!)
     if (error) return { error: mensaje(error) }
     await supabase.storage.from('productos').remove([fotoAnterior])
+  }
+
+  // Fotos 2 y 3 (RI-12): cada casilla se sube, cambia o quita por separado; lo actual sale de la base, no del formulario.
+  const { data: conExtra } = await supabase.from('productos').select('fotos_extra').eq('id', productoId!).maybeSingle()
+  const antes: string[] = conExtra?.fotos_extra ?? []
+  const casillas = [antes[0] ?? '', antes[1] ?? '']
+  const sobran: string[] = []
+  for (const n of [2, 3]) {
+    const i = n - 2
+    const nueva = archivos[n - 1]
+    if (nueva) {
+      const subida = await subirFoto(productoId!, nueva, '', n)
+      if (typeof subida !== 'string') return subida
+      if (casillas[i]) sobran.push(casillas[i])
+      casillas[i] = subida
+    } else if (datos.get(`quitar_foto_${n}`) === '1' && casillas[i]) {
+      sobran.push(casillas[i])
+      casillas[i] = ''
+    }
+  }
+  const despues = casillas.filter(Boolean)
+  if (despues.join('|') !== antes.join('|')) {
+    const { error } = await supabase.from('productos').update({ fotos_extra: despues }).eq('id', productoId!)
+    if (error) return { error: mensaje(error) }
+    if (sobran.length) await supabase.storage.from('productos').remove(sobran)
   }
 
   revalidatePath('/inventario')

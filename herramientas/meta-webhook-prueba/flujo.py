@@ -180,6 +180,19 @@ def _foto_de(p):
     return _foto(p["foto"])
 
 
+def fotos_extra(p):
+    """F4·65 (RI-14): las Fotos 2 y 3 salen después de la ficha, sin texto, y solo si el equipo tiene Foto 1 subida."""
+    if not isinstance(p.get("foto"), dict):
+        return []
+    return [m_imagen({"_extra": ruta}, "") for ruta in (p.get("fotos_extra") or [])[:2]]
+
+
+def con_drive(texto, p):
+    """F4·65 (RI-14): el renglón «📷 Más fotos» al final de la ficha, si el equipo tiene carpeta de Drive y cabe."""
+    renglon = f"\n📷 Más fotos: {p['fotos_drive']}" if p.get("fotos_drive") else ""
+    return texto + renglon if len(texto + renglon) <= 1024 else texto
+
+
 def inventario():
     """Portátiles con stock, de la tabla productos de Supabase."""
     return [{
@@ -188,6 +201,7 @@ def inventario():
         "disco": p["almacenamiento"], "estado": p["estado"], "precio": int(float(p["precio"])),
         "stock": p["stock"], "foto": _foto_de(p), "categoria": p.get("categoria") or "", "descripcion": p.get("descripcion") or "",
         "atributos": p.get("atributos") or {},  # F4·41: {clave: valor} de los atributos del producto
+        "fotos_extra": p.get("fotos_extra") or [], "fotos_drive": p.get("fotos_drive") or "",  # F4·65
     } for p in db.productos_con_stock() if "portatil" in normalizar(p["categoria"])]
 
 
@@ -711,7 +725,7 @@ def r11(st, p):
     etapa(st, "Cotización")
     ficha = (f"💻 *{p['marca']} {p['modelo']}* · Código {p['cod']}\n{p['cpu']} · {p['ram']} · {p['disco']}"
              f"{' · ' + p['estado'] if p['estado'] else ''}\n💰 {cop(p['precio'])} · ✅ Disponible")
-    return [m_botones(ficha, [(i, t) for i, t, _ in opciones_de(c)], p["foto"])]
+    return [m_botones(con_drive(ficha, p), [(i, t) for i, t, _ in opciones_de(c)], p["foto"])] + fotos_extra(p)
 
 
 def asesor(st, etiqueta="Escalado-Asesor", motivo=None, de_flecha=False):

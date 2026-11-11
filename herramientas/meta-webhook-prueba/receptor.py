@@ -242,6 +242,18 @@ def subir_conocimiento(ruta):
     return media_id
 
 
+def subir_extra(ruta):
+    """Las Fotos 2 y 3 del equipo (F4·65) en Meta. Cada foto nueva tiene ruta nueva: se reutiliza el id 25 días, como en conocimiento."""
+    clave = "productos:" + ruta
+    media_id, en = _medios_conocimiento.get(clave, (None, None))
+    if vigente(media_id, en):
+        return media_id
+    nombre = Path(ruta).name
+    media_id = subir_a_meta(db.descargar("productos", ruta), MIME_FOTO.get(nombre.rsplit(".", 1)[-1].lower(), "image/jpeg"), nombre)
+    _medios_conocimiento[clave] = (media_id, datetime.now().astimezone().isoformat())
+    return media_id
+
+
 def resolver(mensaje):
     """Convierte las marcas internas del árbol en mensajes de la API ({'_pdf': catálogo} → documento)."""
     if "_cotizacion" in mensaje:  # PDF de la cotización (F4·26), recién guardado en el bucket cotizaciones
@@ -270,6 +282,12 @@ def resolver(mensaje):
                                                      "caption": f"📚 {c['nombre']}"}}
         except Exception as e:
             anotar(f"  ✗ no se pudo subir el catálogo {c['nombre']}: {e!r}")
+            return None
+    if mensaje.get("type") == "image" and "_extra" in mensaje.get("image", {}):  # Fotos 2 y 3 del equipo (F4·65)
+        try:
+            return {"type": "image", "image": {"id": subir_extra(mensaje["image"]["_extra"])}}
+        except Exception as e:  # sin esa foto, la ficha ya salió: no se manda nada más
+            anotar(f"  ✗ no se pudo subir la foto extra: {e!r}")
             return None
     if mensaje.get("type") == "image" and "_producto" in mensaje.get("image", {}):  # ficha con foto (F4·42)
         try:

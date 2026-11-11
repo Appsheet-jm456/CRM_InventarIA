@@ -16,6 +16,8 @@ export type Producto = {
   stock: number
   foto: string
   foto_ruta: string
+  fotos_extra: string[] // Fotos 2 y 3 (F4·65, RI-11)
+  fotos_drive: string // carpeta de Drive con más fotos (RI-13)
   video: string
   atributos: Record<string, ValorAtributo>
   actualizado_en: string
@@ -58,7 +60,7 @@ export const aplicaA = (a: Pick<AtributoProducto, 'categorias'>, categoria: stri
   !a.categorias.length || a.categorias.some((c) => sinTildes(c) === sinTildes(categoria))
 
 export const COLUMNAS_PRODUCTO =
-  'id, codigo, categoria, descripcion, marca, modelo, procesador, generacion, ram, almacenamiento, estado, precio, stock, foto, foto_ruta, video, atributos, actualizado_en'
+  'id, codigo, categoria, descripcion, marca, modelo, procesador, generacion, ram, almacenamiento, estado, precio, stock, foto, foto_ruta, fotos_extra, fotos_drive, video, atributos, actualizado_en'
 
 export const CAMPOS_TEXTO = ['categoria', 'descripcion', 'marca', 'modelo', 'procesador', 'generacion', 'ram',
   'almacenamiento', 'estado', 'video'] as const
@@ -68,6 +70,9 @@ export const pesos = (n: number) =>
 
 export const rutaArchivo = (bucket: 'productos' | 'catalogos', ruta: string) =>
   `/archivos/${bucket}/${ruta.split('/').map(encodeURIComponent).join('/')}`
+
+// RI-13: la carpeta de Drive con más fotos (la base exige lo mismo, migración 0070).
+export const ENLACE_DRIVE = /^https:\/\/(drive|docs)\.google\.com\/\S+$/i
 
 // La foto subida manda (RI-03); si no hay, el enlace (los de Drive pasan a miniatura, como hace el bot).
 export function fotoDe(p: Pick<Producto, 'foto' | 'foto_ruta'>) {

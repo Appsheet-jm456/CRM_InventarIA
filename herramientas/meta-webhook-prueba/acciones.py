@@ -146,13 +146,13 @@ def ficha_equipo(paso, accion, st, lead, texto, fresco=False):
         p = equipos[0]
         # {nombre} se pone antes: sin nombre, «¡Hola {nombre}!» queda «¡Hola!» y no se borra el renglón entero.
         partes = [agente.armar_equipo(f[k].replace("{nombre}", nombre), p, extra) for k in ("encabezado", "plantilla", "cierre")]
-        cuerpo = _limpio("\n\n".join(x for x in partes if x.strip()))
+        cuerpo = flujo.con_drive(_limpio("\n\n".join(x for x in partes if x.strip())), p)  # F4·65: «📷 Más fotos»
         # RAG-48: queda como el último equipo que vio, para «Lo quiero» o «quiero comprar» sin repetir el código.
         st.setdefault("campos", {}).update({"Código producto": p["cod"], "Valor estimado": flujo.cop(p["precio"])})
         st["valor"] = p["precio"]
         al_final = mensajes_catalogo({"modo": "marca"}, accion, st, lead) if f.get("catalogo") else []  # RAG-51
         if f.get("foto") and p.get("foto") and len(cuerpo) <= 1024:
-            return [flujo.m_imagen(p["foto"], cuerpo)] + al_final
+            return [flujo.m_imagen(p["foto"], cuerpo)] + flujo.fotos_extra(p) + al_final  # F4·65: luego las fotos 2 y 3
         return [flujo.m_texto(cuerpo)] + al_final
     if equipos:  # varios: la lista de Avi (F4·37 / F4·40) con su plantilla y su máximo (RAG-45)
         maximo = int(config.get("max_equipos") or 3)
