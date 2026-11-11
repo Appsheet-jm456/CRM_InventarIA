@@ -105,6 +105,11 @@ Total (1 equipo + 1 aumento): $1.520.000
   compra, sus aumentos salen con él.
 - **RAM-08 · Conteo:** el máximo de equipos del carrito no cuenta los aumentos. El total dice «(N equipos + M aumentos)».
 
+- **RAM-09 · Volver a iniciar la compra** (corregido el 11 nov 2026 tras la prueba del dueño): si el asesor toma el chat y después usa
+  Flujos → Iniciar compra, vuelve **el mismo pedido con sus aumentos** y sale directo el resumen (antes arrancaba de cero solo con el
+  código del equipo y se perdían los aumentos). Vale con la compra aún en curso o con el pedido guardado al pasar al asesor (24 h). No
+  vuelve si el cliente canceló, si ya se enviaron las cuentas o si escribió el código de otro equipo. Un equipo vendido sale con aviso.
+
 ## 6. Decisiones del dueño (11 nov 2026)
 
 | Pregunta | Respuesta |

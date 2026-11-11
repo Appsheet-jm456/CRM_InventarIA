@@ -49,6 +49,10 @@ def activa(st):
 
 
 def _limpiar(st):
+    c = st.get("compra") or {}
+    # F4·73b (RAM-09): el pedido armado (con sus aumentos) se guarda 24 h por si el asesor vuelve a iniciar la compra.
+    if _carrito(c) and c.get("equipos") and c.get("paso") not in ("esperando_pago", "pago_por_confirmar"):
+        st["pedido_previo"] = {"equipos": c["equipos"], "tipo": c.get("tipo"), "en": datetime.now(timezone.utc).isoformat()}
     st.pop("compra", None)
     st.pop("espera_hasta", None)
     if st.get("nodo") == NODO:
@@ -393,9 +397,33 @@ def _asesor(st, motivo=None):
     return flujo.asesor(st, etiqueta="Escalado-Asesor", motivo=motivo)
 
 
+def _previo(st, texto):
+    """F4·73b (RAM-09): el pedido que el cliente ya tenía armado: el de la compra en curso (antes de las cuentas) o el guardado al salir
+    de ella en las últimas 24 h. No vale si el cliente escribió otro código: entonces la compra empieza con ese equipo."""
+    c = st.get("compra") or {}
+    if _carrito(c) and not c.get("asesor") and c.get("paso") not in ("esperando_pago", "pago_por_confirmar") and c.get("equipos"):
+        previo = {"equipos": c["equipos"], "tipo": c.get("tipo")}
+    else:
+        previo = st.get("pedido_previo") or {}
+        try:
+            if datetime.now(timezone.utc) - datetime.fromisoformat(previo.get("en")) > timedelta(hours=24):
+                previo = {}
+        except (TypeError, ValueError):
+            previo = {}
+    st.pop("pedido_previo", None)
+    equipos = [i for i in previo.get("equipos") or [] if i.get("codigo")]
+    if not any(not i.get("ampliacion") for i in equipos):
+        return None
+    p = flujo.buscar_codigo(texto) if texto else None
+    if p and not any(i["codigo"].upper() == p["cod"].upper() for i in equipos):
+        return None
+    return {"equipos": equipos, "tipo": previo.get("tipo")}
+
+
 def iniciar(st, texto, lead=None, cuadro=None):
     """Lo llama la acción «Quiero comprar» (RAG-19) o el cuadro 🛒 Carrito del lienzo (`cuadro`, RAG-55).
     Devuelve los mensajes."""
+    previo = _previo(st, texto)
     st["compra"] = {"paso": "codigo", "desde": datetime.now(timezone.utc).isoformat()}
     if cuadro or _cfg().get("carrito_activo"):
         st["compra"]["carrito"] = True
@@ -404,6 +432,14 @@ def iniciar(st, texto, lead=None, cuadro=None):
         st["compra"]["bot"] = getattr(flujo._hilo, "bot", None) or st.get("bot")
     st["nodo"] = NODO
     st.pop("espera_hasta", None)
+    if previo and _carrito(st["compra"]):  # F4·73b (RAM-09): vuelve el mismo pedido, con sus aumentos
+        st["compra"]["equipos"] = previo["equipos"]
+        primero = next(i for i in previo["equipos"] if not i.get("ampliacion"))
+        st["compra"].update(codigo=primero["codigo"], equipo=primero["equipo"], precio=primero["precio"])
+        if previo.get("tipo"):
+            st["compra"]["tipo"] = previo["tipo"]
+        _aplicar_tipo(st, lead)
+        return _seguir(st, lead)
     p = flujo.buscar_codigo(texto)
     if not p and _carrito(st["compra"]):  # viene de cotizar un pedido con varios equipos: entran todos, no solo el primero
         codigos = [k.strip() for k in ((st.get("campos") or {}).get("Código producto") or "").split(",") if k.strip()]
@@ -519,6 +555,7 @@ def _responder(st, entrada, tipo, lead):
     if n in SALIR or entrada in ("0", "compra-cancelar") or CANCELA.search(n):
         _limpiar(st)
         if entrada == "compra-cancelar" or CANCELA.search(n):
+            st.pop("pedido_previo", None)  # canceló: no se le vuelve a ofrecer
             return [flujo.m_texto((cfg.get("texto_cancelacion") or "Entendido.").strip())], ["Compra-Cancelada"], None, None
         return None  # «0» o «menú»: sigue por el menú
     if _carrito(c):

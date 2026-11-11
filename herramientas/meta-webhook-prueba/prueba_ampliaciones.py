@@ -163,5 +163,31 @@ ms = r(st, "compra-si")
 ok(st["compra"]["paso"] == "esperando_pago" and st["compra"]["total"] == 1300000 + 1600000 + 140000 + 80000,
    "con «Sí» salen las cuentas por el total con el aumento")
 
+# RAM-09: el asesor toma el chat y vuelve a iniciar la compra → el mismo pedido con sus aumentos
+st, _ = pedido("T490")
+r(st, "compra-ampliar"); r(st, "ampliar-ram"); r(st, "ampliar-op-1"); r(st, "compra-ampliar"); r(st, "ampliar-disco"); r(st, "ampliar-op-1")
+ms = compra.iniciar(st, "", {"nombre": "Juan"})  # Flujos → Iniciar compra con la compra aún en curso
+ok([i["codigo"] for i in st["compra"]["equipos"]] == ["T490", "AMP-RAM-T490", "AMP-DISCO-T490"] and st["compra"]["paso"] == "confirmar"
+   and "Total (1 equipo + 2 aumentos)" in cuerpo(ms[-1]), "Iniciar compra con la compra en curso: el mismo pedido con RAM y disco")
+compra.responder(st, "asesor", "text", {"nombre": "Juan"})  # pidió asesor: la compra se cierra y el pedido queda guardado
+ok(not compra.activa(st) and len(st["pedido_previo"]["equipos"]) == 3, "al pasar al asesor el pedido queda guardado 24 h")
+ms = compra.iniciar(st, "", {"nombre": "Juan"})
+ok(len(st["compra"]["equipos"]) == 3 and "$1.650.000" in cuerpo(ms[-1]) and "pedido_previo" not in st,
+   "el asesor reactiva la compra: vuelve el resumen con los aumentos, sin preguntar otra vez")
+st["compra"]["paso"] = "confirmar"
+compra.responder(st, "compra-cancelar", "interactive", {"nombre": "Juan"})
+ok("pedido_previo" not in st, "si el cliente cancela, el pedido no se guarda")
+st, _ = pedido("T490")
+r(st, "compra-ampliar"); r(st, "ampliar-ram"); r(st, "ampliar-op-1")
+compra.responder(st, "asesor", "text", {"nombre": "Juan"})
+st["pedido_previo"]["en"] = "2020-01-01T00:00:00+00:00"
+compra.iniciar(st, "", {"nombre": "Juan"})
+ok(st["compra"]["paso"] != "confirmar" or not any(i.get("ampliacion") for i in st["compra"].get("equipos", [])),
+   "después de 24 h el pedido guardado ya no vuelve")
+st, _ = pedido("T490")
+r(st, "compra-ampliar"); r(st, "ampliar-ram"); r(st, "ampliar-op-1")
+compra.iniciar(st, "quiero comprar X1C6", {"nombre": "Juan"})
+ok(not any(i.get("ampliacion") for i in st["compra"].get("equipos", [])), "si escribe otro código, la compra empieza con ese equipo")
+
 print(f"\n{n - fallos}/{n}")
 sys.exit(1 if fallos else 0)
