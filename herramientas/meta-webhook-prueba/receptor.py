@@ -589,7 +589,7 @@ def herramienta(pedido):
     Catálogo y acción salen como mensajes del asesor; un flujo, como mensajes del bot, que sigue con el cliente."""
     lead_id, tipo, ref, usuario = int(pedido["lead"]), str(pedido["tipo"]), str(pedido["ref"]), pedido.get("usuario")
     numero = db.telefono_de(lead_id)
-    if not numero or tipo not in ("catalogo", "accion", "flujo", "equipo", "carrito"):
+    if not numero or tipo not in ("catalogo", "accion", "flujo", "equipo", "carrito", "resumen"):
         raise LookupError(lead_id)
     with _candados.setdefault(numero, threading.Lock()):
         lead = db.lead(numero)
@@ -604,6 +604,10 @@ def herramienta(pedido):
             elif tipo == "carrito":  # F4·72: el carrito del asesor; la compra arranca en «confirmar» y la sigue el bot
                 db.olvidar_inventario()
                 mensajes = compra.desde_asesor(st, db.carrito(lead_id), lead)
+            elif tipo == "resumen":  # F4·73c (RAM-12): el mismo resumen del pedido, sin tocar la compra ni el chat
+                mensajes = compra.resumen_pedido(lead, st, forzar=True, alistamiento=int(ref))
+                if not mensajes:
+                    return {"ok": False, "error": "Ese pedido no tiene equipos o el texto del resumen está vacío (Agente → Compra)."}
             elif tipo == "equipo":  # F4·71
                 db.olvidar_inventario()  # el stock y las fotos recién cambiados en Inventario se ven ya
                 mensajes = ficha_del_asesor(flujo.equipo_por_codigo(ref), lead, st)
@@ -942,6 +946,11 @@ def _contestar(numero, entrada, visible, nombre, tipo, meta_id, media=None, guar
                     anotar(f"  {icono} {nombre_flujo} · {(st.get(nombre_flujo) or {}).get('paso') or 'terminó'}"
                            + (f" · embudo → {paso_embudo}" if paso_embudo else ""))
                     extras_de_compra(lead, etiquetas, paso_embudo, nota)
+                    if modulo is compra and paso_embudo == "esperando_pago":  # F4·73c (RAM-10): los aumentos van al pedido
+                        try:
+                            db.compra_aumentos(lead["id"], compra.aumentos_de(st))
+                        except Exception as e:
+                            anotar(f"  ✗ no se pudieron anotar los aumentos: {e!r}")
             # Acciones «Cuando → Hacer» (F4·24, RAG-25): solo con texto escrito, no con botones del menú ni media. La excepción es el
             # botón «Lo quiero» de la ficha: cuenta como «quiero comprar» y abre la compra si esa acción está activa (F4·25).
             atendida = None

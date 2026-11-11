@@ -110,6 +110,15 @@ Total (1 equipo + 1 aumento): $1.520.000
   código del equipo y se perdían los aumentos). Vale con la compra aún en curso o con el pedido guardado al pasar al asesor (24 h). No
   vuelve si el cliente canceló, si ya se enviaron las cuentas o si escribió el código de otro equipo. Un equipo vendido sale con aviso.
 
+- **RAM-10 · Los aumentos quedan en el pedido** (11 nov 2026, migración 0082): al enviar las cuentas, el bot los anota en la oportunidad
+  (`oportunidades.aumentos`) y el alistamiento nace con ellos (`alistamientos.aumentos`, y los sigue si cambian).
+- **RAM-11 · Se ven donde se trabajan:** el «🧾 Resumen de tu pedido» los lista debajo de su equipo («   ⚡ Aumento RAM 8GB → 16GB»), y
+  Pedidos, la Ficha → Oportunidades y el Servicio técnico muestran «⚡ Instalar RAM 8GB → 16GB» bajo el equipo.
+- **RAM-12 · Reenviar resumen:** botón «🧾 Reenviar resumen» en el pedido (Ficha → Oportunidades). Envía el mismo resumen (equipos, aumentos,
+  total, pagado, saldo y entrega) como mensaje del asesor, sin reiniciar la compra, sin pedir pago y sin cambiar el chat. Solo dentro de
+  las 24 h de WhatsApp; queda en el historial «🧾 Resumen del pedido PED-… reenviado por …». No usar el Carrito para esto: el carrito arranca
+  una compra nueva.
+
 ## 6. Decisiones del dueño (11 nov 2026)
 
 | Pregunta | Respuesta |
@@ -118,7 +127,7 @@ Total (1 equipo + 1 aumento): $1.520.000
 | Velocidad de la RAM | **Atributo y, si falta, la generación del procesador** |
 | Aumento de disco | **Siempre, según el tamaño actual** (NVMe por atributo o texto) |
 
-Fuera de alcance por ahora: el aumento en la cotización PDF y en la tarjeta del Servicio técnico (va en la nota del pedido), y agregar un
+Fuera de alcance por ahora: el aumento en la cotización PDF (el resumen, Pedidos y el Servicio técnico sí lo muestran desde la 0082) y agregar un
 segundo disco en equipos con dos ranuras.
 
 ## 7. Qué cambia por dentro
@@ -128,4 +137,5 @@ segundo disco en equipos con dos ranuras.
 | Base (0081) | 5 atributos del producto; tabla `ampliaciones` (tipo, desde, hasta, precio, precio 2666-3200, activa); `agente_config.ampliacion_activa` y `ampliacion_nvme`. |
 | Receptor | `ampliacion.py` (opciones según el equipo) y `compra.py` (opción del resumen, pasos `ampliar_*`, renglones ⚡). `db.ampliaciones()`. |
 | CRM | Agente → Compra: sección «Aumentos de RAM y disco». Los atributos salen solos en Inventario. |
-| Pruebas | SQL de la 0081 y `prueba_ampliaciones.py`. |
+| Base (0082) | `aumentos` en oportunidades y alistamientos, `compra_aumentos` (bot) y `pedido_reenviar_resumen`; Pedidos y Servicio técnico los reciben. |
+| Pruebas | SQL de la 0081 y 0082, `prueba_ampliaciones.py` y `prueba_resumen_pedido.py`. |

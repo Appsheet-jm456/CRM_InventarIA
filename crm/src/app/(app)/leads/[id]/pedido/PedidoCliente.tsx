@@ -7,6 +7,8 @@ import { clienteNavegador, subirConAvance } from '@/lib/supabase/navegador'
 import { OportunidadesCliente, type Embudo, type Etapa } from '../../../bandeja/OportunidadesCliente'
 import { autorizarVideoCorregido, cancelarPedido, eliminarPedido, corregirDocumento, enviarAlCliente, guardarDocumento, marcarEntregado, registrarGuia, subirArchivoDocumento, type Resultado } from '../../../servicio-tecnico/acciones'
 import { CHECKLIST, ESTADO, hora } from '../../../servicio-tecnico/ServicioTecnico'
+import { AumentosEquipo, type Aumento } from '../../../servicio-tecnico/Aumentos'
+import { reenviarResumen } from './reenviar'
 import { VideosEquipo, type Video } from '../../../servicio-tecnico/VideosEquipo'
 import { PagosPedido, saldo, type Pago } from './PagosPedido'
 import { nombreDocumento, numeroPedido, pasos, siguiente, ventana, type Datos, type Entrega } from './pedido'
@@ -15,6 +17,7 @@ type Fila = Datos & {
   id: number
   oportunidad_id: number
   equipos: { codigo: string; nombre: string }[]
+  aumentos: Aumento[] // F4·73c (RAM-11)
   tecnico: string | null
   listo_por: string | null
   checklist: Record<string, unknown>
@@ -98,7 +101,7 @@ export function PedidoCliente({ lead, puedeDocumento, puedeCorregir, puedePagos 
   const cargar = useCallback(async () => {
     const sb = clienteNavegador()
     const { data, error } = await sb.from('alistamientos')
-      .select('id, numero, oportunidad_id, equipos, doc_tipo, doc_numero, doc_ruta, doc_nombre, estado, tecnico, tomado_en, listo_en, listo_por, checklist, creado_en, ' +
+      .select('id, numero, oportunidad_id, equipos, aumentos, doc_tipo, doc_numero, doc_ruta, doc_nombre, estado, tecnico, tomado_en, listo_en, listo_por, checklist, creado_en, ' +
         'oportunidades(estado, valor_estimado, etapas(nombre)), leads(atributos), transportadora, numero_guia, guia_en, guia_enviada_en, ' +
         'documento_enviado_en, video_enviado_en, primer_documento_en, primer_video_en, aviso_tienda_en, entregado_en, cancelado_en, cancelado_motivo, ' +
         'correccion_documento_en, correccion_video_autorizada_en, correccion_video_motivo, correccion_video_en, ' +
@@ -195,6 +198,12 @@ export function PedidoCliente({ lead, puedeDocumento, puedeCorregir, puedePagos 
         <div className="ped-s">
           {fila.equipos.length || 1} equipo{(fila.equipos.length || 1) === 1 ? '' : 's'}{total ? ` · Total ${pesos(total)}` : ''}
           {entrega ? ` · ${entrega === 'envio' ? 'Envío' : 'Recoge en tienda'}` : ''}
+          {(fila.aumentos ?? []).length > 0 && ` · ${fila.aumentos.length} aumento${fila.aumentos.length === 1 ? '' : 's'}`}
+          {!cancelado && (
+            <button className="btn chico" style={{ marginLeft: 8 }} disabled={ocupado} title="Envía al cliente el mismo «Resumen de tu pedido»; no reinicia la compra"
+              onClick={() => confirm('¿Reenviar al cliente el resumen de este pedido? No reinicia la compra ni pide pago.') && hacer(() => reenviarResumen(fila.id))}>
+              🧾 Reenviar resumen</button>
+          )}
         </div>
         <div className="ped-etapa">
           <OportunidadesCliente lead={lead} embudos={embudos} etapas={etapas} puede={puedeDocumento} version={version} alCambiar={alCambiar}
@@ -233,7 +242,7 @@ export function PedidoCliente({ lead, puedeDocumento, puedeCorregir, puedePagos 
         chip={<span className={`chip ${ESTADO[fila.estado].clase}`}>{ESTADO[fila.estado].texto}</span>}>
         {(fila.equipos.length ? fila.equipos : [{ codigo: 'pedido', nombre: 'Equipo del pedido' }]).map((e) => (
           <div key={e.codigo} className="ped-equipo">
-            <div className="ped-datos"><b>{e.nombre}</b>{e.codigo !== 'pedido' && <small className="muted">{e.codigo}</small>}</div>
+            <div className="ped-datos"><b>{e.nombre}</b>{e.codigo !== 'pedido' && <small className="muted">{e.codigo}</small>}<AumentosEquipo aumentos={fila.aumentos} codigo={e.codigo} /></div>
             <VideosEquipo pedido={fila.id} codigo={e.codigo} puedeSubir={false} alTerminar={setAviso} miniaturas
               videos={videos.filter((v) => v.equipo_codigo === e.codigo)} />
           </div>

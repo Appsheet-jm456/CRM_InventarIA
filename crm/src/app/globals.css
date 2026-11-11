@@ -1033,3 +1033,4 @@ details.columnas > .panel { right: 0; top: calc(100% + 4px); min-width: 220px }
   .carrito-valor { grid-column: 2 / 3; text-align: left }
   .carrito-libre { grid-template-columns: 1fr 1fr }
 }
+.ped-aumentos { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px }

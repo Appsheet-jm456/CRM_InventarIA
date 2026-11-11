@@ -110,5 +110,23 @@ CFG["texto_resumen_pedido"] = "Hola {nombre}, tu pedido {pedido}: {equipos}\nTot
 t = texto(compra.resumen_pedido({**LEAD, "nombre": "Ana Ruiz"}, {"atributos": TIENDA}))
 ok(t == "Hola Ana, tu pedido PED-0078: 💻 LENOVO X13 GEN 3 (100-101-1149)\nTotal $3.580.000.", "el texto del dueño se respeta y {datos} vacío no deja una línea suelta")
 
+# F4·73c (RAM-11 y RAM-12): aumentos debajo de su equipo y «Reenviar resumen»
+CFG["texto_resumen_pedido"] = PLANTILLA
+A.update(resumen_enviado_en="2026-11-11T17:45:00+00:00",
+         aumentos=[{"de": "100-101-1149", "tipo": "ram", "desde": 8, "hasta": 16, "texto": "Aumento RAM 8GB → 16GB", "precio": 140000},
+                   {"de": "OTRO", "tipo": "disco", "desde": 256, "hasta": 512, "texto": "Aumento disco 256GB → 512GB", "precio": 130000}])
+ok(compra.resumen_pedido(LEAD, {"atributos": TIENDA}) == [], "ya enviado: el cierre de la compra no lo repite")
+t = texto(compra.resumen_pedido(LEAD, {"atributos": TIENDA}, forzar=True, alistamiento=7))
+ok("💻 LENOVO X13 GEN 3 (100-101-1149)\n   ⚡ Aumento RAM 8GB → 16GB\n⚡ Aumento disco 256GB → 512GB" in t,
+   "el aumento sale debajo de su equipo; uno sin equipo, al final")
+CFG["resumen_pedido_activo"] = False
+ok(compra.resumen_pedido(LEAD, {"atributos": TIENDA}, forzar=True, alistamiento=7) != [], "«Reenviar resumen» sale aunque el automático esté apagado")
+CFG["resumen_pedido_activo"] = True
+st = {"compra": {"equipos": [{"codigo": "T490", "equipo": "LENOVO T490", "precio": 950000},
+                             {"codigo": "AMP-DISCO-T490", "libre": True, "precio": 160000, "equipo": "Aumento disco 256GB → 512GB NVMe (LENOVO T490 (2019))",
+                              "ampliacion": {"tipo": "disco", "de": "T490", "desde": 256, "hasta": 512}}]}}
+ok(compra.aumentos_de(st) == [{"de": "T490", "tipo": "disco", "desde": 256, "hasta": 512, "texto": "Aumento disco 256GB → 512GB NVMe", "precio": 160000}],
+   "los aumentos de la compra salen listos para la oportunidad (RAM-10)")
+
 print(f"\n{n - fallos}/{n} en verde")
 sys.exit(1 if fallos else 0)

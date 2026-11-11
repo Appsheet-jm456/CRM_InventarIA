@@ -814,17 +814,47 @@ def _si(v):
     return str(v).strip().lower() in ("true", "si", "sí", "1", "yes")
 
 
-def resumen_pedido(lead, st):
+def aumentos_de(st):
+    """F4·73c (RAM-10): los aumentos del pedido para la oportunidad: [{de, tipo, desde, hasta, texto, precio}]. Salen de la compra en curso
+    o, si ya se cerró (sin texto de cuentas pasa al asesor), del pedido guardado."""
+    c = st.get("compra") or {}
+    items = c.get("equipos") or (st.get("pedido_previo") or {}).get("equipos") or []
+    salida = []
+    for i in items:
+        a = i.get("ampliacion")
+        if a:
+            texto = (f"Aumento {'RAM' if a['tipo'] == 'ram' else 'disco'} {ampliacion.texto_gb(a['desde'])} → {ampliacion.texto_gb(a['hasta'])}"
+                     + (" NVMe" if " NVMe (" in i["equipo"] else ""))
+            salida.append({**{k: a[k] for k in ("de", "tipo", "desde", "hasta")}, "texto": texto, "precio": int(i["precio"])})
+    return salida
+
+
+def _equipos_con_aumentos(equipos, aumentos):
+    """RAM-11: cada equipo con sus aumentos debajo («   ⚡ Aumento RAM 8GB → 16GB»); los que no encuentran su equipo, al final."""
+    lineas, usados = [], set()
+    for e in equipos:
+        lineas.append(f"💻 {e.get('nombre') or 'Equipo'} ({e['codigo']})" if e.get("codigo") else f"💻 {e.get('nombre') or 'Equipo'}")
+        for k, a in enumerate(aumentos):
+            if str(a.get("de") or "").upper() == str(e.get("codigo") or "").upper():
+                lineas.append(f"   ⚡ {a.get('texto') or 'Aumento'}")
+                usados.add(k)
+    lineas += [f"⚡ {a.get('texto') or 'Aumento'}" for k, a in enumerate(aumentos) if k not in usados]
+    return "\n".join(lineas)
+
+
+def resumen_pedido(lead, st, forzar=False, alistamiento=None):
     """F4·64 (RF-46 a RF-51): el «🧾 Resumen de tu pedido» que sale justo después de la política de despacho. Todo sale de la base: el
     pedido (número y equipos), los pagos validados, el total de la oportunidad y los datos de la ficha. Una sola vez por pedido y solo
-    si el cliente tiene un pedido con equipos. Devuelve la lista de mensajes (vacía si no corresponde)."""
+    si el cliente tiene un pedido con equipos. Devuelve la lista de mensajes (vacía si no corresponde).
+    F4·73c (RAM-12): `forzar` (el asesor pulsó «Reenviar resumen») lo envía aunque ya haya salido; `alistamiento` elige el pedido."""
     cfg = _cfg()
     plantilla = (cfg.get("texto_resumen_pedido") or "").strip()
-    if not cfg.get("resumen_pedido_activo", True) or not plantilla:
+    if not plantilla or not (forzar or cfg.get("resumen_pedido_activo", True)):
         return []
-    filas = db.pedir(f"alistamientos?lead_id=eq.{int(lead['id'])}&cancelado_en=is.null&order=creado_en.desc&limit=1"
-                     "&select=id,numero,equipos,oportunidad_id,resumen_enviado_en") or []
-    if not filas or filas[0].get("resumen_enviado_en") or not (filas[0].get("equipos") or []):
+    cual = f"&id=eq.{int(alistamiento)}" if alistamiento else ""
+    filas = db.pedir(f"alistamientos?lead_id=eq.{int(lead['id'])}{cual}&cancelado_en=is.null&order=creado_en.desc&limit=1"
+                     "&select=id,numero,equipos,aumentos,oportunidad_id,resumen_enviado_en") or []
+    if not filas or (filas[0].get("resumen_enviado_en") and not forzar) or not (filas[0].get("equipos") or []):
         return []
     a = filas[0]
     op = (db.pedir(f"oportunidades?id=eq.{int(a['oportunidad_id'])}&select=valor_estimado") or [{}])[0]
@@ -835,8 +865,7 @@ def resumen_pedido(lead, st):
     datos = {**(lead.get("atributos") or {}), **(st.get("atributos") or {})}
     envio = datos.get("venta_online")
     envio = _si(envio) if envio not in (None, "") else bool(str(datos.get("direccion_entrega") or "").strip())
-    equipos = "\n".join(f"💻 {e.get('nombre') or 'Equipo'} ({e['codigo']})" if e.get("codigo") else f"💻 {e.get('nombre') or 'Equipo'}"
-                        for e in a["equipos"])
+    equipos = _equipos_con_aumentos(a["equipos"], a.get("aumentos") or [])
     lineas = []
     if envio:
         for icono, clave in (("👤", "nombre_completo"), ("📱", "celular"), ("📍", "direccion_entrega")):

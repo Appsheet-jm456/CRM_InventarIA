@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { AumentosEquipo, type Aumento } from '../servicio-tecnico/Aumentos'
 import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 import { Icono } from '@/components/Iconos'
@@ -16,6 +17,7 @@ export type FilaPedido = Datos & {
   cliente: string
   telefono: string
   equipos: { codigo: string; nombre: string }[]
+  aumentos?: Aumento[] // F4·73c (RAM-11)
   producto: string | null
   total: number | null
   pagado: number
@@ -173,7 +175,7 @@ export function Pedidos({ pedidos, error, etapas, embudos, puedeDocumento, puede
                       <td><b>{numeroPedido(p.numero)}</b><small className="pd-sub">{hora(p.creado_en)}</small>
                         {p.alertas.length > 0 && <span className="chip warn" title={p.alertas.join('\n')}>{p.alertas.length} alerta{p.alertas.length > 1 ? 's' : ''}</span>}</td>
                       <td><b>{p.cliente}</b><small className="pd-sub">{p.telefono}</small></td>
-                      <td>{equiposDe(p).map((e) => <div key={e.codigo || e.nombre}>{e.nombre}<small className="pd-sub">{e.codigo}</small></div>)}</td>
+                      <td>{equiposDe(p).map((e) => <div key={e.codigo || e.nombre}>{e.nombre}<small className="pd-sub">{e.codigo}</small><AumentosEquipo aumentos={p.aumentos} codigo={e.codigo || 'pedido'} /></div>)}</td>
                       <td><Flujo p={p} /><small className="pd-sub"><span className={`chip ${FASE[p.fase].clase}`}>{FASE[p.fase].titulo}</span></small></td>
                       <td>{p.tecnico ?? <span className="muted">Sin técnico</span>}
                         <small className="pd-sub">{p.videos} de {nEquipos} video{nEquipos > 1 ? 's' : ''}</small></td>

@@ -279,6 +279,11 @@ def compra_mover(lead_id, paso):
     return pedir("rpc/compra_mover", "POST", {"p_lead": lead_id, "p_paso": paso})
 
 
+def compra_aumentos(lead_id, aumentos):
+    """F4·73c (RAM-10): los aumentos de RAM o disco en la oportunidad de la compra (y de ahí al alistamiento)."""
+    return pedir("rpc/compra_aumentos", "POST", {"p_lead": lead_id, "p_aumentos": aumentos})
+
+
 def agregar_nota(lead_id, notas_actuales, nota):
     """Suma una línea a las notas del cliente (las ve el asesor en la Bandeja)."""
     notas = ((notas_actuales or "").rstrip() + "\n" + nota).strip()

@@ -1,6 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
+import { AumentosEquipo, type Aumento } from './Aumentos'
 import { useEffect, useMemo, useState } from 'react'
 import { numeroPedido } from '../leads/[id]/pedido/pedido'
 import { autorizarVideoCorregido, enviarAlCliente, marcarChecklist, marcarListo, reabrirPedido, tomarPedido, type Resultado } from './acciones'
@@ -13,6 +14,7 @@ export type Pedido = {
   cliente: string
   entrega: 'envio' | 'tienda' | null
   equipos: { codigo: string; nombre: string }[]
+  aumentos?: Aumento[] // F4·73c (RAM-11): qué instalar
   doc_tipo: 'OP' | 'FVE' | null
   doc_numero: string | null
   estado: 'por_revisar' | 'en_revision' | 'listo'
@@ -228,7 +230,7 @@ export function ServicioTecnico({ pedidos, cerrados, puedeCorregir, puedeEnviar,
                         onKeyDown={(e) => { if (e.key === 'Enter') { setAbierto(p.id); setAviso({}) } }}>
                         <td><b>{numeroPedido(p.numero)}</b><small className="pd-sub">{p.cerrado ? `${p.cierre ?? 'Cerrado'}${p.cerrado_en ? ` · ${hora(p.cerrado_en)}` : ''}` : `entró hace ${hace(p.entro_en)}`}</small></td>
                         <td><b>{p.cliente}</b></td>
-                        <td>{equiposDe(p).map((e) => <div key={e.codigo}>{e.nombre}{e.codigo !== 'pedido' && <small className="pd-sub">{e.codigo}</small>}</div>)}</td>
+                        <td>{equiposDe(p).map((e) => <div key={e.codigo}>{e.nombre}{e.codigo !== 'pedido' && <small className="pd-sub">{e.codigo}</small>}<AumentosEquipo aumentos={p.aumentos} codigo={e.codigo} /></div>)}</td>
                         <td>{p.entrega === 'envio' ? 'Envío' : p.entrega === 'tienda' ? 'Tienda' : <span className="muted">Sin definir</span>}</td>
                         <td><PasosTecnico p={p} chico /><small className="pd-sub">
                           <span className={`chip ${p.cerrado ? 'neu' : ESTADO[p.estado].clase}`}>{p.cerrado ? 'Cerrado' : ESTADO[p.estado].texto}</span></small></td>
@@ -306,7 +308,7 @@ function Resumen({ p, quien, ocupado, puedeCorregir, puedeEnviar, aviso, hacer, 
         <span className="ped-t"><span className="ped-ico"><Icono nombre="video" /></span>Equipos y videos</span>
         {equiposDe(p).map((e) => (
           <div key={e.codigo} className="ped-equipo">
-            <div className="ped-datos"><b>{e.nombre}</b>{e.codigo !== 'pedido' && <small className="muted">{e.codigo}</small>}</div>
+            <div className="ped-datos"><b>{e.nombre}</b>{e.codigo !== 'pedido' && <small className="muted">{e.codigo}</small>}<AumentosEquipo aumentos={p.aumentos} codigo={e.codigo} /></div>
             {p.estado !== 'por_revisar' || p.cerrado ? (
               <VideosEquipo pedido={p.id} codigo={e.codigo} videos={(p.videos ?? []).filter((v) => v.equipo_codigo === e.codigo)} quien={quien}
                 puedeSubir={puedeSubir} miniaturas alTerminar={alSubir}
