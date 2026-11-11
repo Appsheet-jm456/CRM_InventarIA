@@ -606,6 +606,7 @@ def resolver_comprobante(pedido):
     """F4·46 (/interno/comprobante): una persona pulsó «Comprobante validado» o «No es válido» en la Bandeja y la base ya lo
     registró. Le escribe al cliente y sigue el despacho (o vuelve a esperar el pago). Con el candado del cliente."""
     lead_id = int(pedido["lead"])
+    db.olvidar_inventario()  # F4·66 (RPD-52): si se validó un pago, el stock bajó en la base; los demás clientes lo ven ya
     numero = db.telefono_de(lead_id)
     if not numero:
         raise LookupError(lead_id)

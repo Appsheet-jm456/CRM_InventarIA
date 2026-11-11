@@ -9,6 +9,7 @@
 | **F4·60** ✅ | Catálogos: modificar el enlace o el PDF, desactivar y eliminar | Inventario → Catálogos (y acceso desde Bot) | 0063 |
 | **F4·61** 🔵 | El asesor envía catálogos y dispara acciones desde el chat con «/» | Bandeja y Ficha → Chat | 0064 |
 | **F4·62** 🔵 | Emojis, documentos, imágenes y audios desde el chat | Bandeja y Ficha → Chat | 0066 |
+| **F4·66** 🔵 | Equipo vendido: el stock baja al validar el pago y el bot avisa «agotado» con alternativas | Bandeja (tarjeta del comprobante), bot de compra | 0071 |
 
 ---
 
@@ -274,3 +275,66 @@ foto con pie; arrastrar un PDF al chat; pegar una captura con Ctrl+V; un MP3 o M
 2. **F4·59 Pago parcial** (toca dinero: con pruebas SQL y del motor).
 3. **F4·61 «/» con catálogos y acciones**.
 4. **F4·62 Emojis y adjuntos**, y después la nota de voz.
+
+---
+
+## 8. F4·66 · Equipo vendido: el stock baja al validar el pago
+
+**Problema (dueño, 11 nov 2026):** dos clientes hacen «Quiero comprar» con el mismo *LENOVO T490* de $950.000 y los dos pagan. Solo hay
+uno y se vende doble. Hoy validar el pago **no toca el stock** y el bot revisa el inventario con una copia que se refresca cada 30 s.
+
+**Propuesta del dueño:** cuando el asesor confirma el **abono o el pago total**, el equipo queda agotado; si otro cliente lo toma, el bot
+le dice que está agotado, le muestra alternativas o le ofrece un asesor.
+
+### Reglas
+
+- **RPD-50 · El stock baja con el primer pago validado.** Al validar el comprobante en el chat, sea **Pago completo** o **Pago parcial**,
+  cada equipo del pedido baja **una unidad** de stock (con stock 1 queda en 0, agotado). Se hace **una sola vez por pedido**: el segundo
+  abono o el pago del saldo no vuelven a descontar. Lo hace la base, en la misma operación que registra el pago.
+- **RPD-51 · El stock nunca queda negativo.** Si el equipo ya estaba en 0 (otro cliente pagó primero), no baja más y queda en la línea de
+  tiempo «⚠ Se validó un pago de un equipo sin stock: X». Lo resuelve el asesor con el cliente.
+- **RPD-52 · El bot se entera en el acto.** Al validar, el receptor olvida su copia del inventario: el siguiente cliente ya ve el stock
+  nuevo (antes podía tardar hasta 30 s).
+- **RPD-53 · Antes del resumen y antes de las cuentas, el bot pregunta a la base.** Al armar el resumen del pedido y al tocar «Sí, enviar
+  cuentas», el bot revisa el stock **en la base, sin copia**. Si un equipo se vendió mientras tanto: lo quita del pedido y avisa.
+- **RPD-54 · Mensaje de agotado con alternativas.** «😕 El *LENOVO T490* (100-101-1121-2) se acaba de vender y ya no está disponible.»,
+  luego la lista de **hasta 3 parecidos** con stock (misma marca, del precio más cercano al más lejano; si no hay de la marca, los de precio
+  más cercano) y los botones **Ver equipos** y **Hablar con asesor**. Con carrito, los demás equipos siguen en el pedido.
+- **RPD-55 · Comprobante de un equipo ya vendido.** Si un cliente manda el soporte y su equipo ya no tiene stock, el soporte se recibe
+  igual (el bot no rechaza pagos) y el asesor ve en la tarjeta del comprobante **«⚠ Sin stock: LENOVO T490»** y la misma nota en el chat.
+  Decide él (otro equipo o devolución).
+- **RPD-56 · Fuera de alcance por ahora:** apartar el equipo antes del pago (al enviar las cuentas), devolver el stock solo al cancelar el
+  pedido o anular el pago (se repone a mano en Inventario), y descontar los pagos registrados a mano en Pedidos.
+
+### Criterios de aceptación
+
+| # | Dado / cuando | Entonces |
+|---|---|---|
+| RVD-01 | T490 con stock 1; el asesor valida el **pago completo** de Ana | El T490 queda en stock 0 |
+| RVD-02 | T490 con stock 1; el asesor valida un **abono** de Ana | El T490 queda en stock 0 |
+| RVD-03 | Ana ya abonó; el asesor valida el **saldo** | El stock no vuelve a bajar |
+| RVD-04 | Pedido con dos equipos (carrito) | Cada uno baja una unidad |
+| RVD-05 | El T490 ya está en 0 y se valida el pago de Luis | El stock sigue en 0 y queda el aviso en la línea de tiempo |
+| RVD-06 | El T490 se vendió; Luis está en el resumen y toca «Sí, enviar cuentas» | No recibe cuentas: «se acaba de vender», alternativas y botones |
+| RVD-07 | El T490 se vendió; Luis escribe «quiero comprar el 100-101-1121-2» | «Ya no está disponible» con alternativas y asesor |
+| RVD-08 | El T490 se vendió; Luis ya tenía las cuentas y manda el soporte | Se recibe y el asesor ve «⚠ Sin stock: LENOVO T490» |
+
+### Construida el 11 nov 2026 🔵 (falta la prueba del dueño por WhatsApp)
+
+- **Base (migración 0071, 8 pruebas SQL):** disparador `leads_descontar_stock` (función `compra_descontar_stock`): cuando la compra pasa a
+  «validado» o «abono», baja una unidad de cada equipo, marca `stock_descontado` y deja el evento en la línea de tiempo (📦 o ⚠ sin stock).
+  No se tocó `validar_comprobante`; las pruebas de 0061 y 0067 siguen en verde.
+- **Bot:** `db.sin_stock` (stock en la base, sin copia) y `db.olvidar_inventario` (el receptor la llama al recibir la validación);
+  `compra._confirmar` revisa con la base con o sin carrito, antes del resumen y al tocar «Sí, enviar cuentas»; `_mensajes_agotado` con
+  hasta 3 parecidos (`_alternativas`) y «Ver equipos · Hablar con asesor»; «quiero comprar» con el código de uno vendido dice cuál fue; el
+  soporte de un equipo vendido lleva «⚠ Sin stock» en la nota del asesor. `prueba_stock_vendido.py` 12/12 y todas las del bot en verde
+  (las que usan códigos inventados ahora toman el stock del inventario de la prueba).
+- **Pantalla:** la tarjeta «💳 Comprobante por validar» muestra «⚠ Sin stock: …» en rojo si el equipo ya se vendió.
+- App y receptor compilados y reiniciados.
+
+**Para probarlo (dueño), con dos números de prueba y un equipo con stock 1:** el número A y el B hacen «quiero comprar» del mismo código y
+llegan al resumen; A toca «Sí, enviar cuentas», manda el soporte y en la Bandeja se valida (completo o abono): el equipo queda en stock 0
+en Inventario. B toca «Sí, enviar cuentas»: recibe «se acaba de vender», los parecidos y los botones. Para RVD-08, que B reciba las cuentas
+antes de validar el de A y mande su soporte después: su tarjeta muestra «⚠ Sin stock». **Ojo:** si se cancela ese pedido, el stock se
+repone a mano en Inventario.
+

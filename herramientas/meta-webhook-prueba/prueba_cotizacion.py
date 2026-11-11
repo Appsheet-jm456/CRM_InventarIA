@@ -26,6 +26,7 @@ ACCIONES = [
 GUARDADAS, PDFS = [], {}
 
 flujo.inventario = lambda: INVENTARIO
+db.sin_stock = lambda cods: {str(c).upper() for c in cods} - {p["cod"].upper() for p in flujo.inventario() if p.get("stock", 1) > 0}  # F4·66: el stock sale del inventario de la prueba, no de la base
 db.agente_config = lambda fresco=False: CONFIG
 db.acciones_activas = lambda: ACCIONES
 db.principal = lambda: 1

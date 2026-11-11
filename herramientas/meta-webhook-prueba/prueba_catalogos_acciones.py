@@ -22,6 +22,7 @@ CAT = {"LENOVO": {"id": 268, "nombre": "Catálogo Lenovo", "marca": "LENOVO", "t
        "HP": {"id": 39, "nombre": "Catálogo HP PDF", "marca": "HP", "tipo": "pdf", "url": "", "archivo": "hp.pdf"},
        "": {"id": 271, "nombre": "Catálogo Unificado", "marca": "", "tipo": "drive", "url": "https://drive.google.com/todos"}}
 flujo.inventario = lambda: INV
+db.sin_stock = lambda cods: {str(c).upper() for c in cods} - {p["cod"].upper() for p in flujo.inventario() if p.get("stock", 1) > 0}  # F4·66: el stock sale del inventario de la prueba, no de la base
 flujo.texto_horario = lambda: "L–V 8–18"
 db.productos_agotados = lambda: []
 db.catalogo_para = lambda categoria, marca: (CAT.get(marca) or CAT[""], None)

@@ -23,6 +23,7 @@ CAT = {"LENOVO": {"id": 268, "nombre": "Catálogo Lenovo", "marca": "LENOVO", "t
 PEDIDO = []
 db.catalogo_para = lambda categoria, marca: (CAT.get(marca) or CAT[""], None)
 flujo.inventario = lambda: INV
+db.sin_stock = lambda cods: {str(c).upper() for c in cods} - {p["cod"].upper() for p in flujo.inventario() if p.get("stock", 1) > 0}  # F4·66: el stock sale del inventario de la prueba, no de la base
 flujo.es_diseno = lambda p: False
 fallos = n = 0
 

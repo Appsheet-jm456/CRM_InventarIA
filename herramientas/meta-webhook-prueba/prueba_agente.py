@@ -28,6 +28,7 @@ FICHAS = [{"fuente": "ficha", "id": 1, "titulo": "Garantía", "texto": "La garan
           {"fuente": "documento", "id": 9, "titulo": "Lista vieja", "texto": "Dell i5 a $999.000", "puntaje": 1}]
 
 flujo.inventario = lambda: INV
+db.sin_stock = lambda cods: {str(c).upper() for c in cods} - {p["cod"].upper() for p in flujo.inventario() if p.get("stock", 1) > 0}  # F4·66: el stock sale del inventario de la prueba, no de la base
 flujo.texto_horario = lambda: "L-V 8 a 18"
 flujo.asesor = lambda st, etiqueta="Escalado-Asesor", motivo=None, **_: (st.__setitem__("pausa", True), [flujo.m_texto("Te paso con un asesor 🙌")])[1]
 flujo.r11 = lambda st, p: [flujo.m_texto(f"FICHA {p['cod']}")]

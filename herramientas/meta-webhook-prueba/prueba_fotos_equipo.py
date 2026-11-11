@@ -24,6 +24,7 @@ T490 = equipo("100-101-1121-2", "THINKPAD T490", foto={"_producto": {"id": 393}}
 X13 = equipo("X13-01", "THINKPAD X13", foto={"_producto": {"id": 2}})
 SINFOTO = equipo("D5420", "LATITUDE 5420", extra=["5/1-2.jpg"], drive=DRIVE)
 flujo.inventario = lambda: [T490, X13, SINFOTO]
+db.sin_stock = lambda cods: {str(c).upper() for c in cods} - {p["cod"].upper() for p in flujo.inventario() if p.get("stock", 1) > 0}  # F4·66: el stock sale del inventario de la prueba, no de la base
 db.productos_agotados = lambda: []
 db.agente_config = lambda fresco=False: {"plantilla_equipo": "💻 *{equipo}* · {codigo}\n💰 {precio}", "max_equipos": 3}
 fallos = n = 0

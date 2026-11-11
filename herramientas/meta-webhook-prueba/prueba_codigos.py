@@ -24,6 +24,7 @@ db.flujo = lambda bot=None: C
 db.principal = lambda: 1
 db.atributos = lambda: {}
 flujo.inventario = lambda: INV
+db.sin_stock = lambda cods: {str(c).upper() for c in cods} - {p["cod"].upper() for p in flujo.inventario() if p.get("stock", 1) > 0}  # F4·66: el stock sale del inventario de la prueba, no de la base
 flujo.texto_horario = lambda: "L-V"
 interprete.con_ia = lambda texto: (_ for _ in ()).throw(AssertionError("no debe llegar a la IA"))
 fallos = n = 0

@@ -74,6 +74,24 @@ def config_meta(forzar=False):
 _cache = {"t": 0, "filas": []}
 
 
+def sin_stock(codigos):
+    """F4·66 (RPD-53): de esos códigos, los que ya no tienen stock, preguntando a la base sin copia (otro cliente pudo pagarlo hace un
+    segundo). Devuelve un conjunto en mayúsculas; un código que no existe cuenta como sin stock."""
+    pedidos = {str(c).strip().upper() for c in codigos if str(c).strip()}
+    if not pedidos:
+        return set()
+    lista = ",".join('"' + c.replace('"', "") + '"' for c in pedidos)
+    filas = pedir("productos?select=codigo,stock&codigo=in.(" + urllib.parse.quote(lista, safe=",") + ")") or []
+    con_stock = {f["codigo"].strip().upper() for f in filas if int(f.get("stock") or 0) > 0}
+    return pedidos - con_stock
+
+
+def olvidar_inventario():
+    """F4·66 (RPD-52): tras validar un pago el stock cambió; el siguiente cliente lo ve sin esperar los 30 s de la copia."""
+    _cache["t"] = 0
+    _cache_bot.pop("agotados", None)
+
+
 def productos_agotados():
     """Equipos en stock 0 (código, marca y modelo): para avisar que el que pidió el cliente ya no está (F4·42, RAG-46)."""
     return _cacheado("agotados", "productos?stock=eq.0&select=codigo,marca,modelo,categoria", 60) or []

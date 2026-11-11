@@ -21,6 +21,7 @@ FICHAS = {"Pagos": [{"titulo": "Medios de pago", "respuesta": "Transferencia a e
 ATRIBUTOS = {"tipo_cliente": {"clave": "tipo_cliente", "nombre": "Tipo de cliente", "tipo": "lista", "opciones": ["Distribuidor", "Cliente final"]}}
 
 flujo.inventario = lambda: INVENTARIO
+db.sin_stock = lambda cods: {str(c).upper() for c in cods} - {p["cod"].upper() for p in flujo.inventario() if p.get("stock", 1) > 0}  # F4·66: el stock sale del inventario de la prueba, no de la base
 db.atributos = lambda: ATRIBUTOS
 db.agente_config = lambda fresco=False: CONFIG
 db.conocimiento = lambda categoria, fresco=False: FICHAS.get(categoria, [])

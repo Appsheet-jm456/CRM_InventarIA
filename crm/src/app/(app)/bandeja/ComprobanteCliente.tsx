@@ -6,7 +6,8 @@ import { despacharConSaldo, rechazarComprobante, reintentarAviso, validarComprob
 import { Media, type Mensaje } from './Bandeja'
 
 type Compra = { paso?: string; total?: number; tipo?: string; codigo?: string; equipo?: string; equipos?: { codigo: string; equipo: string }[];
-  comprobante_en?: string; validacion?: string; rechazos?: number; pagado?: number; saldo?: number; abono?: number }
+  comprobante_en?: string; validacion?: string; rechazos?: number; pagado?: number; saldo?: number; abono?: number
+  stock_descontado?: boolean }
 
 const pesos = (n: number) => `$ ${Math.round(n).toLocaleString('es-CO')}`
 const hora = (t: string) => new Date(t).toLocaleString('es-CO', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'America/Bogota' })
@@ -26,6 +27,7 @@ export function ComprobanteCliente({ lead, version, alCambiar }: { lead: number;
   const [razon, setRazon] = useState('')
   const [aviso, setAviso] = useState<{ error?: string; ok?: string }>({})
   const [ocupado, setOcupado] = useState(false)
+  const [sinStock, setSinStock] = useState<string[]>([]) // F4·66 (RPD-55): equipos del pedido que ya se vendieron a otro cliente
 
   const cargar = useCallback(async () => {
     const sb = clienteNavegador()
@@ -38,6 +40,13 @@ export function ComprobanteCliente({ lead, version, alCambiar }: { lead: number;
     const c = ((l?.estado_bot ?? {}) as { compra?: Compra }).compra ?? null
     const conSaldo = c?.paso === 'esperando_pago' && Number(c.pagado ?? 0) > 0 && Number(c.saldo ?? 0) > 0
     setCompra(c?.paso === 'pago_por_confirmar' || conSaldo ? c : null)
+    // F4·66 (RPD-55): si su pago aún no descontó el stock, se mira si otro cliente ya se llevó el equipo.
+    const codigos = c && !c.stock_descontado ? (c.equipos?.length ? c.equipos.map((e) => e.codigo) : c.codigo ? [c.codigo] : []) : []
+    if (codigos.length) {
+      const { data: ps } = await sb.from('productos').select('codigo, stock').in('codigo', codigos)
+      const conStock = new Set(((ps ?? []) as { codigo: string; stock: number }[]).filter((p) => Number(p.stock) > 0).map((p) => p.codigo.toUpperCase()))
+      setSinStock(codigos.filter((k) => !conStock.has(k.toUpperCase())))
+    } else setSinStock([])
     setSoporte(((m ?? [])[0] as Mensaje | undefined) ?? null)
     setMotivos((cfg?.motivos_rechazo as string[] | undefined) ?? [])
   }, [lead])
@@ -116,6 +125,12 @@ export function ComprobanteCliente({ lead, version, alCambiar }: { lead: number;
         {compra.rechazos ? ` · rechazado ${compra.rechazos} vez${compra.rechazos > 1 ? 'es' : ''}` : ''}
       </small>
       {cuentas}
+      {sinStock.length > 0 && (
+        <div className="aviso bad" role="alert">
+          ⚠ Sin stock: {equipos.filter((e) => sinStock.includes(e.codigo)).map((e) => `${e.equipo} (${e.codigo})`).join(', ')}. Ya se vendió a otro
+          cliente: habla con él antes de validar (otro equipo o devolución).
+        </div>
+      )}
       {resultado}
       {pendiente ? (
         <button className="btn chico" disabled={ocupado} onClick={() => hacer(() => reintentarAviso(lead))}>Avisar al cliente</button>

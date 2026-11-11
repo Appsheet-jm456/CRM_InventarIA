@@ -23,6 +23,7 @@ INV = [equipo("LG7-01", "LENOVO", "LEGION 7", 4800000, {"grafica": "NVIDIA GeFor
        equipo("T14-A", "LENOVO", "THINKPAD T14", 1500000), equipo("T14-B", "LENOVO", "THINKPAD T14", 1600000),
        equipo("D5420", "DELL", "LATITUDE 5420", 1400000)]
 flujo.inventario = lambda: INV
+db.sin_stock = lambda cods: {str(c).upper() for c in cods} - {p["cod"].upper() for p in flujo.inventario() if p.get("stock", 1) > 0}  # F4·66: el stock sale del inventario de la prueba, no de la base
 db.productos_agotados = lambda: [{"codigo": "HP840", "marca": "HP", "modelo": "ELITEBOOK 840 G5", "categoria": "Portatil"}]
 db.agente_config = lambda fresco=False: {"plantilla_equipo": "💻 *{equipo}* · {codigo}\n💰 {precio}", "max_equipos": 3, "equipos_separados": False}
 flujo.asesor = lambda st, **k: (st.update(pausa=True), [flujo.m_texto("Te paso con un asesor")])[1]

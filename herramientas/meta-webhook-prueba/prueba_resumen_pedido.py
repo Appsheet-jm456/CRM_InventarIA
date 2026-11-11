@@ -10,6 +10,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 import compra  # noqa: E402
 import db  # noqa: E402
+db.sin_stock = lambda cods: set()  # F4·66: en estas pruebas todos los equipos tienen stock
 import flujo  # noqa: E402
 
 PLANTILLA = ("🧾 *Resumen de tu pedido* {pedido}\n\n💻 *Equipos*\n{equipos}\n\n💰 Total: *{total}*\n✅ Pagado: *{pagado}*{saldo}\n\n"

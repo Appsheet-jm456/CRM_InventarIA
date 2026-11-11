@@ -69,6 +69,44 @@ def _carrito(c):
     return bool(c.get("carrito"))
 
 
+def _alternativas(vendidos, maximo=3):
+    """F4·66 (RPD-54): hasta 3 equipos con stock parecidos a los vendidos: de la misma marca y del precio más cercano; si no hay de la
+    marca, los de precio más cercano. Nunca uno de los vendidos."""
+    fuera = {str(i.get("codigo", "")).upper() for i in vendidos}
+    libres = [p for p in flujo.inventario() if p["cod"].upper() not in fuera]
+    precio = next((int(i.get("precio") or 0) for i in vendidos if i.get("precio")), 0)
+    marcas = {str(i.get("marca") or i.get("equipo", "").split(" ")[0]).upper() for i in vendidos} - {""}
+    cerca = (lambda p: abs(p["precio"] - precio)) if precio else (lambda p: p["precio"])
+    misma = sorted((p for p in libres if p["marca"].upper() in marcas), key=cerca)
+    return (misma or sorted(libres, key=cerca))[:maximo]
+
+
+def _vendidos(c):
+    """F4·66 (RPD-53): los equipos del pedido que ya no tienen stock, según la base en este momento (no la copia de 30 s)."""
+    items = _items(c)
+    try:
+        agotados = db.sin_stock([i["codigo"] for i in items])
+    except Exception:  # si la base no responde, sigue con la copia del inventario como antes
+        agotados = {i["codigo"].upper() for i in items if not _producto_por_codigo(i["codigo"])}
+    return [i for i in items if i["codigo"].upper() in agotados]
+
+
+def _texto_vendidos(idos, accion):
+    nombres = ", ".join(f"*{i['equipo']}* ({i['codigo']})" for i in idos)
+    uno = len(idos) == 1
+    return f"😕 {nombres} {'se acaba de vender y ya no está disponible' if uno else 'se acaban de vender y ya no están disponibles'}{accion}"
+
+
+def _mensajes_agotado(idos, alternativas=True):
+    """RPD-54: el aviso, las alternativas (si hay) y «Ver equipos · Hablar con asesor». La compra ya terminó."""
+    mensajes = [flujo.m_texto(_texto_vendidos(idos, "."))]
+    otros = _alternativas(idos) if alternativas else []
+    if otros:
+        mensajes.append(flujo.lista_equipos("Te puede interesar uno de estos 👇", otros, "Toca uno o escríbeme su *código*."))
+    mensajes.append(flujo.m_botones("¿Qué prefieres?", [("0", "Ver equipos"), ("9", "Hablar con asesor")]))
+    return mensajes
+
+
 def _maximo():
     return max(2, min(10, int(_cfg().get("carrito_max") or 5)))
 
@@ -141,22 +179,27 @@ def _opciones_resumen(c):
 def _confirmar(st):
     c = st["compra"]
     aviso = []
+    vendidos = {i["codigo"].upper() for i in _vendidos(c)}  # F4·66 (RPD-53): stock en la base en este momento
+    if vendidos and not _carrito(c):  # RPD-54: el único equipo se vendió mientras compraba
+        idos = _items(c)
+        _limpiar(st)
+        return _mensajes_agotado(idos)
     if _carrito(c):  # RAG-57: precios de la base al armar el resumen; un equipo agotado se quita con aviso
         vigentes, idos = [], []
         for i in _items(c):
-            p = _producto_por_codigo(i["codigo"])
+            p = None if i["codigo"].upper() in vendidos else _producto_por_codigo(i["codigo"])
             if p:
                 vigentes.append({"codigo": p["cod"], "equipo": f"{p['marca']} {p['modelo']}".strip(), "precio": p["precio"]})
             else:
                 idos.append(i)
-        if idos:
-            aviso = [flujo.m_texto("😕 " + ", ".join(f"*{i['equipo']}* ({i['codigo']})" for i in idos)
-                                   + (" ya no está disponible" if len(idos) == 1 else " ya no están disponibles")
-                                   + (", lo quité de tu pedido." if len(idos) == 1 else ", los quité de tu pedido."))]
-        if not vigentes:
+        if idos and not vigentes:
             _limpiar(st)
-            return aviso + [flujo.m_botones("Tu pedido quedó vacío. ¿Te muestro otros equipos o prefieres un asesor?",
-                                            [("0", "Ver equipos"), ("9", "Hablar con asesor")])]
+            return _mensajes_agotado(idos)
+        if idos:
+            aviso = [flujo.m_texto(_texto_vendidos(idos, ", lo quité de tu pedido." if len(idos) == 1 else ", los quité de tu pedido."))]
+            otros = _alternativas(idos)
+            if otros:
+                aviso.append(flujo.lista_equipos("Te puede interesar uno de estos 👇", otros, "Toca uno o escríbeme su *código*."))
         c["equipos"] = vigentes
         c.update(codigo=vigentes[0]["codigo"], equipo=vigentes[0]["equipo"], precio=vigentes[0]["precio"])
     items = _items(c)
@@ -297,6 +340,11 @@ def iniciar(st, texto, lead=None, cuadro=None):
         return _con_equipo(st, p, lead)
     if re.search(r"\d{3}-\d{3}", texto) or re.search(r"\bpu-?\d+", texto.lower()):
         _limpiar(st)  # escribió un código que ya no está disponible
+        limpio = re.sub(r"\s", "", texto.upper())
+        ido = next((a for a in sorted(db.productos_agotados(), key=lambda a: -len(a["codigo"])) if a["codigo"].upper() in limpio), None)
+        if ido:  # F4·66 (RPD-54): se vendió: dice cuál y ofrece parecidos
+            equipo = f"{ido['marca']} {ido['modelo']}".strip()
+            return _mensajes_agotado([{"codigo": ido["codigo"], "equipo": equipo, "marca": ido["marca"]}])
         return [flujo.m_botones("😕 Ese equipo ya no está disponible. ¿Te muestro otros o prefieres hablar con un asesor?",
                                 [("0", "Ver equipos"), ("9", "Hablar con asesor")])]
     if _carrito(st["compra"]):
@@ -413,7 +461,7 @@ def _responder(st, entrada, tipo, lead):
 
     if paso == "confirmar":
         if entrada == "compra-si" or n in ("si", "1", "dale", "listo", "ok", "de una") or n.startswith("si "):
-            if _carrito(c):  # RAG-57: antes de las cuentas, cada equipo sigue con stock
+            if True:  # RAG-57 y F4·66 (RPD-53): antes de las cuentas, cada equipo sigue con stock en la base (con o sin carrito)
                 antes = len(_items(c))
                 r = _confirmar(st)
                 if not activa(st) or len(_items(c)) != antes:
@@ -565,10 +613,13 @@ def _soporte_recibido(st, c, tipo, cfg):
     st.pop("espera_hasta", None)
     st["pausa"], st["nodo"] = True, flujo.del_tipo("asesor")
     st["campos"]["Etiqueta"] = "Comprobante-Por-Validar"
+    sin = [] if c.get("stock_descontado") else _vendidos(c)  # F4·66 (RPD-55): se recibe igual, pero el asesor lo sabe
     nota = (f"💳 Comprobante por validar: {_que_lleva(c)} · "
             f"{'distribuidor' if c.get('tipo') == 'distribuidor' else 'cliente final'} · total {flujo.cop(c.get('total', 0))} · "
             f"{('ya abonó ' + flujo.cop(c['pagado']) + ', saldo ' + flujo.cop(c.get('saldo') or 0) + ' · ') if float(c.get('pagado') or 0) > 0 else ''}"
             f"llegó {ahora:%d/%m %H:%M}. Revisa la cuenta bancaria y pulsa ✅ Comprobante validado o ❌ No es válido en la Bandeja.")
+    if sin:
+        nota = "⚠ Sin stock: " + ", ".join(f"{i['equipo']} ({i['codigo']})" for i in sin) + " ya se vendió a otro cliente. " + nota
     texto = flujo.con_horario(_con_total((cfg.get("texto_soporte") or "📄 Recibimos tu soporte. Un asesor está validando el pago "
                                                                     "y te confirma por aquí {proxima}.").strip(), c))
     return [flujo.m_texto(texto)], ["Pago-Por-Confirmar", "Comprobante-Por-Validar"], "pago_por_confirmar", nota

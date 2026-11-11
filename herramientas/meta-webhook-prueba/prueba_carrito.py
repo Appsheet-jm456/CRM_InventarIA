@@ -34,6 +34,7 @@ CONFIG = {"validar_comprobante": False,  # el camino de antes de F4·46 (casilla
 GUARDADAS, PDFS, IR = [], {}, []
 
 flujo.inventario = lambda: VIVO
+db.sin_stock = lambda cods: {str(c).upper() for c in cods} - {p["cod"].upper() for p in flujo.inventario() if p.get("stock", 1) > 0}  # F4·66: el stock sale del inventario de la prueba, no de la base
 db.conocimiento = lambda categoria, fresco=False: []  # F4·49: sin imagen de medios de pago
 db.agente_config = lambda fresco=False: CONFIG
 db.productos_agotados = lambda: []
