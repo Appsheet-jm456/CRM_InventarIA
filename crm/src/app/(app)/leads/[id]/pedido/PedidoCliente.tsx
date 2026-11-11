@@ -5,7 +5,7 @@ import { Icono, type ClaveIcono } from '@/components/Iconos'
 import { MOTIVOS_CANCELAR } from '@/components/MotivoPerdida'
 import { clienteNavegador, subirConAvance } from '@/lib/supabase/navegador'
 import { OportunidadesCliente, type Embudo, type Etapa } from '../../../bandeja/OportunidadesCliente'
-import { autorizarVideoCorregido, cancelarPedido, corregirDocumento, enviarAlCliente, guardarDocumento, marcarEntregado, registrarGuia, subirArchivoDocumento, type Resultado } from '../../../servicio-tecnico/acciones'
+import { autorizarVideoCorregido, cancelarPedido, eliminarPedido, corregirDocumento, enviarAlCliente, guardarDocumento, marcarEntregado, registrarGuia, subirArchivoDocumento, type Resultado } from '../../../servicio-tecnico/acciones'
 import { CHECKLIST, ESTADO, hora } from '../../../servicio-tecnico/ServicioTecnico'
 import { VideosEquipo, type Video } from '../../../servicio-tecnico/VideosEquipo'
 import { PagosPedido, saldo, type Pago } from './PagosPedido'
@@ -71,11 +71,11 @@ function Envio({ icono, titulo, hecho, texto, accion }: { icono: ClaveIcono; tit
 }
 
 // F4·54 (docs/PEDIDOS.md, RPD-01 a RPD-07, RPD-16 a RPD-26): la pestaña Oportunidades de la ficha, en el orden del proceso.
-export function PedidoCliente({ lead, puedeDocumento, puedeCorregir, puedePagos = false, embudos, etapas, version, alCambiar, pago, alistamientoId, compacto = false }: {
+export function PedidoCliente({ lead, puedeDocumento, puedeCorregir, puedePagos = false, puedeEliminar = false, embudos, etapas, version, alCambiar, pago, alistamientoId, compacto = false }: {
   // F4·55: desde el módulo Pedidos se abre un pedido concreto (alistamientoId) y sin las otras oportunidades del cliente (compacto).
   alistamientoId?: number; compacto?: boolean
   puedePagos?: boolean // validar_pagos: registrar y anular pagos (RPD-37)
-  lead: number; puedeDocumento: boolean; puedeCorregir: boolean; embudos: Embudo[]; etapas: Etapa[]; version: number; alCambiar: () => void; pago?: ReactNode
+  lead: number; puedeDocumento: boolean; puedeCorregir: boolean; puedeEliminar?: boolean; embudos: Embudo[]; etapas: Etapa[]; version: number; alCambiar: () => void; pago?: ReactNode
 }) {
   const [fila, setFila] = useState<Fila | null>(null)
   const [total, setTotal] = useState<number | null>(null)
@@ -90,6 +90,7 @@ export function PedidoCliente({ lead, puedeDocumento, puedeCorregir, puedePagos 
   const [guia, setGuia] = useState({ transportadora: '', otra: '', numero: '' })
   const [subiendo, setSubiendo] = useState<number | null>(null)
   const [cancelando, setCancelando] = useState(false)
+  const [eliminando, setEliminando] = useState(false) // F4·67
   const [ir, setIr] = useState<Ir>(null)
   const [correccion, setCorreccion] = useState<{ tipo: 'OP' | 'FVE'; numero: string; motivo: string } | null>(null)
   const foto = useRef<HTMLInputElement>(null)
@@ -362,6 +363,12 @@ export function PedidoCliente({ lead, puedeDocumento, puedeCorregir, puedePagos 
           </>
         )}
         {!entrega && <small className="ped-aviso">Marca en la pestaña Principal si la venta es online o en tienda para ver la guía o el aviso de recogida.</small>}
+        {puedeEliminar && (
+          <div className="ped-pie">
+            <button className="btn chico peligro" disabled={ocupado} onClick={() => setEliminando(true)}>🗑 Eliminar pedido</button>
+            <small className="muted">Solo administrador. Para pedidos de prueba: devuelve el stock y no se puede deshacer.</small>
+          </div>
+        )}
         {puedeCancelar && (
           <div className="ped-pie">
             <button className="btn chico peligro" disabled={ocupado} onClick={() => setCancelando(true)}>Cancelar pedido</button>
@@ -378,6 +385,28 @@ export function PedidoCliente({ lead, puedeDocumento, puedeCorregir, puedePagos 
       </Seccion>
 
       {otras}
+
+      {eliminando && (
+        <div className="modal" onClick={() => setEliminando(false)}>
+          <div className="modal-box" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Eliminar pedido">
+            <h3>¿Por qué se elimina {numeroPedido(fila.numero)}?</h3>
+            <small className="muted">
+              Se borran el pedido, su oportunidad, sus pagos y sus archivos. Los equipos que su pago descontó vuelven al stock. El cliente y su chat
+              se quedan. <b>No se puede deshacer.</b>
+              {(fila.guia_en || fila.entregado_en) && <><br /><b>Ojo: este pedido ya salió (guía o entrega).</b></>}
+            </small>
+            <div className="row">
+              {['Prueba', 'Duplicado', 'Error'].map((m) => (
+                <button key={m} className="btn peligro" onClick={() => {
+                  setEliminando(false)
+                  hacer(() => eliminarPedido(fila.id, lead, m), `¿Eliminar ${numeroPedido(fila.numero)} (motivo: ${m})? No se puede deshacer.`)
+                }}>{m}</button>
+              ))}
+            </div>
+            <button className="btn chico" onClick={() => setEliminando(false)}>Volver</button>
+          </div>
+        </div>
+      )}
 
       {cancelando && (
         <div className="modal" onClick={() => setCancelando(false)}>

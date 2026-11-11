@@ -86,6 +86,24 @@ export async function registrarGuia(id: number, lead: number, ruta: string, tran
     : { ok: 'Guía enviada al cliente. El pedido quedó Despachado y Vendido.' }
 }
 
+// F4·67 (RPD-57 a RPD-60): el administrador elimina un pedido de prueba; la base devuelve el stock que su pago descontó y dice qué
+// archivos quedaron sin dueño (guía, documento, videos, soportes a mano), que se borran aquí con la clave de servicio.
+export async function eliminarPedido(id: number, lead: number, motivo: string): Promise<Resultado> {
+  const { data, error } = await crearCliente().rpc('pedido_eliminar', { p_id: id, p_motivo: motivo })
+  if (error) return { error: error.code === '42501' ? 'Solo un administrador puede eliminar pedidos.' : error.message }
+  const r = data as { numero: number; repuestos: string[]; archivos: Record<string, string[]> }
+  const admin = crearClienteAdmin()
+  for (const [bucket, rutas] of Object.entries(r.archivos ?? {})) {
+    if (rutas?.length) await admin.storage.from(bucket).remove(rutas)
+  }
+  revalidatePath('/pedidos')
+  revalidatePath(`/leads/${lead}`)
+  revalidatePath('/servicio-tecnico')
+  revalidatePath('/inventario')
+  const numero = `PED-${String(r.numero).padStart(4, '0')}`
+  return { ok: r.repuestos?.length ? `${numero} eliminado. Volvió al stock: ${r.repuestos.join(', ')}.` : `${numero} eliminado. No había stock que devolver.` }
+}
+
 // F4·54 (RPD-19): cancelar el pedido con motivo antes de que salga la guía; la oportunidad queda Perdida.
 export async function cancelarPedido(id: number, lead: number, motivo: string): Promise<Resultado> {
   const r = await llamar('alistamiento_cancelar', { p_id: id, p_motivo: motivo }, 'Pedido cancelado. La oportunidad quedó Perdida.')

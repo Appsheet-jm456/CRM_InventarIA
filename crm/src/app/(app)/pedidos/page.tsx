@@ -17,6 +17,7 @@ export default async function PaginaPedidos() {
   return (
     <Pedidos pedidos={(data ?? []) as FilaPedido[]} error={error?.message ?? null}
       etapas={(etapas ?? []) as Etapa[]} embudos={(embudos ?? []) as Embudo[]}
-      puedeDocumento={puede(sesion, ['gestionar_oportunidades'])} puedeCorregir={puede(sesion, ['corregir_pedidos'])} puedePagos={puede(sesion, ['validar_pagos'])} />
+      puedeDocumento={puede(sesion, ['gestionar_oportunidades'])} puedeCorregir={puede(sesion, ['corregir_pedidos'])} puedePagos={puede(sesion, ['validar_pagos'])}
+      puedeEliminar={sesion.rol === 'administrador'} />
   )
 }

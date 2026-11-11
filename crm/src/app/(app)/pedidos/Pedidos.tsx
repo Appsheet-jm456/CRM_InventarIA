@@ -80,8 +80,9 @@ function exportar(lista: FilaPedido[]) {
 }
 
 // F4·55 (docs/PEDIDOS.md, RPD-08 a RPD-14): revisar todos los pedidos que pasaron el pago y el control de su despacho.
-export function Pedidos({ pedidos, error, etapas, embudos, puedeDocumento, puedeCorregir, puedePagos }: {
+export function Pedidos({ pedidos, error, etapas, embudos, puedeDocumento, puedeCorregir, puedePagos, puedeEliminar = false }: {
   pedidos: FilaPedido[]; error: string | null; etapas: Etapa[]; embudos: Embudo[]; puedeDocumento: boolean; puedeCorregir: boolean; puedePagos: boolean
+  puedeEliminar?: boolean // F4·67: solo el rol administrador
 }) {
   const router = useRouter()
   const [vista, setVista] = useState<'tabla' | 'kanban'>('tabla')
@@ -236,7 +237,7 @@ export function Pedidos({ pedidos, error, etapas, embudos, puedeDocumento, puede
             </div>
             <div className="pd-cajon-b">
               <PedidoCliente key={abierto.id} lead={abierto.lead_id} alistamientoId={abierto.id} compacto puedeDocumento={puedeDocumento}
-                puedeCorregir={puedeCorregir} puedePagos={puedePagos} embudos={embudos} etapas={etapas} version={version}
+                puedeCorregir={puedeCorregir} puedePagos={puedePagos} puedeEliminar={puedeEliminar} embudos={embudos} etapas={etapas} version={version}
                 alCambiar={() => { setVersion((v) => v + 1); router.refresh() }} />
             </div>
           </aside>

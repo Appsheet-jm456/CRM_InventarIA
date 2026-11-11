@@ -323,3 +323,53 @@ prometía RAL-01 y todavía no existe, con un enlace al pedido.
 3. **Quién escribe el FVE/OP:** hoy lo escribe el asesor con el dato de contabilidad. ¿Quieres un rol **Contabilidad** que lo escriba y vea Pedidos en solo lectura?
 4. **Cancelar con la guía ya enviada:** propongo que sea una devolución por Pos Venta (RPD-19). ¿De acuerdo?
 5. **«Documento de garantía»:** ¿es siempre el OP (POS)?
+
+---
+
+## 8. F4·67 · Eliminar un pedido (solo administrador) y devolver el stock
+
+**Pedido del dueño (11 nov 2026):** en las pruebas se crean pedidos de mentira (el T490 de 100-101-1121-2 quedó en stock 0 por un pago de
+prueba). El administrador necesita **eliminar** esos pedidos y que el equipo **vuelva al stock**. «Cancelar pedido» (RPD-19) no sirve: deja
+el pedido en la lista como cancelado y la oportunidad como Perdida, y no devuelve el stock.
+
+### Reglas
+
+- **RPD-57 · Solo el rol administrador.** El botón «🗑 Eliminar pedido» sale en la ficha del pedido (Pedidos y Ficha → Oportunidades) solo
+  para usuarios con rol **administrador**, y la base lo exige. Pide el motivo («Prueba», «Duplicado», «Error») y confirmar.
+- **RPD-58 · Qué se borra.** El pedido (PED-XXXX), su **oportunidad** (con su historial de etapas), sus **pagos** y sus videos del servicio
+  técnico, con los archivos de la guía, el documento, los videos y los soportes subidos a mano. **El cliente no se borra**: queda con su
+  chat; se le quitan las etiquetas de la compra (Pago-Validado, Saldo-Pendiente, Listo-Para-Despachar, Comprobante-…, Pago-Por-Confirmar,
+  Compra-Iniciada) y la compra en curso del bot.
+- **RPD-59 · El stock vuelve.** Cada equipo del pedido suma **una unidad** de stock, **solo si su pago lo había descontado** (F4·66: el
+  evento «📦 Stock descontado» de ese cliente desde que se abrió la oportunidad). Un pedido de antes del 11 nov no había descontado nada, y
+  no suma. El resultado dice qué equipos volvieron.
+- **RPD-60 · Queda registrado.** En la línea de tiempo del cliente: «🗑 Pedido PED-0007 eliminado por Jhonatan: Prueba · stock devuelto:
+  100-101-1121-2». No se puede deshacer.
+- **RPD-61 · Un pedido ya despachado o entregado también se puede eliminar** (son pruebas), con un aviso más fuerte en la confirmación.
+- **RPD-62 · Fuera de alcance:** eliminar compras que solo tienen un abono y aún no son pedido (no salen en Pedidos), y borrar el cliente.
+
+### Criterios de aceptación
+
+| # | Dado / cuando | Entonces |
+|---|---|---|
+| REP-01 | Soy asesor (no administrador) | No veo «Eliminar pedido» y la base lo rechaza si lo intento |
+| REP-02 | Soy administrador y elimino el pedido del T490 pagado el 11 nov | El pedido, la oportunidad y sus pagos desaparecen y el T490 vuelve a stock 1 |
+| REP-03 | Elimino un pedido de antes de F4·66 (sin «📦 Stock descontado») | Se elimina y el stock no cambia |
+| REP-04 | Elimino un pedido con dos equipos | Cada uno suma una unidad |
+| REP-05 | Elimino sin motivo | La base lo rechaza |
+| REP-06 | Después de eliminar | El cliente sigue con su chat, sin las etiquetas de la compra, y la línea de tiempo dice qué se eliminó y qué stock volvió |
+
+### Construida el 11 nov 2026 🔵 (falta la prueba del dueño)
+
+- **Base (migración 0072, 8 pruebas SQL):** `pedido_eliminar(id, motivo)`: exige rol administrador y motivo; devuelve una unidad por
+  equipo que tenga su «📦 Stock descontado» desde que se abrió la oportunidad (cada descuento una sola vez); borra la oportunidad (en
+  cascada el pedido, videos, pagos e historial), quita la compra y sus etiquetas del cliente, deja «🗑 Pedido PED-… eliminado» en la línea
+  de tiempo y devuelve los archivos a borrar. Las pruebas de pedidos, pagos y servicio técnico (0054 a 0071) siguen en verde.
+- **Pantalla:** botón «🗑 Eliminar pedido» en la ficha del pedido (Pedidos y Ficha → Oportunidades), solo para el rol administrador, con
+  motivo (Prueba, Duplicado, Error) y doble confirmación; aviso si el pedido ya salió. `eliminarPedido` borra los archivos con la clave de
+  servicio y dice qué stock volvió. Sirve también para pedidos cancelados.
+- App compilada y reiniciada (el receptor no cambió).
+
+**Para probarlo (dueño):** Pedidos → **PED-0096** (Jhonatan, T490, cancelado) → «🗑 Eliminar pedido» → Prueba → confirmar. Debe decir
+«PED-0096 eliminado. Volvió al stock: 100-101-1121-2» y el T490 queda en stock 1 en Inventario.
+

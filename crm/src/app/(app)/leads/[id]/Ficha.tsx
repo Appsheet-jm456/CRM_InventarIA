@@ -127,7 +127,7 @@ function CampoAtributo({ a, valor, cambiar, ocupado, error }: { a: Atributo; val
 // ---------------------------------------------------------------------------------------------------------------------- //
 export function Ficha({ lead: inicial, yo, usuarios, asesores, embudos, etapas, rapidas, atributos, tiposTarea, etiquetas, cotizaciones }: {
   lead: LeadFicha
-  yo: { id: string; verTodas: boolean; moverEtapas: boolean; eliminar: boolean; validarPagos: boolean; corregirPedidos: boolean }
+  yo: { id: string; verTodas: boolean; moverEtapas: boolean; eliminar: boolean; validarPagos: boolean; corregirPedidos: boolean; esAdmin?: boolean }
   usuarios: Persona[]
   asesores: Persona[]
   embudos: Embudo[]
@@ -476,7 +476,7 @@ export function Ficha({ lead: inicial, yo, usuarios, asesores, embudos, etapas, 
           )}
 
           {pestana === 'oportunidades' && (
-            <PedidoCliente lead={lead.id} puedeDocumento={yo.moverEtapas} puedeCorregir={yo.corregirPedidos} puedePagos={yo.validarPagos} embudos={embudos} etapas={etapas} version={version}
+            <PedidoCliente lead={lead.id} puedeDocumento={yo.moverEtapas} puedeCorregir={yo.corregirPedidos} puedePagos={yo.validarPagos} puedeEliminar={!!yo.esAdmin} embudos={embudos} etapas={etapas} version={version}
               alCambiar={() => { cargar(); router.refresh() }}
               pago={yo.validarPagos ? <ComprobanteCliente lead={lead.id} version={version} alCambiar={() => { cargar(); router.refresh() }} /> : undefined} />
           )}
