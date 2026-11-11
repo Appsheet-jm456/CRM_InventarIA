@@ -370,6 +370,13 @@ el pedido en la lista como cancelado y la oportunidad como Perdida, y no devuelv
   servicio y dice qué stock volvió. Sirve también para pedidos cancelados.
 - App compilada y reiniciada (el receptor no cambió).
 
-**Para probarlo (dueño):** Pedidos → **PED-0096** (Jhonatan, T490, cancelado) → «🗑 Eliminar pedido» → Prueba → confirmar. Debe decir
-«PED-0096 eliminado. Volvió al stock: 100-101-1121-2» y el T490 queda en stock 1 en Inventario.
+**Ajuste del mismo día (migración 0073, 3 pruebas SQL):** el dueño no veía el botón (estaba dentro de «Enviar al cliente», cerrada):
+ahora va al pie del pedido, siempre a la vista. Y el caso real mostró que **PED-0101** (el pedido del pago de las 11:23 p. m.) quedó
+**sin equipos**: al cancelar PED-0096 se abrió otra oportunidad sin el código (`oportunidades.producto` vacío; fallo aparte, por corregir).
+`pedido_eliminar` ahora resta lo que ya devolvió otro «🗑 Pedido eliminado» del cliente y, si el pedido no tiene equipos, devuelve lo que
+descontó el pago de ese cliente.
+
+**Para probarlo (dueño):** recargar la página; Pedidos → **PED-0101** (Jhonatan) → al pie «🗑 Eliminar pedido» → Prueba → confirmar.
+Debe decir «PED-0101 eliminado. Volvió al stock: 100-101-1121-2» y el T490 queda en stock 1. Después PED-0096 se puede eliminar
+(dirá que no había stock que devolver).
 

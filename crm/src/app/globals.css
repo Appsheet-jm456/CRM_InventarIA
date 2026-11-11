@@ -101,7 +101,8 @@ button, input, select { font: inherit; color: inherit }
 /* F4·35, RF-34: aviso con el chatbot o el menú guiado apagado, en toda la app */
 .aviso-chatbot { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 8px 24px; background: var(--warn-soft); color: var(--warn); border-bottom: 1px solid var(--line); font-size: 13px; font-weight: 600 }
 .aviso-chatbot a { color: inherit; text-decoration: underline }
-.view { display: flex; flex-direction: column; gap: 18px; max-width: 1280px }
+/* Pantalla completa en escritorio, tableta y celular (pedido del dueño, 11 nov 2026): sin tope de ancho */
+.view { display: flex; flex-direction: column; gap: 18px; max-width: none; width: 100% }
 .menu-btn { display: none }
 .scrim { position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 39 }
 
@@ -811,7 +812,7 @@ details.columnas > summary::-webkit-details-marker { display: none }
 details.columnas > .panel { right: 0; top: calc(100% + 4px); min-width: 220px }
 
 /* Ficha del lead (F4·30 D): datos a la izquierda, línea de tiempo y chat a la derecha */
-.ficha { height: calc(100dvh - 130px); min-height: 520px; display: grid; grid-template-columns: minmax(320px, 420px) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); background: var(--surface); border: 1px solid var(--line); border-radius: 10px; overflow: hidden }
+.ficha { height: calc(100dvh - 130px); min-height: 520px; display: grid; grid-template-columns: minmax(340px, 34%) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); background: var(--surface); border: 1px solid var(--line); border-radius: 10px; overflow: hidden }
 .ficha .col { min-height: 0; overflow: hidden; display: flex; flex-direction: column }
 .ficha .col + .col { border-left: 1px solid var(--line) }
 .f-cuerpo { overflow-y: auto; flex: 1; padding: 14px 16px; display: flex; flex-direction: column; gap: 12px }
@@ -830,6 +831,7 @@ details.columnas > .panel { right: 0; top: calc(100% + 4px); min-width: 220px }
 .evento { align-self: center; max-width: 80%; font-size: 12px; color: var(--muted); background: var(--surface-2); border-radius: 20px; padding: 4px 12px; text-align: center }
 .evento time { display: block; font: 10.5px var(--f-mono); opacity: .8 }
 .evento.nota { align-self: stretch; max-width: none; text-align: left; border-radius: 8px; background: var(--warn-soft); color: var(--ink); white-space: pre-wrap; padding: 8px 12px }
+@media (max-width: 1200px) { .ficha { grid-template-columns: minmax(320px, 42%) minmax(0, 1fr) } }
 @media (max-width: 900px) {
   .ficha { height: auto; grid-template-columns: 1fr; grid-template-rows: auto }
   .ficha .col + .col { border-left: 0; border-top: 1px solid var(--line) }
@@ -980,3 +982,6 @@ details.columnas > .panel { right: 0; top: calc(100% + 4px); min-width: 220px }
 .ficha-comprobante:empty { display: none }
 .bandeja .ficha-comprobante { padding: 8px clamp(14px, 4%, 56px) 0; background: var(--surface) }
 .ficha-comprobante .m-img { max-height: 120px; width: auto }
+/* F4·67: «Eliminar pedido» al pie de la ficha del pedido, a la vista */
+.ped-eliminar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 12px; border: 1px dashed color-mix(in srgb, var(--bad) 45%, var(--line)); border-radius: 10px }
+

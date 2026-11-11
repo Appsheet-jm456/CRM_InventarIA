@@ -363,12 +363,6 @@ export function PedidoCliente({ lead, puedeDocumento, puedeCorregir, puedePagos 
           </>
         )}
         {!entrega && <small className="ped-aviso">Marca en la pestaña Principal si la venta es online o en tienda para ver la guía o el aviso de recogida.</small>}
-        {puedeEliminar && (
-          <div className="ped-pie">
-            <button className="btn chico peligro" disabled={ocupado} onClick={() => setEliminando(true)}>🗑 Eliminar pedido</button>
-            <small className="muted">Solo administrador. Para pedidos de prueba: devuelve el stock y no se puede deshacer.</small>
-          </div>
-        )}
         {puedeCancelar && (
           <div className="ped-pie">
             <button className="btn chico peligro" disabled={ocupado} onClick={() => setCancelando(true)}>Cancelar pedido</button>
@@ -383,6 +377,14 @@ export function PedidoCliente({ lead, puedeDocumento, puedeCorregir, puedePagos 
           {eventos.map((e) => <li key={e.id}><small className="muted">{hora(e.en)}</small><span>{e.detalle}</span></li>)}
         </ul>
       </Seccion>
+
+      {/* F4·67: siempre a la vista (no dentro de una sección cerrada), solo para el administrador */}
+      {puedeEliminar && (
+        <div className="ped-eliminar">
+          <button className="btn chico peligro" disabled={ocupado} onClick={() => setEliminando(true)}>🗑 Eliminar pedido</button>
+          <small className="muted">Solo administrador. Para pedidos de prueba: borra el pedido, devuelve el stock y no se puede deshacer.</small>
+        </div>
+      )}
 
       {otras}
 
