@@ -142,8 +142,9 @@ def mensajes_cuentas(cuentas, fresco=False):
     """F4·49: los datos para pagar. Primero la imagen de los medios de pago (la de la ficha activa «Pagos» de Agente → Conocimiento, si
     tiene archivo) y después el texto aprobado. Sin imagen, solo el texto, como antes."""
     imagen = next((f for f in db.conocimiento("Pagos", fresco) if f.get("archivo")), None)
+    instructivo = (db.agente_config(fresco).get("texto_instructivo_pago") or "").strip()  # F4·68 (RAG-81): qué hacer después de pagar
     return ([{"_conocimiento": {"archivo": imagen["archivo"], "titulo": imagen.get("titulo") or "Medios de pago"}}] if imagen else []) \
-        + [flujo.m_texto(cuentas)]
+        + [flujo.m_texto(cuentas)] + ([flujo.m_texto(instructivo)] if instructivo else [])
 
 
 def _pedir_tipo(st):

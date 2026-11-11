@@ -76,6 +76,15 @@ export function Compra({ datos, etapas, disparo, bots }: {
         <form className="panel-b" style={{ display: 'grid', gap: 14 }}
           onSubmit={async (e) => { e.preventDefault(); setOcupado(true); setAviso(await guardarCompra(d)); setOcupado(false) }}>
           {texto('texto_cuentas', 'Cuentas para pagar', 'Titular, bancos, números, llave, recargo con tarjeta, tiempo para pagar y qué datos de envío mandar', 12)}
+          {/* F4·68 (RAG-81 y RAG-82): el instructivo sale después de la imagen y las cuentas, en la compra y en la acción «Cuentas para pagar» */}
+          <label className="field">
+            Instructivo del comprobante (después de las cuentas)
+            <textarea rows={3} value={d.texto_instructivo_pago} maxLength={1024} disabled={ocupado} onChange={(e) => poner('texto_instructivo_pago', e.target.value)} />
+            <small className="muted">
+              Le dice al cliente que mande el comprobante en foto o PDF. Sale en la compra y en «Cuentas para pagar». Vacío = no se envía ·{' '}
+              {d.texto_instructivo_pago.length.toLocaleString('es-CO')} / 1.024
+            </small>
+          </label>
           <fieldset className="f-seccion" disabled={ocupado}>
             <legend>💳 Validación del pago (contra estafas)</legend>
             <label className="inline">

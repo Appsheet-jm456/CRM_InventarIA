@@ -593,6 +593,34 @@ y no salía.
 **Cómo está construida (7 nov 2026).** Sin migración. `compra.mensajes_cuentas` (usa `db.conocimiento("Pagos")`) en `compra.py` y en el paso
 `cuentas` de `acciones.py`. `prueba_cuentas_imagen.py` 6/6; las demás pruebas fijan `db.conocimiento` sin ficha.
 
+### 4j. Instructivo del comprobante después de las cuentas (F4·68)
+
+**Pedido del dueño, 11 nov 2026.** Después de la imagen y el texto de las cuentas el cliente no sabía que tenía que mandar el comprobante:
+el bot se quedaba callado esperando. Se agrega un tercer mensaje corto que explica el paso siguiente, como un instructivo.
+
+- **RAG-81 · Tercer mensaje, después de las cuentas.** Orden: imagen de los medios de pago (RAG-78) → texto de cuentas → **instructivo del
+  comprobante**. Aplica donde salen las cuentas: la compra (al confirmar el pedido, de uno o varios equipos) y el paso «Cuentas» de las
+  acciones («Cuentas para pagar»).
+- **RAG-82 · Texto editable en Agente → Compra** («Instructivo del comprobante», hasta 1.024 caracteres, sin marcas). Viene con el texto del
+  dueño: «📎 *Último paso:* envíanos por aquí el *comprobante de pago* en foto (JPG) o PDF y un asesor validará tu pago. ✍️ Puedes escribir
+  *Envío comprobante de pago* junto con el archivo.» **Vacío = no se envía** (como antes).
+- **RAG-83 · Sin cuentas, sin instructivo** (RAG-80 sigue): si no hay texto de cuentas, lo manda un asesor y el instructivo no sale solo.
+- **RAG-84 · Lo que escriba el cliente sigue igual:** la foto o el PDF es el comprobante; «Envío comprobante de pago» o «ya pagué» sin
+  archivo hace que el bot le pida la foto o el PDF (RAG-63).
+
+| # | Dado / cuando | Entonces |
+|---|---|---|
+| RIC-01 | El cliente confirma el pedido | Recibe la imagen, las cuentas y luego el instructivo |
+| RIC-02 | Un asesor o una acción manda «Cuentas para pagar» | También sale el instructivo al final |
+| RIC-03 | El dueño deja vacío el instructivo | Salen solo la imagen y las cuentas, como antes |
+| RIC-04 | El cliente escribe «Envío comprobante de pago» sin archivo | El bot le pide la foto o el PDF |
+
+**Construida el 11 nov 2026 🔵 (falta la prueba del dueño por WhatsApp).** Migración 0074 (columna `texto_instructivo_pago` con su permiso,
+3 pruebas SQL); campo «Instructivo del comprobante» en Agente → Compra, debajo de las cuentas; `compra.mensajes_cuentas` lo agrega al final
+(compra y acción «Cuentas para pagar»). `prueba_cuentas_imagen.py` 10/10 y todas las del bot en verde. RIC-04 ya lo cumplía el bot: la
+palabra «comprobante» cuenta como aviso de pago y, sin archivo, pide la foto o el PDF. App y receptor compilados y reiniciados.
+**Para probarlo:** Agente → Compra → revisar el texto y Guardar si se cambia; por WhatsApp confirmar un pedido: imagen, cuentas e instructivo.
+
 ### 5. Herramientas (lo que el agente puede hacer)
 
 | Herramienta | Qué hace | Escribe en la base |

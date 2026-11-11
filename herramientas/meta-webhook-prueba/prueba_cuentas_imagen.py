@@ -82,5 +82,24 @@ r = acciones.responder(st, "¿cuáles son los medios de pago?", {"etiquetas": []
 mensajes = r[1] if r else None
 ok(mensajes is not None and tipos(mensajes) == ["imagen", "texto"], "la acción «Cuentas para pagar» envía la imagen y luego el texto")
 
+# 5. F4·68 (RIC-01 a RIC-04): el instructivo del comprobante sale después de las cuentas
+INSTRUCTIVO = "📎 *Último paso:* envíanos por aquí el *comprobante de pago* en foto (JPG) o PDF y un asesor validará tu pago."
+CONFIG["texto_instructivo_pago"] = INSTRUCTIVO
+(m, *_), _ = confirmar()
+ok(tipos(m) == ["imagen", "texto", "texto"] and m[-1]["text"]["body"] == INSTRUCTIVO and "Bancolombia" in m[1]["text"]["body"],
+   "RIC-01: al confirmar sale la imagen, las cuentas y al final el instructivo")
+st = nuevo()
+r = acciones.responder(st, "¿cuáles son los medios de pago?", {"etiquetas": [], "atributos": {}})
+ok(r and tipos(r[1]) == ["imagen", "texto", "texto"] and r[1][-1]["text"]["body"] == INSTRUCTIVO,
+   "RIC-02: la acción «Cuentas para pagar» también termina con el instructivo")
+CONFIG["texto_cuentas"] = ""
+(m, etq, paso, nota), _ = confirmar()
+ok(not any(x.get("text", {}).get("body") == INSTRUCTIVO for x in m), "sin cuentas aprobadas el instructivo no sale solo (RAG-83)")
+CONFIG["texto_cuentas"] = "💳 Transferencia a estas cuentas: Bancolombia 123"
+CONFIG["texto_instructivo_pago"] = "   "
+(m, *_), _ = confirmar()
+ok(tipos(m) == ["imagen", "texto"], "RIC-03: con el instructivo vacío salen solo la imagen y las cuentas, como antes")
+CONFIG.pop("texto_instructivo_pago")
+
 print(f"\n{n - fallos}/{n} pruebas bien")
 sys.exit(1 if fallos else 0)

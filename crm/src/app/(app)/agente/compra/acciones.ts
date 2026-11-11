@@ -6,6 +6,7 @@ import { crearCliente } from '@/lib/supabase/server'
 export type Resultado = { error?: string; ok?: string }
 export type DatosCompra = {
   texto_cuentas: string
+  texto_instructivo_pago: string // F4·68 (RAG-82): sale después de las cuentas; vacío = no se envía
   texto_comprobante: string
   texto_sigue_interesado: string
   texto_cancelacion: string
@@ -63,6 +64,8 @@ export async function guardarCompra(d: DatosCompra): Promise<Resultado> {
     const otras = [...d[campo].matchAll(/\{([^{}]*)\}/g)].map((m) => m[1]).filter((m) => !(marcas as readonly string[]).includes(m))
     if (otras.length) return { error: `En «${nombre}» el bot solo reemplaza {${marcas.join('}, {')}}; no {${otras.join('}, {')}}.` }
   }
+  if (d.texto_instructivo_pago.length > 1024) return { error: 'El instructivo del comprobante tiene máximo 1.024 caracteres.' }
+  if (/\{[^{}]*\}/.test(d.texto_instructivo_pago)) return { error: 'El instructivo del comprobante no usa marcas entre llaves: escríbelo tal cual.' }
   if (!d.texto_resumen_pedido.trim()) return { error: 'El texto del resumen del pedido no puede quedar vacío.' }
   if (d.texto_resumen_pedido.length > 1500) return { error: 'El texto del resumen del pedido tiene máximo 1.500 caracteres.' }
   const marcasResumen = ['pedido', 'equipos', 'total', 'pagado', 'saldo', 'entrega', 'datos', 'nombre']
@@ -73,6 +76,7 @@ export async function guardarCompra(d: DatosCompra): Promise<Resultado> {
   if (motivos.some((m) => m.length > 200)) return { error: 'Cada motivo tiene máximo 200 caracteres.' }
   const { data, error } = await crearCliente().from('agente_config').update({
     texto_cuentas: d.texto_cuentas.trim(),
+    texto_instructivo_pago: d.texto_instructivo_pago.trim(),
     texto_comprobante: d.texto_comprobante.trim(),
     texto_sigue_interesado: d.texto_sigue_interesado.trim(),
     texto_cancelacion: d.texto_cancelacion.trim(),
