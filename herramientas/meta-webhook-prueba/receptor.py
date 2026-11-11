@@ -11,7 +11,7 @@ Qué hace:
   POST /interno/buscar  Chat InventarIA de la app (token CRM_INTERNO_TOKEN; no responde por el túnel)
   POST /interno/simular Simulador del lienzo: el motor sobre una versión, sin escribir ni enviar (mismo token)
   POST /interno/agente  «Probar» de Configuración → Agente: un turno de Avi sin escribir ni enviar (mismo token)
-  POST /interno/herramienta  F4·61: catálogo, acción o flujo que el asesor eligió en el chat (mismo token)
+  POST /interno/herramienta  F4·61 y F4·71: catálogo, ficha de un equipo, acción o flujo que el asesor eligió en el chat (mismo token)
   POST /webhook  valida la firma X-Hub-Signature-256 con META_APP_SECRET, anota el evento en
                  eventos.log y responde con el árbol de respuesta de prueba (flujo.py)
 
@@ -550,13 +550,46 @@ def catalogo_del_asesor(c, lead):
     return [flujo.m_texto(texto.replace("{enlace}", c["url"]) if "{enlace}" in texto else f"{texto}\n\n📚 {c['url']}")]
 
 
+FICHA_ASESOR_SALUDO = "Hola {nombre} 👋 Te envío la ficha técnica del equipo:\n💻 *{equipo}*\n🔖 Código: {codigo}"
+FICHA_ASESOR_CIERRE = "¿Te lo separo? Respóndeme por aquí y te ayudo con la compra."
+
+
+def plantilla_ficha():
+    """RB-25: los renglones de la ficha del bot (la acción con el paso «ficha_equipo», F4·42) para que el cliente vea lo mismo; si no hay, la de fábrica."""
+    for a in db.acciones_todas():
+        paso = next((x for x in a.get("hacer") or [] if x.get("tipo") == "ficha_equipo" and (x.get("plantilla") or "").strip()), None)
+        if paso:
+            return paso["plantilla"]
+    return acciones.FICHA["plantilla"]
+
+
+def ficha_del_asesor(p, lead, st):
+    """F4·71 (RB-25 a RB-27): la ficha técnica de un equipo que el asesor eligió en el chat. Con Foto 1, la ficha va de pie y
+    después las Fotos 2 y 3; sin foto (o si pasa de 1.024 caracteres), como texto. Queda como el último equipo que vio el cliente."""
+    if not p:
+        return []
+    nombre = ((lead or {}).get("nombre") or "").split(" ")[0]
+    datos = agente.datos_equipo(p)
+    saludo = acciones._limpio(FICHA_ASESOR_SALUDO.replace("{nombre}", nombre).replace("{equipo}", datos["equipo"]).replace("{codigo}", p["cod"]))
+    renglones = agente.armar_equipo(plantilla_ficha().replace("{nombre}", nombre), p, {"nombre": nombre, "modelo": datos["modelo"]})
+    cuerpo = flujo.con_drive("\n\n".join(x for x in (saludo, renglones) if x.strip()), p)
+    cuerpo = f"{cuerpo}\n\n{FICHA_ASESOR_CIERRE}"
+    st.setdefault("campos", {}).update({"Código producto": p["cod"], "Valor estimado": flujo.cop(p["precio"])})  # RB-27 (como RAG-48)
+    st["valor"] = p["precio"]
+    if isinstance(p.get("foto"), dict):  # Foto 1 subida a la app (F4·65)
+        if len(cuerpo) <= 1024:
+            return [flujo.m_imagen(p["foto"], cuerpo)] + flujo.fotos_extra(p)
+        return [flujo.m_imagen(p["foto"], ""), flujo.m_texto(cuerpo)] + flujo.fotos_extra(p)
+    return [flujo.m_texto(cuerpo)]
+
+
 def herramienta(pedido):
     """F4·61 (/interno/herramienta, RB-07 a RB-12): el asesor eligió en el chat un catálogo, una acción o un flujo y la base ya lo
     permitió (`herramienta_chat`: permiso, conversación suya, 24 h) y dejó el chat como corresponde. Arma los mensajes y los envía.
     Catálogo y acción salen como mensajes del asesor; un flujo, como mensajes del bot, que sigue con el cliente."""
     lead_id, tipo, ref, usuario = int(pedido["lead"]), str(pedido["tipo"]), str(pedido["ref"]), pedido.get("usuario")
     numero = db.telefono_de(lead_id)
-    if not numero or tipo not in ("catalogo", "accion", "flujo"):
+    if not numero or tipo not in ("catalogo", "accion", "flujo", "equipo"):
         raise LookupError(lead_id)
     with _candados.setdefault(numero, threading.Lock()):
         lead = db.lead(numero)
@@ -568,6 +601,11 @@ def herramienta(pedido):
         try:
             if tipo == "catalogo":
                 mensajes = catalogo_del_asesor(db.catalogo(int(ref)), lead)
+            elif tipo == "equipo":  # F4·71
+                db.olvidar_inventario()  # el stock y las fotos recién cambiados en Inventario se ven ya
+                mensajes = ficha_del_asesor(flujo.equipo_por_codigo(ref), lead, st)
+                if not mensajes:
+                    return {"ok": False, "error": "Ese equipo ya no tiene stock."}
             elif tipo == "accion":
                 a = next((x for x in db.acciones_todas() if str(x["id"]) == ref and x.get("activa")), None)
                 if not a:
@@ -599,6 +637,11 @@ def herramienta(pedido):
             return {"ok": True, "enviados": len(mensajes)}
         enviados, error = enviar_como_asesor(numero, lead, mensajes, usuario)
         anotar(f"⚡ {numero}: el asesor envió {tipo} {ref} → {enviados} mensaje(s)")
+        if tipo == "equipo" and enviados:  # RB-27: «quiero comprar» toma este código. Solo esos datos: el chat sigue con el asesor.
+            estado = dict(lead.get("estado_bot") or {})
+            estado["campos"] = {**(estado.get("campos") or {}), **{k: st["campos"][k] for k in ("Código producto", "Valor estimado")}}
+            estado["valor"] = st["valor"]
+            db.actualizar_lead(lead_id, {"estado_bot": estado, "cotiz_producto": st["campos"]["Código producto"], "valor_estimado": st["valor"]})
         if error:
             return {"ok": False, "error": f"Se enviaron {enviados}; {error}"}
         return {"ok": True, "enviados": enviados}

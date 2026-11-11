@@ -1000,3 +1000,6 @@ details.columnas > .panel { right: 0; top: calc(100% + 4px); min-width: 220px }
 @keyframes mas-abrir { from { opacity: 0; transform: translateY(6px) scale(.96) } to { opacity: 1; transform: none } }
 @media (prefers-reduced-motion: reduce) { .mas-menu { animation: none } .mas-boton svg { transition: none } }
 .b-caja { gap: 4px } .bandeja .b-caja { gap: 6px }
+/* F4·71: buscador de la lista de herramientas (fichas de equipos, catálogos…) */
+.herr-buscar { position: sticky; top: -6px; z-index: 1; margin: -6px -6px 4px; padding: 9px 12px; border: 0; border-bottom: 1px solid var(--line); border-radius: 10px 10px 0 0; background: var(--surface); font: 13.5px var(--f-body); color: var(--ink) }
+.herr-buscar:focus { outline: none; box-shadow: inset 0 -2px 0 var(--accent) }

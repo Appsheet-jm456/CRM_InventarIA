@@ -3,18 +3,19 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { herramientasChat, usarHerramienta, type Herramienta, type Resultado } from './acciones'
 
-// F4·61 (RB-07 a RB-12): con «/» o el menú «+» (F4·70) el asesor envía un catálogo, dispara una Acción (Ubicación, Cuentas para pagar…) o
+// F4·61 (RB-07 a RB-12): con «/» o el menú «+» (F4·70) el asesor envía un catálogo, la ficha de un equipo (F4·71), dispara una Acción (Ubicación, Cuentas para pagar…) o
 // un flujo (compra, cotización, un bot), además de las respuestas rápidas de siempre. La usan la Bandeja y la Ficha del lead.
 export type Rapida = { id: number; atajo: string; titulo: string; texto: string }
 type Item = (Herramienta & { rapida?: undefined }) | { tipo: 'rapida'; ref: string; nombre: string; detalle: string; rapida: Rapida }
 
 const GRUPOS: { tipo: Item['tipo']; titulo: string; clave: string }[] = [
   { tipo: 'catalogo', titulo: '📚 Catálogos', clave: 'catalogo catalogos' },
+  { tipo: 'equipo', titulo: '💻 Fichas de equipos', clave: 'ficha fichas equipo equipos producto' }, // F4·71
   { tipo: 'accion', titulo: '⚡ Acciones', clave: 'accion acciones' },
   { tipo: 'flujo', titulo: '🧭 Flujos', clave: 'flujo flujos bot' },
   { tipo: 'rapida', titulo: '💬 Respuestas rápidas', clave: 'rapida respuesta' },
 ]
-const ICONO: Record<Item['tipo'], string> = { catalogo: '📚', accion: '⚡', flujo: '🧭', rapida: '💬' }
+const ICONO: Record<Item['tipo'], string> = { catalogo: '📚', equipo: '💻', accion: '⚡', flujo: '🧭', rapida: '💬' }
 const limpio = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
 
 let guardadas: Herramienta[] | null = null // se piden una vez por pestaña del navegador y al abrir la lista se refrescan
@@ -26,6 +27,7 @@ export function useHerramientas({ lead, texto, setTexto, nombreCliente, rapidas,
   const [lista, setLista] = useState<Herramienta[]>(guardadas ?? [])
   const [boton, setBoton] = useState(false) // abierta desde el menú «+» (sin escribir «/»)
   const [grupo, setGrupo] = useState<Item['tipo'] | null>(null) // el menú «+» abre un solo grupo (Catálogos, Acciones…)
+  const [busca, setBusca] = useState('') // buscador de la lista abierta desde el «+» (F4·71: hay muchos equipos)
   const [pendiente, setPendiente] = useState<Herramienta | null>(null)
   const [alTerminar, setAlTerminar] = useState<'asesor' | 'bot'>('asesor')
   const [enviando, setEnviando] = useState(false)
@@ -43,17 +45,17 @@ export function useHerramientas({ lead, texto, setTexto, nombreCliente, rapidas,
     if (!abierta) pedido.current = false
   }, [abierta, cargar])
   useEffect(() => { setPendiente(null); setBoton(false) }, [lead])
-  useEffect(() => { if (!abierta) setGrupo(null) }, [abierta])
+  useEffect(() => { if (!abierta) { setGrupo(null); setBusca('') } }, [abierta])
 
-  const palabras = limpio(barra?.[1] ?? '').split(/\s+/).filter(Boolean)
+  const palabras = limpio(barra ? barra[1] : busca).split(/\s+/).filter(Boolean)
   const todos: Item[] = [
     ...lista,
     ...rapidas.map((r): Item => ({ tipo: 'rapida', ref: String(r.id), nombre: `/${r.atajo} · ${r.titulo}`, detalle: r.texto.slice(0, 60), rapida: r })),
   ]
   const items = !abierta ? [] : todos.filter((i) => !grupo || barra || i.tipo === grupo).filter((i) => {
-    const donde = limpio(`${GRUPOS.find((g) => g.tipo === i.tipo)!.clave} ${i.nombre}`)
-    return palabras.every((p) => donde.split(/[\s/·«»]+/).some((w) => w.startsWith(p)))
-  }).slice(0, palabras.length ? 12 : 40)
+    const donde = limpio(`${GRUPOS.find((g) => g.tipo === i.tipo)!.clave} ${i.nombre}${i.tipo === 'equipo' ? ` ${i.detalle}` : ''}`) // F4·71: también por procesador o RAM
+    return palabras.every((p) => donde.split(/[\s/·«»()]+/).some((w) => w.startsWith(p)) || (i.tipo === 'equipo' && limpio(i.ref).includes(p)))
+  }).slice(0, palabras.length ? 30 : 60)
 
   function elegir(i: Item) {
     setBoton(false)
@@ -106,7 +108,9 @@ export function useHerramientas({ lead, texto, setTexto, nombreCliente, rapidas,
           </div>
         </>
       ) : (
-        <small className="muted">Se envía tal como está configurado{pendiente.tipo === 'accion' ? ' en Agente → Acciones' : ' en Inventario → Catálogos'}, a tu nombre.</small>
+        <small className="muted">{pendiente.tipo === 'equipo'
+          ? 'Se envía la ficha técnica con código, especificaciones, precio y fotos (si están subidas), a tu nombre.'
+          : `Se envía tal como está configurado${pendiente.tipo === 'accion' ? ' en Agente → Acciones' : ' en Inventario → Catálogos'}, a tu nombre.`}</small>
       )}
       <div className="row">
         <button type="button" className="btn primary chico" disabled={enviando} onClick={confirmar} autoFocus>
@@ -117,8 +121,16 @@ export function useHerramientas({ lead, texto, setTexto, nombreCliente, rapidas,
       </div>
     </div>
   ) : abierta ? (
-    <div className="herr-lista" role="listbox" aria-label="Catálogos, acciones, flujos y respuestas rápidas">
-      {items.length === 0 && <small className="muted" style={{ padding: 6 }}>{guardadas === null ? 'Cargando…' : grupo && !barra ? 'No hay nada configurado en este grupo.' : 'Nada coincide. Prueba «/catalogo», «/accion» o «/flujo».'}</small>}
+    <div className="herr-lista" role="listbox" aria-label="Catálogos, fichas, acciones, flujos y respuestas rápidas">
+      {!barra && (
+        <input type="search" className="herr-buscar" autoFocus value={busca} onChange={(e) => setBusca(e.target.value)}
+          placeholder={grupo === 'equipo' ? 'Buscar: código, marca, modelo, procesador…' : 'Buscar…'}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') { e.preventDefault(); setBoton(false) }
+            else if (e.key === 'Enter' && items.length > 0) { e.preventDefault(); elegir(items[0]) }
+          }} />
+      )}
+      {items.length === 0 && <small className="muted" style={{ padding: 6 }}>{guardadas === null ? 'Cargando…' : grupo && !barra ? 'No hay nada configurado en este grupo.' : 'Nada coincide. Prueba «/catalogo», «/ficha», «/accion» o «/flujo».'}</small>}
       {GRUPOS.map((g) => {
         const del = items.filter((i) => i.tipo === g.tipo)
         if (!del.length) return null

@@ -193,16 +193,27 @@ def con_drive(texto, p):
     return texto + renglon if len(texto + renglon) <= 1024 else texto
 
 
-def inventario():
-    """Portátiles con stock, de la tabla productos de Supabase."""
-    return [{
+def _equipo(p):
+    """Una fila de productos con los nombres que usan el bot, Avi y las fichas."""
+    return {
         "cod": p["codigo"], "marca": p["marca"], "modelo": p["modelo"], "cpu": p["procesador"],
         "gen": interprete.generacion(p["procesador"], p["generacion"]), "ram": p["ram"],
         "disco": p["almacenamiento"], "estado": p["estado"], "precio": int(float(p["precio"])),
         "stock": p["stock"], "foto": _foto_de(p), "categoria": p.get("categoria") or "", "descripcion": p.get("descripcion") or "",
         "atributos": p.get("atributos") or {},  # F4·41: {clave: valor} de los atributos del producto
         "fotos_extra": p.get("fotos_extra") or [], "fotos_drive": p.get("fotos_drive") or "",  # F4·65
-    } for p in db.productos_con_stock() if "portatil" in normalizar(p["categoria"])]
+    }
+
+
+def inventario():
+    """Portátiles con stock, de la tabla productos de Supabase."""
+    return [_equipo(p) for p in db.productos_con_stock() if "portatil" in normalizar(p["categoria"])]
+
+
+def equipo_por_codigo(codigo):
+    """F4·71 (RB-23): un equipo con stock de cualquier categoría por su código exacto (el asesor lo eligió en la lista). None si no."""
+    p = next((x for x in db.productos_con_stock() if str(x.get("codigo") or "").upper() == str(codigo).strip().upper()), None)
+    return _equipo(p) if p else None
 
 
 # --------------------------------------------------------------------------- #

@@ -155,14 +155,14 @@ export async function reintentarAviso(lead: number): Promise<Resultado> {
 // --------------------------------------------------------------------------- //
 // F4·61 (RB-07 a RB-12): catálogos, acciones y flujos que el asesor dispara desde el chat con «/» o el botón ⚡
 // --------------------------------------------------------------------------- //
-export type Herramienta = { tipo: 'catalogo' | 'accion' | 'flujo'; ref: string; nombre: string; detalle: string }
+export type Herramienta = { tipo: 'catalogo' | 'equipo' | 'accion' | 'flujo'; ref: string; nombre: string; detalle: string }
 
 export async function herramientasChat(): Promise<{ herramientas: Herramienta[]; error?: string }> {
   const { data, error } = await crearCliente().rpc('herramientas_chat')
   if (error) return { herramientas: [], error: error.message }
   const d = (data ?? {}) as Record<string, Omit<Herramienta, 'tipo'>[]>
   const de = (tipo: Herramienta['tipo'], filas?: Omit<Herramienta, 'tipo'>[]) => (filas ?? []).map((f) => ({ ...f, detalle: f.detalle ?? '', tipo }))
-  return { herramientas: [...de('catalogo', d.catalogos), ...de('accion', d.acciones), ...de('flujo', d.flujos)] }
+  return { herramientas: [...de('catalogo', d.catalogos), ...de('equipo', d.equipos), ...de('accion', d.acciones), ...de('flujo', d.flujos)] }
 }
 
 // La base revisa permiso, que la conversación sea de quien pide y las 24 h, y deja el chat como corresponde; el receptor envía.

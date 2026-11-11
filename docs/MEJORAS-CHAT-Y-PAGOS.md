@@ -372,3 +372,61 @@ Antes la caja del chat tenía tres botones sueltos (😊 emojis, 📎 adjuntar y
   24 h el menú no aparece (sale la plantilla, como hoy).
 
 Archivos: `crm/src/app/(app)/bandeja/MenuMas.tsx` (nuevo), `Adjuntos.tsx`, `Herramientas.tsx`, `Bandeja.tsx`, `leads/[id]/Ficha.tsx` y `globals.css`.
+
+---
+
+## 10. F4·71 · Ficha técnica del equipo desde el chat
+
+> **Estado:** 🔵 construida el 11 nov 2026 por pedido del dueño (migración 0076). Falta la prueba del dueño por WhatsApp.
+
+**Pedido del dueño:** que el asesor, desde el mismo botón «+», envíe la **ficha técnica** de cualquier equipo del inventario
+(código, especificaciones y fotos si están subidas) para atender más rápido, sin copiar y pegar datos.
+
+### Qué ve el asesor
+
+```
+(+) → 💻 Ficha del equipo
+┌ 🔍 Buscar: código, marca, modelo, procesador… ─────────────┐
+│ 💻 Fichas de equipos                                        │
+│  100-101-1121-2 · LENOVO T490 — Core i5 · 16GB · 256GB · $1.250.000 · 📷 3 │
+│  100-102-1041 · DELL Latitude 5490 — Core i7 · 8GB · …       │
+└─────────────────────────────────────────────────────────────┘
+→ Confirmar: «💻 LENOVO T490 (100-101-1121-2)» [Enviar al cliente] [Cancelar]
+```
+
+También funciona escribiendo `/` en la caja: `/t490`, `/ficha lenovo`, `/100-101`.
+
+### Qué recibe el cliente (a nombre del asesor)
+
+```
+[Foto 1]  Hola Juan 👋 Te envío la ficha técnica del equipo:
+          💻 *LENOVO T490*
+          🔖 Código: 100-101-1121-2
+          🎮 Core i5 8.ª gen
+          🧠 16GB · 💾 256GB SSD …          ← la plantilla de la ficha (Agente → Acciones → «Pregunta por un equipo»)
+          💰 *$1.250.000*
+          📷 Más fotos: (carpeta de Drive, si tiene)
+          ¿Te lo separo? Respóndeme por aquí y te ayudo con la compra.
+[Foto 2]
+[Foto 3]
+```
+
+### Reglas
+
+- **RB-23 · Opción nueva en el «+»:** «💻 Ficha del equipo», debajo de Catálogos. Abre la lista de equipos **con stock** con un buscador
+  (código, marca, modelo, procesador, RAM). Nunca se ofrece un equipo agotado, como en el bot (RAG-46).
+- **RB-24 · Se confirma antes de enviar**, como los catálogos y las acciones (F4·61). El asesor toma la conversación y el bot no contesta (RB-01).
+- **RB-25 · Contenido:** saludo con el primer nombre, equipo, código, los renglones de la **misma plantilla de la ficha** que usa el bot
+  (la de la acción «Pregunta por un equipo» si existe; si no, la de fábrica) con los atributos del producto, precio de la base,
+  enlace «📷 Más fotos» si hay carpeta de Drive y una línea de cierre. Los renglones sin dato no salen (RAG-40).
+- **RB-26 · Fotos:** si el equipo tiene Foto 1, la ficha va como **pie de la Foto 1** y después salen las Fotos 2 y 3 (F4·65). Sin foto, va como texto.
+  Si el texto pasa de 1.024 caracteres (límite de WhatsApp para el pie), sale la foto sola y la ficha como texto aparte.
+- **RB-27 · Queda como el último equipo que vio el cliente**: «quiero comprar» o «Iniciar compra» toman ese código sin repetirlo (como RAG-48).
+- **RB-28 · Registro:** la ficha queda en el chat como mensaje del asesor y en el historial del cliente («📋 Ficha … enviada»).
+- **RB-29 · Solo dentro de las 24 h** de WhatsApp (RB-12); fuera, el «+» no aparece y sale la plantilla.
+
+Fuera de alcance por ahora: enviar varias fichas a la vez (se envía una y se repite) y editar el saludo y el cierre desde la pantalla
+(hoy fijos en el receptor; la plantilla de los datos sí se edita en Agente → Acciones).
+
+Archivos: migración `0076_ficha_equipo_en_el_chat.sql` (`herramientas_chat` lista los equipos y `herramienta_chat` acepta `equipo`),
+`receptor.py` (`ficha_del_asesor`), `flujo.py` (`equipo_por_codigo`), `bandeja/acciones.ts`, `Herramientas.tsx` (buscador por grupo) y `MenuMas.tsx`.
