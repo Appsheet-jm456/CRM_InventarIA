@@ -31,7 +31,8 @@ HERRAMIENTAS = {
                         "los equipos vienen ordenados del más barato al más caro. Devuelve código, equipo, especificaciones, precio y stock reales.",
     "ficha_producto": 'Envía al cliente la ficha con foto de un equipo. args: {"codigo":"100-102-1030-1"}.',
     "buscar_conocimiento": 'Busca en las preguntas frecuentes, políticas y documentos del negocio. args: {"pregunta":"..."}.',
-    "enviar_catalogo": 'Envía el catálogo en PDF o el enlace con todos los equipos. args: {"marca":""} (opcional).',
+    "enviar_catalogo": 'Envía el catálogo en PDF o el enlace. args: {"marca":"Lenovo", "categoria":"usados"} (opcionales). '
+                       "«categoria» es «usados» o «nuevos» según lo que pidió el cliente; sin ella se usa lo que ya eligió (usados por defecto).",
     "mover_etapa": 'Avanza al cliente en el embudo cuando corresponda: "En Conversación" (ya dijo qué busca) o "Cotización" (pidió precio de un equipo concreto). args: {"etapa":"..."}. Nunca retrocede.',
     "crear_seguimiento": 'Deja un recordatorio a un asesor para escribirle al cliente más tarde. args: {"que":"Llamar para confirmar el equipo", "horas":24}.',
     "capturar_datos": 'Guarda lo que el cliente cuenta. args: {"nombre":"", "ciudad":"", "uso":"", "presupuesto":"", "marca":""} (los que sepas).',
@@ -254,7 +255,12 @@ def usar(nombre, args, ctx):
                 or "No hay información del negocio sobre eso: pásalo a un asesor."}, False
     if nombre == "enviar_catalogo":
         campos = st.get("campos") or {}
-        salida = flujo.mensajes_catalogo(campos.get("Categoría interés") or "Portátiles", str(args.get("marca") or campos.get("Marca interés") or ""))
+        pedida = db._sin_tildes(str(args.get("categoria") or ""))
+        categoria = "Portátiles nuevos" if "nuev" in pedida else "Portátiles" if "usad" in pedida else (campos.get("Categoría interés") or "Portátiles")
+        if categoria != campos.get("Categoría interés") and pedida:
+            campos["Categoría interés"] = categoria  # queda anotado en la ficha del cliente
+            st["campos"] = campos
+        salida = flujo.mensajes_catalogo(categoria, str(args.get("marca") or campos.get("Marca interés") or ""))
         if not salida:
             return {"error": "No hay catálogos cargados."}, False
         ctx["extra"] += salida
