@@ -38,7 +38,7 @@ export function CarritoCliente({ lead, alEnviar }: { lead: number; alEnviar?: ()
     .slice(0, 8)
 
   // RCA-05: la configuración, como en la compra del bot (cliente final con un equipo usado del inventario); la casilla la quita.
-  const usados = items.some((i) => !i.libre && (i.usado ?? !limpio(porCodigo.get(i.codigo.toUpperCase())?.estado ?? '').startsWith('nuevo')))
+  const usados = items.some((i) => !i.libre && (i.usado ?? !limpio(porCodigo.get(i.codigo.toUpperCase())?.estado ?? '').startsWith('nuev')))
   const aplica = tipo === 'Cliente final' && usados
   const valorConfig = base?.valor_configuracion ?? 0
   const cargo = aplica && !sinConfig ? valorConfig : 0
@@ -50,7 +50,7 @@ export function CarritoCliente({ lead, alEnviar }: { lead: number; alEnviar?: ()
   function agregar(e: EquipoInventario) {
     if (lleno) return
     cambiar([...items, { codigo: e.codigo, equipo: e.equipo, precio: Number(e.precio), precio_base: Number(e.precio), estado: e.estado, stock: e.stock,
-      usado: !limpio(e.estado ?? '').startsWith('nuevo') }])
+      usado: !limpio(e.estado ?? '').startsWith('nuev') }])
     setBuscar('')
   }
   function agregarLibre() {

@@ -68,6 +68,7 @@ validación del asesor (F4·46 / F4·59) → stock (F4·66) → Datos de despach
   cualquier asesor. Cada cambio de precio queda en el historial del cliente (precio de la base, precio nuevo y quién).
 - **RCA-05 · Configuración:** se calcula como en la compra del bot (F4·48): cliente final con al menos un equipo usado del inventario →
   una vez el valor de Agente → Compra ($80.000). El asesor puede **quitarla** con la casilla. Distribuidor nunca.
+  Un equipo cuyo estado empieza por «nuev» («Nuevo», «NUEVA») no la paga; «Semi nuevo» sí (corregido el 11 nov 2026, migración 0079).
 - **RCA-06 · Tipo de cliente:** sale de la ficha («Tipo de cliente»); si no se sabe, el asesor lo elige en el carrito y queda guardado en la ficha.
 - **RCA-07 · Enviar al cliente** solo dentro de las 24 h de WhatsApp. Al enviar, se revisa que cada equipo siga con stock; si uno se vendió,
   no se envía y se avisa cuál. El bot toma el tramo de la compra con «vuelve a mí»: si el cliente pide asesor o la compra pasa a validación,

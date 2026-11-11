@@ -387,8 +387,9 @@ def recordar_tipo(st, tipo):
 
 def lleva_configuracion(estado):
     """F4·48: la configuración (Windows, programas base, navegadores y Office) se cobra en equipos usados, de cualquier grado;
-    el equipo nuevo ya la trae incluida."""
-    return not normalizar(estado or "").startswith("nuevo")
+    el equipo nuevo ya la trae incluida. «Nuevo», «NUEVA», «Nuevos»… no pagan (11 nov 2026: «NUEVA» pagaba por error);
+    «Semi nuevo» sí paga."""
+    return not normalizar(estado or "").startswith("nuev")
 
 
 def marcar_datos(st, valores, solo_vacios=False):

@@ -86,6 +86,10 @@ st = flujo.estado_vacio()
 ms = compra.desde_asesor(st, {**CARRITO, "items": CARRITO["items"][:2]}, {})
 ok(not compra.activa(st) and "se acaban de vender" in cuerpo(ms[0]), "si todo se vendió, la compra termina con el aviso")
 VENDIDOS.clear()
+EQUIPOS["HP-NUEVA"] = {"cod": "HP-NUEVA", "marca": "HP", "modelo": "PROBOOK", "estado": "NUEVA", "precio": 3000000, "stock": 1}
+st = flujo.estado_vacio()
+texto = cuerpo(compra.desde_asesor(st, {"tipo": "Cliente final", "items": [{"codigo": "HP-NUEVA", "equipo": "HP PROBOOK", "precio": 3000000}]}, {})[-1])
+ok("Configuración" not in texto and "$3.000.000" in texto, "un equipo «NUEVA» no paga configuración (migración 0079)")
 ok(compra.desde_asesor(flujo.estado_vacio(), {"items": []}, {}) == [], "un carrito vacío no envía nada")
 
 print(f"\n{n - fallos}/{n}")
