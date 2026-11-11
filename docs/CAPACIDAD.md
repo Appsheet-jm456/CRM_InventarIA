@@ -41,6 +41,17 @@ Cliente → Meta → Cloudflare (bot.ventasvirtualcolombia.shop) → Receptor Py
 5. **Prueba de carga** `prueba_carga.py`: N clientes falsos (`5799955…`) con el receptor, la base y la IA reales, **sin enviar a Meta**; mide
    tiempos, mensajes perdidos y sin respuesta, y borra los clientes al final.
 
+## Prueba de 100 y ajustes de rendimiento (11 nov 2026)
+
+- **Prueba de 100 clientes a la vez** (`prueba_carga.py --ejecutar`, sin enviar a Meta): **300 de 300 mensajes guardados, 0 sin respuesta**,
+  respuesta del bot en mediana 3,3 s y la más lenta 3,4 s (casi todo es la pausa «humana»), 20 s en total. ✅ aguanta.
+- **Postgres ajustado al servidor** con `supabase/ajustar-postgres.sh` (corría con los valores de fábrica, 128 MB): `shared_buffers` 2 GB,
+  `effective_cache_size` 8 GB, `work_mem` 16 MB, SSD. Quedan en `postgresql.auto.conf`; **tras restaurar en otro servidor, correr el script**
+  (`--deshacer` vuelve atrás).
+- **Migración 0075**: 19 índices en claves foráneas (oportunidades, historial, leads, mensajes, pagos, alistamientos…).
+- **Sesión en un solo viaje**: perfil, rol y permisos en una consulta, y el layout la pide en paralelo con la apariencia.
+- Revisado: no hay sondeo constante sobre `leads` (0 escaneos por minuto en vivo); los contadores altos eran históricos.
+
 ## Lo que hace el dueño
 
 1. Crear la llave en openrouter.ai (con saldo, p. ej. US$ 10) y en **Configuración → Agente → Cerebro**: principal **OpenRouter** con
