@@ -12,11 +12,17 @@ export async function GET(_: Request, { params }: { params: { ruta: string[] } }
   const { data: archivo, error } = await crearClienteAdmin().storage.from('media').download(ruta)
   if (error || !archivo) return new Response('No encontrado', { status: 404 })
   const nombre = mensaje.media_nombre || ruta.split('/').pop()
+  // Solo se muestra en la página lo que el navegador no ejecuta; lo demás (html, svg, xml…) se descarga.
+  const mime = (mensaje.media_mime || 'application/octet-stream').split(';')[0].trim().toLowerCase()
+  const seMuestra = /^(image\/(?!svg)|audio\/|video\/)/.test(mime) || mime === 'application/pdf'
   return new Response(archivo, {
     headers: {
-      'Content-Type': mensaje.media_mime || 'application/octet-stream',
-      'Content-Disposition': `inline; filename*=UTF-8''${encodeURIComponent(nombre ?? 'archivo')}`,
+      'Content-Type': seMuestra ? mime : 'application/octet-stream',
+      'Content-Disposition': `${seMuestra ? 'inline' : 'attachment'}; filename*=UTF-8''${encodeURIComponent(nombre ?? 'archivo')}`,
       'Cache-Control': 'private, no-store',
+      'X-Content-Type-Options': 'nosniff',
+      // El visor de PDF de Chrome no abre con sandbox; un PDF no ejecuta scripts de la página.
+      ...(mime === 'application/pdf' ? {} : { 'Content-Security-Policy': 'sandbox' }),
     },
   })
 }

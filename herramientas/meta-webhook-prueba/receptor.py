@@ -47,6 +47,8 @@ import visor
 RAIZ = Path(__file__).resolve().parents[2]
 REGISTRO = Path(__file__).with_name("eventos.log")
 PUERTO = 8095
+MAXIMO_WEBHOOK = 2 * 1024 * 1024    # Meta manda JSON pequeño (el audio o la imagen se bajan aparte)
+MAXIMO_INTERNO = 20 * 1024 * 1024   # rutas /interno/*: ya con token, pero también con tope
 API = "https://graph.facebook.com/v25.0"
 
 
@@ -1045,6 +1047,16 @@ class Webhook(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(texto.encode())
 
+    def leer_cuerpo(self, maximo):
+        """Lee el cuerpo con tope. None si el largo no es válido o pasa el máximo (se responde 413 y no se lee nada)."""
+        try:
+            largo = int(self.headers.get("Content-Length", 0))
+        except ValueError:
+            return None
+        if largo < 0 or largo > maximo:
+            return None
+        return self.rfile.read(largo)
+
     def do_GET(self):
         url = urlparse(self.path)
         if url.path != "/webhook":
@@ -1066,8 +1078,11 @@ class Webhook(BaseHTTPRequestHandler):
         por_tunel = any(self.headers.get(h) for h in ("Cf-Ray", "Cf-Connecting-Ip", "X-Forwarded-For"))
         if por_tunel or not token or not hmac.compare_digest(token, self.headers.get("X-Interno-Token", "")):
             return self.responder(403)
+        cuerpo = self.leer_cuerpo(MAXIMO_INTERNO)
+        if cuerpo is None:
+            return self.responder(413)
         try:
-            pedido = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))))
+            pedido = json.loads(cuerpo)
             respuesta = accion(pedido)
         except LookupError:
             return self.responder(404)
@@ -1097,7 +1112,11 @@ class Webhook(BaseHTTPRequestHandler):
             return self.interno(lambda p: acciones.probar(str(p["texto"])[:500]))
         if urlparse(self.path).path != "/webhook":
             return self.responder(404)
-        crudo = self.rfile.read(int(self.headers.get("Content-Length", 0)))
+        # El cuerpo se lee antes de validar la firma (se firma sobre él): el tope evita que alguien sin firma agote la memoria.
+        crudo = self.leer_cuerpo(MAXIMO_WEBHOOK)
+        if crudo is None:
+            anotar("✗ POST rechazado: cuerpo demasiado grande o largo inválido")
+            return self.responder(413)
         def firma_valida():
             secreto = ENV.get("META_APP_SECRET", "").encode()
             esperada = "sha256=" + hmac.new(secreto, crudo, hashlib.sha256).hexdigest()
