@@ -14,6 +14,9 @@ Carrito (F4·44, docs/AGENTE.md §4f, RAG-54 a RAG-62): con Agente → Compra �
 🛒 Carrito del lienzo) la compra pregunta «¿Quieres agregar otro equipo?», arma una lista en st["compra"]["equipos"] y el resumen,
 las cuentas, la nota del asesor y la cotización llevan todos. Apagado, todo sigue con un solo equipo, como antes.
 
+Aumentar RAM o disco (F4·73, docs/AMPLIACIONES-RAM-DISCO.md, RAM-01 a RAM-08): opción del resumen del carrito; el aumento entra como
+renglón libre con la marca «ampliacion» (de qué equipo es) y sigue a su equipo: si el equipo se quita o se vende, sale con él.
+
 El estado va en st["compra"] (se guarda en leads.estado_bot). Mientras hay compra, st["nodo"] es "COMPRA".
 Precios: siempre los de la tabla productos; el cargo de configuración y los textos salen de agente_config.
 """
@@ -21,6 +24,7 @@ Precios: siempre los de la tabla productos; el cargo de configuración y los tex
 import re
 from datetime import datetime, timedelta, timezone
 
+import ampliacion
 import cotizacion
 import db
 import flujo
@@ -67,6 +71,11 @@ def _items(c):
     if c.get("equipos"):
         return c["equipos"]
     return [{"codigo": c["codigo"], "equipo": c.get("equipo") or "", "precio": c.get("precio") or 0}] if c.get("codigo") else []
+
+
+def _equipos(c):
+    """Los renglones que no son aumentos (F4·73, RAM-08: el máximo del carrito no cuenta los aumentos)."""
+    return [i for i in _items(c) if not i.get("ampliacion")]
 
 
 def _carrito(c):
@@ -123,11 +132,13 @@ def _que_lleva(c):
 
 def _marcas(texto, c, nombre=""):
     """{n} equipos en el pedido, {max} el máximo y {nombre} el del cliente (sin nombre, «¡Hola !» queda «¡Hola!»)."""
-    t = texto.replace("{n}", str(len(_items(c)))).replace("{max}", str(_maximo())).replace("{nombre}", nombre)
+    t = texto.replace("{n}", str(len(_equipos(c)))).replace("{max}", str(_maximo())).replace("{nombre}", nombre)
     return re.sub(r" +([!,.?])", r"\1", t)
 
 
 def _renglon(k, i):
+    if i.get("ampliacion"):  # F4·73 (RAM-06)
+        return f"{k}. ⚡ {i['equipo']}\n     💰 {flujo.cop(i['precio'])}"
     if i.get("libre"):  # F4·72 (RCA-03): fuera del inventario, sin código
         return f"{k}. 📦 {i['equipo']}\n     💰 {flujo.cop(i['precio'])}"
     return f"{k}. 💻 {i['equipo']} · Código {i['codigo']}\n     💰 {flujo.cop(i['precio'])}"
@@ -143,7 +154,9 @@ def _resumen(c):
         if c.get("asesor"):  # F4·72: el asesor arma el pedido; el cliente solo confirma
             return "\n".join(lineas + [f"*Total ({len(items)} {'producto' if len(items) == 1 else 'productos'}): {flujo.cop(c['total'])}*",
                                         "", "¿Confirmas tu pedido? Te envío los datos para pagar."])
-        lineas += [f"*Total ({len(items)} {'equipo' if len(items) == 1 else 'equipos'}): {flujo.cop(c['total'])}*"]
+        eq, amp = len(_equipos(c)), len(items) - len(_equipos(c))
+        cuenta = f"{eq} {'equipo' if eq == 1 else 'equipos'}" + (f" + {amp} {'aumento' if amp == 1 else 'aumentos'}" if amp else "")
+        lineas += [f"*Total ({cuenta}): {flujo.cop(c['total'])}*"]
         return "\n".join(lineas)
     lineas = [f"🛒 *Resumen de tu compra*", f"💻 {c['equipo']} · Código {c['codigo']}", f"💰 Precio: {flujo.cop(c['precio'])}"]
     if c["tipo"] == "cliente_final" and c["cargo"]:
@@ -170,6 +183,7 @@ def _pedir_tipo(st):
 # Opciones del resumen con carrito (RAG-58 y RAG-60): lista, porque WhatsApp deja solo 3 botones.
 OPCIONES_RESUMEN = [("compra-si", "Confirmar pedido", "Te envío los datos para pagar"),
                     ("compra-agregar", "Agregar otro equipo", ""),
+                    ("compra-ampliar", "Aumentar RAM o disco", "Más memoria o más espacio"),  # F4·73
                     ("compra-quitar", "Quitar un equipo", ""),
                     ("compra-cotizar", "Cotizar este pedido", "Te envío la cotización en PDF"),
                     ("compra-asesor", "Hablar con asesor", ""),
@@ -188,7 +202,8 @@ def _menu(texto, opciones):
 def _opciones_resumen(c):
     items = _items(c)
     return [o for o in OPCIONES_RESUMEN
-            if not (o[0] == "compra-agregar" and len(items) >= _maximo()) and not (o[0] == "compra-quitar" and len(items) < 2)]
+            if not (o[0] == "compra-agregar" and len(_equipos(c)) >= _maximo()) and not (o[0] == "compra-quitar" and len(items) < 2)
+            and not (o[0] == "compra-ampliar" and not ampliacion.disponible(c, _cfg()))]
 
 
 def _confirmar(st):
@@ -216,6 +231,8 @@ def _confirmar(st):
     elif _carrito(c):  # RAG-57: precios de la base al armar el resumen; un equipo agotado se quita con aviso
         vigentes, idos = [], []
         for i in _items(c):
+            if i.get("ampliacion"):  # F4·73: los aumentos siguen a su equipo (abajo)
+                continue
             p = None if i["codigo"].upper() in vendidos else _producto_por_codigo(i["codigo"])
             if p:
                 vigentes.append({"codigo": p["cod"], "equipo": f"{p['marca']} {p['modelo']}".strip(), "precio": p["precio"]})
@@ -229,8 +246,10 @@ def _confirmar(st):
             otros = _alternativas(idos)
             if otros:
                 aviso.append(flujo.lista_equipos("Te puede interesar uno de estos 👇", otros, "Toca uno o escríbeme su *código*."))
-        c["equipos"] = vigentes
+        c["equipos"] = _con_aumentos(vigentes, _items(c))
         c.update(codigo=vigentes[0]["codigo"], equipo=vigentes[0]["equipo"], precio=vigentes[0]["precio"])
+    for k in ("ampliar", "ofertas"):
+        c.pop(k, None)
     items = _items(c)
     if c.get("asesor"):  # F4·72 (RCA-05): equipos del inventario de cualquier categoría; los libres no cuentan; el asesor puede quitarla
         usados = not c.get("sin_configuracion") and any(
@@ -253,6 +272,15 @@ def _confirmar(st):
                                           ("compra-cancelar", "Cancelar")])]
 
 
+def _con_aumentos(equipos, antes):
+    """F4·73 (RAM-07): cada equipo seguido de sus aumentos; los de un equipo que ya no está, fuera."""
+    salida = []
+    for e in equipos:
+        salida.append(e)
+        salida += [a for a in antes if a.get("ampliacion") and a["ampliacion"]["de"].upper() == str(e["codigo"]).upper()]
+    return salida
+
+
 def _seguir(st, lead=None):
     """Terminó de elegir equipos: el tipo de cliente si falta y el resumen."""
     if not st["compra"].get("tipo"):
@@ -264,7 +292,7 @@ def _preguntar_otro(st, lead=None):
     """RAG-56: «¿Quieres agregar otro equipo?» o, en el máximo, el aviso y el resumen."""
     c = st["compra"]
     nombre = ((lead or {}).get("nombre") or "").split(" ")[0]
-    if len(_items(c)) >= _maximo():
+    if len(_equipos(c)) >= _maximo():
         texto = _marcas((_cfg().get("carrito_texto_maximo") or "Llegaste al máximo de {max} equipos por pedido 🙌").strip(), c, nombre)
         return [flujo.m_texto(texto)] + _seguir(st, lead)
     c["paso"] = "otro"
@@ -570,26 +598,162 @@ def _responder_carrito(st, c, paso, entrada, n, lead):
             if len(_items(c)) >= _maximo():
                 return _preguntar_otro(st, lead)
             return _pedir_otro(st, lead)
+        if entrada == "compra-ampliar" and ampliacion.disponible(c, _cfg()):
+            return _ampliar(st)
         if entrada == "compra-quitar":
             items = _items(c)
             c["paso"] = "quitar"
             return [_menu("¿Cuál quito del pedido?", [(f"quitar-{k}", i["equipo"][:20], f"{i['codigo']} · {flujo.cop(i['precio'])}")
                                                            for k, i in enumerate(items, 1)])]
         if entrada == "compra-cotizar":  # RAG-60: un solo PDF con todos los equipos
-            codigos = [i["codigo"] for i in _items(c)]
+            codigos = [i["codigo"] for i in _items(c) if not i.get("libre")]
             tipo = c.get("tipo")
             _limpiar(st)
             return cotizacion.iniciar(st, "", lead, pedido=codigos, tipo=tipo)
         return None
+    if paso and paso.startswith("ampliar"):
+        return _responder_ampliar(st, c, paso, entrada, n)
     if paso == "quitar":
         items = _items(c)
         m = re.fullmatch(r"(?:quitar-)?(\d+)", entrada.strip()) or re.fullmatch(r"(\d+)", n)
         if m and 1 <= int(m.group(1)) <= len(items):
             quitado = items.pop(int(m.group(1)) - 1)
-            c["equipos"] = items
+            if quitado.get("ampliacion"):
+                c["equipos"] = items
+                return [flujo.m_texto(f"🗑 Quité el *{quitado['equipo']}* de tu pedido.")] + _confirmar(st)
+            # F4·73 (RAM-07): con el equipo salen sus aumentos
+            c["equipos"] = [i for i in items if not (i.get("ampliacion") and i["ampliacion"]["de"].upper() == quitado["codigo"].upper())]
+            if not _equipos(c):
+                c["equipos"] = []
+                c.pop("codigo", None)
+                return [flujo.m_texto(f"🗑 Quité el *{quitado['equipo']}* de tu pedido.")] + _pedir_otro(st, lead)
             return [flujo.m_texto(f"🗑 Quité el *{quitado['equipo']}* ({quitado['codigo']}) de tu pedido.")] + _confirmar(st)
         return _confirmar(st)
     return None
+
+
+# --------------------------------------------------------------------------- #
+# F4·73: aumentar RAM o disco (docs/AMPLIACIONES-RAM-DISCO.md, RAM-01 a RAM-08)
+# --------------------------------------------------------------------------- #
+
+SI = ("si", "sí", "dale", "ok", "claro", "de una")
+VER_PEDIDO = ("compra-resumen", "Ver mi pedido")
+
+
+def _ampliar(st):
+    """Con un equipo va directo; con varios pregunta a cuál."""
+    c = st["compra"]
+    eqs = [i for i in _equipos(c) if not i.get("libre")]
+    if len(eqs) == 1:
+        return _ampliar_que(st, eqs[0]["codigo"])
+    c["paso"] = "ampliar_equipo"
+    return [_menu("¿A cuál equipo le quieres aumentar la RAM o el disco?",
+                  [(f"ampliar-eq-{k}", i["equipo"][:24], i["codigo"]) for k, i in enumerate(eqs, 1)])]
+
+
+def _equipo_ampliar(c):
+    cod = c.get("ampliar")
+    return (_producto_por_codigo(cod) or flujo.equipo_por_codigo(cod)) if cod else None
+
+
+def _ampliar_que(st, cod):
+    c = st["compra"]
+    c.update(paso="ampliar_que", ampliar=cod)
+    p = _equipo_ampliar(c)
+    if not p:
+        return _confirmar(st)
+    tiene = " y ".join(x for x in (f"{p['ram']} de RAM" if p.get("ram") else "", f"{p['disco']} de disco" if p.get("disco") else "") if x)
+    return [flujo.m_botones(f"Tu *{p['marca']} {p['modelo']}*{' tiene ' + tiene if tiene else ''}. ¿Qué quieres aumentar?",
+                            [("ampliar-ram", "RAM"), ("ampliar-disco", "Disco"), VER_PEDIDO])]
+
+
+def _ampliar_ram(st, p):
+    c = st["compra"]
+    estado = ampliacion.estado_ram(p)
+    if estado == "onboard":  # RAM-02
+        c["paso"] = "ampliar_onboard"
+        return [flujo.m_botones("Este equipo tiene la RAM soldada (onboard) y no tiene ranura adicional: no es posible aumentar la RAM.\n\n"
+                                "¿Quieres aumentar el disco?", [("ampliar-disco", "Sí"), ("compra-resumen", "No, continuar")])]
+    ops = ampliacion.opciones_ram(p) if estado == "ok" else None
+    c["paso"] = "ampliar_que"
+    if ops is None:  # RAM-02 y RAM-03: sin datos, lo confirma un asesor
+        return [flujo.m_botones("Para este equipo un asesor te confirma si se puede ampliar la RAM.",
+                                [("ampliar-disco", "Aumentar disco"), ("compra-asesor", "Hablar con asesor"), VER_PEDIDO])]
+    if not ops:  # RAM-05
+        return [flujo.m_botones(f"Tu equipo ya tiene {p['ram'] or 'esa RAM'}; un asesor te confirma otras opciones de RAM.",
+                                [("ampliar-disco", "Aumentar disco"), ("compra-asesor", "Hablar con asesor"), VER_PEDIDO])]
+    return _ofrecer(st, p, "🧠 *Aumentar la RAM*", ops)
+
+
+def _ampliar_disco(st, p):
+    c = st["compra"]
+    ops = ampliacion.opciones_disco(p, _cfg())
+    c["paso"] = "ampliar_que"
+    if not ops:  # RAM-05
+        return [flujo.m_botones(f"Tu equipo ya tiene {p['disco'] or 'ese disco'}; un asesor te confirma otras opciones de disco.",
+                                [("ampliar-ram", "Aumentar RAM"), ("compra-asesor", "Hablar con asesor"), VER_PEDIDO])]
+    return _ofrecer(st, p, "💽 *Aumentar el disco*", ops)
+
+
+def _ofrecer(st, p, titulo, ops):
+    c = st["compra"]
+    c.update(paso="ampliar_elegir", ofertas=ops)
+    filas = [(f"ampliar-op-{k}", f"{ampliacion.texto_gb(o['desde'])} → {ampliacion.texto_gb(o['hasta'])}",
+              f"{flujo.cop(o['precio'])} · {o['detalle']}") for k, o in enumerate(ops, 1)]
+    texto = f"{titulo} de tu *{p['marca']} {p['modelo']}*:\n" + "\n".join(f"• {t}: {d}" for _, t, d in filas)
+    return [flujo.m_lista(texto + "\n\nToca una opción o escribe su número.", filas[:9] + [("compra-resumen", "Ver mi pedido", "Sin aumento")],
+                          "Ver opciones")]
+
+
+def _elegido(st, op):
+    """RAM-06: un aumento de RAM y uno de disco por equipo; elegir otro reemplaza el anterior."""
+    c = st["compra"]
+    p = _equipo_ampliar(c)
+    if not p:
+        return _confirmar(st)
+    cod = c["ampliar"]
+    nuevo = ampliacion.renglon(op, f"{p['marca']} {p['modelo']}".strip(), cod)
+    otros = [i for i in _items(c) if not (i.get("ampliacion") and i["ampliacion"]["de"].upper() == cod.upper()
+                                          and i["ampliacion"]["tipo"] == op["tipo"])]
+    equipos = [i for i in otros if not i.get("ampliacion")]
+    c["equipos"] = _con_aumentos(equipos, otros + [nuevo])
+    return [flujo.m_texto(f"⚡ Agregué *{nuevo['equipo']}* a tu pedido: {flujo.cop(nuevo['precio'])}.")] + _confirmar(st)
+
+
+def _responder_ampliar(st, c, paso, entrada, n):
+    if entrada == "compra-resumen" or n in ("no", "continuar", "no continuar", "listo", "resumen", "mi pedido", "ver mi pedido"):
+        return _confirmar(st)
+    if paso == "ampliar_equipo":
+        eqs = [i for i in _equipos(c) if not i.get("libre")]
+        m = re.fullmatch(r"(?:ampliar-eq-)?(\d+)", entrada.strip()) or re.fullmatch(r"(\d+)", n)
+        if m and 1 <= int(m.group(1)) <= len(eqs):
+            return _ampliar_que(st, eqs[int(m.group(1)) - 1]["codigo"])
+        return _ampliar(st)
+    p = _equipo_ampliar(c)
+    if not p:
+        return _confirmar(st)
+    if paso == "ampliar_elegir":
+        ops = c.get("ofertas") or []
+        m = re.fullmatch(r"(?:ampliar-op-)?(\d+)", entrada.strip()) or re.fullmatch(r"(\d+)", n)
+        if m and 1 <= int(m.group(1)) <= len(ops):
+            return _elegido(st, ops[int(m.group(1)) - 1])
+        if m and int(m.group(1)) == len(ops) + 1:
+            return _confirmar(st)
+    quiere_ram = entrada == "ampliar-ram" or bool(re.search(r"\b(ram|memoria)\b", n))
+    quiere_disco = entrada == "ampliar-disco" or bool(re.search(r"\b(disco|ssd|almacenamiento)\b", n))
+    if paso == "ampliar_onboard" and (n in SI or n == "1" or n.startswith("si ")):
+        quiere_disco = True
+    elif paso == "ampliar_onboard" and n == "2":
+        return _confirmar(st)
+    if paso == "ampliar_que" and n in ("1", "2"):
+        quiere_ram, quiere_disco = n == "1", n == "2"
+    if quiere_ram:
+        return _ampliar_ram(st, p)
+    if quiere_disco:
+        return _ampliar_disco(st, p)
+    if paso == "ampliar_elegir":
+        return _ampliar_ram(st, p) if (c.get("ofertas") or [{}])[0].get("tipo") == "ram" else _ampliar_disco(st, p)
+    return _ampliar_que(st, c["ampliar"])
 
 
 # --------------------------------------------------------------------------- #

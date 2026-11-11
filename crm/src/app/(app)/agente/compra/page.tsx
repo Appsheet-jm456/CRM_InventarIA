@@ -1,21 +1,24 @@
 import { crearCliente } from '@/lib/supabase/server'
 import { Compra } from './Compra'
+import { Ampliaciones } from './Ampliaciones'
 
 // F4·25: textos y tiempos del flujo de compra. El permiso lo revisa el layout del módulo.
 export default async function PaginaCompra() {
   const supabase = crearCliente()
-  const [{ data: config }, { data: etapas }, { data: accion }, { data: bots }, { data: publicados }] = await Promise.all([
+  const [{ data: config }, { data: etapas }, { data: accion }, { data: bots }, { data: publicados }, { data: ampliaciones }] = await Promise.all([
     supabase.from('agente_config')
-      .select('texto_cuentas, texto_instructivo_pago, texto_comprobante, texto_sigue_interesado, texto_cancelacion, horas_sin_respuesta, cargo_configuracion, compra_bot_despues, carrito_activo, carrito_max, carrito_texto_otro, carrito_texto_pedir, carrito_texto_maximo, carrito_encabezado, validar_comprobante, texto_soporte, texto_validado, texto_rechazado, texto_abono, resumen_pedido_activo, texto_resumen_pedido, motivos_rechazo')
+      .select('texto_cuentas, texto_instructivo_pago, texto_comprobante, texto_sigue_interesado, texto_cancelacion, horas_sin_respuesta, cargo_configuracion, compra_bot_despues, carrito_activo, carrito_max, carrito_texto_otro, carrito_texto_pedir, carrito_texto_maximo, carrito_encabezado, validar_comprobante, ampliacion_activa, ampliacion_nvme, texto_soporte, texto_validado, texto_rechazado, texto_abono, resumen_pedido_activo, texto_resumen_pedido, motivos_rechazo')
       .eq('id', 1).maybeSingle(),
     supabase.from('compra_etapas')
       .select('embudos(nombre), esperando:etapas!compra_etapas_esperando_pago_id_fkey(nombre), confirmar:etapas!compra_etapas_pago_por_confirmar_id_fkey(nombre)'),
     supabase.from('acciones').select('nombre, activa, hacer'),
     supabase.from('bots').select('id, nombre, archivado').order('nombre'),
     supabase.from('bot_flujos').select('bot_id').eq('estado', 'publicada'),
+    supabase.from('ampliaciones').select('id, tipo, desde_gb, hasta_gb, precio, precio_rapida, activa').order('orden').order('id'),
   ])
   const disparo = (accion ?? []).find((a) => ((a.hacer as { tipo: string; flujo?: string }[]) ?? []).some((p) => p.tipo === 'flujo' && p.flujo === 'compra'))
   return (
+    <>
     <Compra
       datos={{
         texto_cuentas: config?.texto_cuentas ?? '',
@@ -49,5 +52,12 @@ export default async function PaginaCompra() {
       }))}
       disparo={disparo ? { nombre: disparo.nombre, activa: disparo.activa } : null}
     />
+    <Ampliaciones datos={{
+      activa: config?.ampliacion_activa ?? true,
+      nvme: Number(config?.ampliacion_nvme ?? 30000),
+      filas: (ampliaciones ?? []).map((a) => ({ id: a.id, tipo: a.tipo, desde_gb: a.desde_gb, hasta_gb: a.hasta_gb, precio: Number(a.precio),
+        precio_rapida: a.precio_rapida == null ? null : Number(a.precio_rapida), activa: a.activa })),
+    }} />
+    </>
   )
 }

@@ -201,6 +201,11 @@ def agente_config(fresco=False):
     return filas[0] if filas else {}
 
 
+def ampliaciones():
+    """F4·73: los precios activos de aumentar RAM o disco (Agente → Compra), con la copia de 30 s."""
+    return _cacheado("ampliaciones", "ampliaciones?activa=is.true&select=tipo,desde_gb,hasta_gb,precio,precio_rapida&order=orden,id") or []
+
+
 def atributos():
     """Los datos de la ficha activos (lead_atributos, F4·30/F4·33): {clave: {nombre, tipo, opciones}}. Los usan el cuadro Pregunta,
     las marcas {dato} de los mensajes y «Marcar un dato» (F4·34)."""

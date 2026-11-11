@@ -38,6 +38,7 @@ db.sin_stock = lambda cods: {str(c).upper() for c in cods} - {p["cod"].upper() f
 db.conocimiento = lambda categoria, fresco=False: []  # F4·49: sin imagen de medios de pago
 db.agente_config = lambda fresco=False: CONFIG
 db.productos_agotados = lambda: []
+db.ampliaciones = lambda: []  # F4·73: sin aumentos (los prueba prueba_ampliaciones.py)
 db.principal = lambda: 1
 db.crear_cotizacion = lambda fila: (GUARDADAS.append(fila), {"id": len(GUARDADAS), "consecutivo": 100 + len(GUARDADAS)})[1]
 db.guardar_pdf_cotizacion = lambda i, ruta, contenido: PDFS.update({ruta: contenido})

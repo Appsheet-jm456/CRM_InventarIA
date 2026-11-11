@@ -7,7 +7,7 @@ import { guardarCompra, type DatosCompra, type Resultado } from './acciones'
 const PASOS = [
   ['Quiere comprar', 'El cliente escribe «quiero comprar 100-102-1030-1» (o solo «quiero comprar» después de ver una ficha).'],
   ['Equipo y tipo de cliente', 'Toma el código escrito o el de la última ficha; si no hay, lo pide. Pregunta distribuidor o cliente final (los que vienen del bot de distribuidores no la ven).'],
-  ['Resumen', 'Precio de la base, + configuración si es cliente final, y el total. Botones: Sí, enviar cuentas · Hablar con asesor · Cancelar. Con el carrito encendido, antes pregunta «¿otro equipo?» y el resumen lleva todos (ver Carrito abajo).'],
+  ['Resumen', 'Precio de la base, + configuración si es cliente final, y el total. Botones: Sí, enviar cuentas · Hablar con asesor · Cancelar. Con el carrito encendido, antes pregunta «¿otro equipo?» y el resumen lleva todos (ver Carrito abajo) y la opción «Aumentar RAM o disco» (ver Aumentos al final).'],
   ['Cuentas', 'Envía el texto de cuentas de abajo, tal cual, y mueve la oportunidad a Esperando pago.'],
   ['Comprobante', 'Con una foto, un PDF o «ya pagué»: Pago por confirmar, el texto de comprobante recibido y el chat pasa a la Bandeja con una nota para el asesor.'],
   ['Asesor', 'El asesor verifica el pago en el banco y cierra la venta. Nadie confirma un pago automáticamente.'],
