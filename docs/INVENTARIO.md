@@ -123,8 +123,8 @@ compilados y reiniciados.
 
 **Para probarlo (dueño):** recargar la página; Inventario → un equipo → Editar → subir Foto 1, 2 y 3 (JPG o PNG) y pegar el enlace de la
 carpeta de Drive → Guardar cambios. Probar un WEBP (debe rechazarlo). Por WhatsApp pedir ese código: ficha con la Foto 1 y «📷 Más fotos»,
-y luego las otras dos. **Ojo:** el 11 nov el botón «Guardar cambios» con foto no guardaba entrando por `crm.ventasvirtualcolombia.shop`
-(sin error en la app; la última foto que se guardó fue el 7 nov, antes de Cloudflare). Probar también por `http://100.114.72.43:8096`.
+y luego las otras dos. **Nota:** antes de este cambio el botón «Guardar cambios» con foto no guardaba (sin error en la app). Tras compilar y reiniciar, el
+dueño guardó las 3 fotos del T490 el 11 nov. No se encontró la causa; si vuelve, anotar por dónde se entró (dominio o Tailscale).
 
 ## Chat InventarIA
 
