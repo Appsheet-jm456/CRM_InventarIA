@@ -24,8 +24,19 @@ def ok(condicion, descripcion):
 f = interprete._limpiar('{"ram_gb": [16, 32, 64], "precio_max": 5000000, "uso": ["Ejecutivo", "Diseño"]}')
 ok(f == {"ram_gb": 16, "precio_max": 5000000, "uso": "Diseño"}, "listas de la IA: un solo valor por filtro")
 ok(interprete.describir(f) == "16 GB de RAM, para diseño, hasta $5.000.000", "describir no se cae con lo que devolvió la IA")
-f = interprete._limpiar('{"procesador": "I7", "generacion": "11", "ram_gb": "8", "uso": "Gamer", "marca": "dell"}')
+f = interprete._limpiar('{"procesador": "I7", "generacion": "11", "ram_gb": "8", "uso": "Astronauta", "marca": "dell"}')
 ok(f == {"procesador": "i7", "generacion": 11, "ram_gb": 8, "marca": "DELL"}, "textos a número, i7 en minúscula, uso desconocido fuera")
+ok(interprete._limpiar('{"uso": "Gamer"}') == {"uso": "Gamer"}, "«Gamer» es un uso válido para el buscador")
+ok(all(interprete.uso(t) == "Gamer" for t in ("portatiles gamer", "Portatiles Gaimer tienes?", "equipos para videojuegos", "para jugar fortnite")),
+   "gamer, gaimer, videojuegos y jugar se entienden como Gamer (antes que «video» = diseño)")
+ok(interprete.uso("edicion de video") == "Diseño", "edición de video sigue siendo Diseño")
+_eq = lambda cod, uso, desc="": {"cod": cod, "marca": "X", "modelo": "M", "cpu": "i5-8250U", "gen": 8, "ram": "8GB", "disco": "", "precio": 1,
+                                  "atributos": {"uso_recomendado": uso} if uso else {}, "descripcion": desc}
+_lista = [_eq("A", "Gamer"), _eq("B", "Diseño y render"), _eq("C", ""), _eq("D", "", "PORTATIL X RTX 4050 6GB"), _eq("E", "", "PORTATIL X RTX A4000"),
+          _eq("F", "Oficina y estudio", "PORTATIL X RTX 3060")]
+ok([p["cod"] for p in interprete.filtrar(_lista, {"uso": "Gamer"}, lambda p: False)] == ["A", "D"],
+   "uso Gamer: lo marcado Gamer, o sin marca con RTX/GTX de consumo; no la estación de trabajo ni lo marcado Oficina")
+ok("B" in [p["cod"] for p in interprete.filtrar(_lista, {"uso": "Diseño"}, lambda p: False)], "uso Diseño incluye lo marcado «Diseño y render»")
 ok(interprete._limpiar('{"procesador": "Ryzen 7", "ram_gb": [], "uso": null}') == {}, "procesador fuera de i3-i9 y listas vacías se descartan")
 ok(interprete._limpiar('{"precio_max": {"min": 1}, "generacion": true}') == {}, "objetos y verdadero/falso se descartan")
 ok(interprete._limpiar("no entendí") == {}, "sin JSON, sin filtros")

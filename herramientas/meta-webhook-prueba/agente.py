@@ -25,7 +25,7 @@ TRATO = {"tu": "Háblale de tú.", "usted": "Háblale de usted."}
 LARGO = {"corto": "Respuestas cortas: una a tres frases.", "medio": "Respuestas de tamaño medio, sin párrafos largos."}
 
 HERRAMIENTAS = {
-    "buscar_productos": 'Busca portátiles con stock. args: {"marca":"", "modelo":"X1 Yoga Gen 6", "procesador":"i5", "generacion":10, "ram_gb":16, "precio_max":1500000, "uso":"Diseño"} (todos opcionales). '
+    "buscar_productos": 'Busca portátiles con stock. args: {"marca":"", "modelo":"X1 Yoga Gen 6", "procesador":"i5", "generacion":10, "ram_gb":16, "precio_max":1500000, "uso":"Diseño"} (todos opcionales). «uso» es «Diseño» (render, edición, ingeniería) o «Gamer» (videojuegos, gaming, tarjeta gráfica potente). '
                         "Si el cliente nombra un modelo (X1 Yoga, T14, 5420, ZBook…) usa «modelo» con lo que dijo; «generacion» es solo la del procesador, no el «Gen 6» de un modelo. "
                         "Pon SOLO los filtros que el cliente dijo; no inventes presupuesto ni uso. Para «el más barato» o «qué tienen», llámala sin filtros: "
                         "los equipos vienen ordenados del más barato al más caro. Devuelve código, equipo, especificaciones, precio y stock reales.",
@@ -219,6 +219,11 @@ def usar(nombre, args, ctx):
                     f[k] = int(re.sub(r"\D", "", str(f[k])))
                 except ValueError:
                     f.pop(k)
+        if f.get("uso"):  # «gaming», «juegos» → Gamer; «render», «diseño gráfico» → Diseño; otro valor no filtra
+            u = interprete._n(f["uso"])
+            f["uso"] = "Gamer" if re.search(r"gam|jueg", u) else "Diseño" if re.search(r"dise|render|edici", u) else None
+            if not f["uso"]:
+                f.pop("uso")
         todos = flujo.inventario()
         h = interprete.por_modelo(str(args.get("modelo") or ""), todos) if args.get("modelo") else None
         if h:  # el modelo que nombró el cliente: «X1 Yoga Gen 6» (su «Gen 6» no es la generación del procesador)

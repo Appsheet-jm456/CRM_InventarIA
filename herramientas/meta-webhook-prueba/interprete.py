@@ -83,6 +83,8 @@ def monto(n, contexto_presupuesto=False):
 
 def uso(n):
     n = _n(n)
+    if re.search(r"gamer|gaimer|gaming|gamin|juego|jugar|fortnite|valorant", n):  # antes que «video»: «videojuegos» no es edición de video
+        return "Gamer"
     if re.search(r"diseno|edicion|render|autocad|video|photoshop|arquitect", n):
         return "Diseño"
     if re.search(r"ejecutivo|oficina|empresa|trabajo", n):
@@ -182,7 +184,7 @@ def vale_la_pena_ia(n):
 INSTRUCCION = ("Extrae filtros de búsqueda de portátiles del mensaje de un cliente. Responde SOLO un objeto JSON "
                "con estas claves (null si no se menciona): marca (str), procesador (\"i3\"|\"i5\"|\"i7\"|\"i9\"), "
                "generacion (int), ram_gb (int), precio_max (int en pesos colombianos), "
-               "uso (\"Hogar\"|\"Ejecutivo\"|\"Diseño\"). En Colombia \"palo\" o \"barra\" es un millón de pesos "
+               "uso (\"Hogar\"|\"Ejecutivo\"|\"Diseño\"|\"Gamer\"). En Colombia \"palo\" o \"barra\" es un millón de pesos "
                "(\"dos palos\" = 2000000) y los equipos cuestan entre 500000 y 5000000. "
                "Si el mensaje no busca un equipo, responde {}.")
 
@@ -236,7 +238,7 @@ def _limpiar(crudo):
                 continue
         elif k in ("procesador", "uso"):
             v = str(v)
-            if (k == "procesador" and v.lower() not in ("i3", "i5", "i7", "i9")) or (k == "uso" and v not in ("Hogar", "Ejecutivo", "Diseño")):
+            if (k == "procesador" and v.lower() not in ("i3", "i5", "i7", "i9")) or (k == "uso" and v not in ("Hogar", "Ejecutivo", "Diseño", "Gamer")):
                 continue
             v = v.lower() if k == "procesador" else v
         f[k] = v
@@ -355,6 +357,21 @@ def con_ia(texto, simulador=False):
 # Búsqueda
 # --------------------------------------------------------------------------- #
 
+def _uso_marcado(p):
+    """El atributo «Uso recomendado» del equipo (Gamer, Diseño y render, Oficina y estudio) o ''."""
+    return str((p.get("atributos") or {}).get("uso_recomendado") or "")
+
+
+def es_gamer(p):
+    """Gamer = marcado «Gamer» en el atributo Uso recomendado. Si el equipo no tiene ese atributo, se deduce de la descripción:
+    RTX/GTX de consumo (no Quadro ni serie A de estación de trabajo)."""
+    u = _uso_marcado(p)
+    if u:
+        return u == "Gamer"
+    d = _n(p.get("descripcion"))
+    return bool(re.search(r"\b(rtx|gtx)\s?\d{3,4}", d)) and not re.search(r"quadro|rtx a\d", d)
+
+
 def filtrar(productos, f, es_diseno):
     r = productos
     if "cods" in f:
@@ -370,7 +387,9 @@ def filtrar(productos, f, es_diseno):
     if f.get("precio_max"):
         r = [p for p in r if p["precio"] <= f["precio_max"] * 1.05]
     if f.get("uso") == "Diseño":
-        r = [p for p in r if es_diseno(p)]
+        r = [p for p in r if es_diseno(p) or _uso_marcado(p) == "Diseño y render"]
+    if f.get("uso") == "Gamer":
+        r = [p for p in r if es_gamer(p)]
     return sorted(r, key=lambda p: p["precio"])
 
 
