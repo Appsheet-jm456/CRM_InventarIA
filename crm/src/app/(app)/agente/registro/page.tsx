@@ -1,4 +1,5 @@
 import { crearCliente } from '@/lib/supabase/server'
+import FiltroDia from './FiltroDia'
 
 type Fila = {
   id: number; en: string; proveedor: string; modelo: string; tokens_entrada: number; tokens_salida: number; costo_usd: number
@@ -27,19 +28,35 @@ function inicioDelMes() {
   return new Date(Date.UTC(ahora.getUTCFullYear(), ahora.getUTCMonth(), 1, 5)).toISOString()
 }
 
+// Día de Colombia (UTC-5) de una fecha guardada en UTC, como 'AAAA-MM-DD'.
+const diaCO = (iso: string) => new Date(new Date(iso).getTime() - 5 * 3600 * 1000).toISOString().slice(0, 10)
+const sumarDias = (d: string, n: number) => new Date(Date.parse(`${d}T00:00:00Z`) + n * 86400000).toISOString().slice(0, 10)
+
 // F4·28: métricas del mes y registro de lo que hizo el agente (RAG-18): cada llamada al modelo con tokens, costo y resultado.
 // El permiso lo revisa el layout.
-export default async function PaginaRegistro() {
+export default async function PaginaRegistro({ searchParams }: { searchParams: { dia?: string } }) {
   const supabase = crearCliente()
   const desde = inicioDelMes()
-  const [{ data }, { data: mes }] = await Promise.all([
-    supabase.from('agente_turnos')
-      .select('id, en, proveedor, modelo, tokens_entrada, tokens_salida, costo_usd, resultado, ms, detalle, leads(nombre, telefono)')
-      .order('en', { ascending: false }).limit(100),
+  // ?dia=AAAA-MM-DD filtra el registro a ese día de Colombia (00:00 a 24:00 -05 = 05:00 a 05:00 UTC).
+  const dia = /^\d{4}-\d{2}-\d{2}$/.test(searchParams?.dia ?? '') ? searchParams.dia as string : null
+  let consulta = supabase.from('agente_turnos')
+    .select('id, en, proveedor, modelo, tokens_entrada, tokens_salida, costo_usd, resultado, ms, detalle, leads(nombre, telefono)')
+    .order('en', { ascending: false })
+  consulta = dia ? consulta.gte('en', `${dia}T05:00:00Z`).lt('en', `${sumarDias(dia, 1)}T05:00:00Z`).limit(2000) : consulta.limit(100)
+  const hace30 = new Date(Date.now() - 30 * 86400000).toISOString()
+  const [{ data }, { data: mes }, { data: recientes }] = await Promise.all([
+    consulta,
     supabase.from('agente_turnos').select('lead_id, resultado, costo_usd, detalle').neq('resultado', 'simulador').gte('en', desde).limit(20000),
+    supabase.from('agente_turnos').select('en').gte('en', hace30).order('en', { ascending: false }).limit(20000),
   ])
+  // Días con llamadas en los últimos 30 (los 14 más recientes) para las pastillas del filtro.
+  const porDia = new Map<string, number>()
+  for (const r of (recientes ?? []) as { en: string }[]) { const d = diaCO(r.en); porDia.set(d, (porDia.get(d) ?? 0) + 1) }
+  const dias = [...porDia].slice(0, 14)
   const filas = (data ?? []) as unknown as Fila[]
   const cuenta = (r: string) => filas.filter((f) => f.resultado === r).length
+  const costoFiltro = filas.reduce((a, f) => a + Number(f.costo_usd), 0)
+  const fecha = dia ? new Date(`${dia}T12:00:00Z`).toLocaleDateString('es-CO', { timeZone: 'UTC', dateStyle: 'full' }) : ''
 
   // Métricas del agente: conversaciones que atendió, qué pasó con ellas y cuánto costaron.
   const delMes = ((mes ?? []) as Mes[]).filter((t) => !t.detalle?.buscador)  // las métricas son de Avi; el buscador va aparte
@@ -79,15 +96,16 @@ export default async function PaginaRegistro() {
     </section>
     <section className="panel">
       <div className="panel-h">
-        <div><h2>Registro de IA</h2><small>Las últimas {filas.length} llamadas a la IA, de la más reciente a la más antigua (hora de Colombia): Avi, el resumen de su memoria y el buscador del menú. Los bloqueos son respuestas que el sistema no dejó salir (precio o cuenta inventados).</small></div>
+        <div><h2>Registro de IA</h2><small>{dia ? `${filas.length} llamadas a la IA el ${fecha} (${usd(costoFiltro)})` : `Las últimas ${filas.length} llamadas a la IA`}, de la más reciente a la más antigua (hora de Colombia): Avi, el resumen de su memoria y el buscador del menú. Los bloqueos son respuestas que el sistema no dejó salir (precio o cuenta inventados).</small></div>
         <span className="row">
           <span className="chip ok">{cuenta('respondido')} respondidas</span>
           <span className="chip warn">{cuenta('bloqueado')} bloqueadas</span>
           <span className="chip bad">{cuenta('error') + cuenta('tope')} con error o tope</span>
         </span>
       </div>
+      <div className="panel-b" style={{ paddingBottom: 0 }}><FiltroDia dia={dia} dias={dias} /></div>
       {filas.length === 0 ? (
-        <div className="panel-b muted">Aún no hay registros. Aparecen cuando Avi o el buscador del menú usan la IA, o falla una prueba de conexión del modelo.</div>
+        <div className="panel-b muted">{dia ? 'Ese día no hubo llamadas a la IA: el menú, los códigos, la compra y el carrito del asesor no la usan. Solo cuentan Avi (texto libre de un número en la lista blanca o cliente real con Avi encendido), el resumen de memoria y el buscador.' : <>Aún no hay registros. Aparecen cuando Avi o el buscador del menú usan la IA, o falla una prueba de conexión del modelo.</>}</div>
       ) : (
         <div className="panel-b" style={{ overflowX: 'auto' }}>
           <table>
