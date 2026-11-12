@@ -1,7 +1,10 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { pesos } from '@/lib/inventario'
+import { clienteNavegador } from '@/lib/supabase/navegador'
+import { numeroPedido } from './pedido/pedido'
+import { reenviarResumen } from './pedido/reenviar'
 import { enviarCarrito, guardarCarrito, inventarioCarrito, leerCarrito, traerDelCliente, type Carrito, type EquipoInventario, type ItemCarrito } from './carritoAcciones'
 
 // F4·72 (docs/CARRITO-DEL-ASESOR.md, RCA-01 a RCA-10): el asesor arma el pedido del cliente en la Ficha y se lo envía.
@@ -20,6 +23,23 @@ export function CarritoCliente({ lead, alEnviar }: { lead: number; alEnviar?: ()
   const [aviso, setAviso] = useState<{ error?: string; ok?: string }>({})
   const [ocupado, setOcupado] = useState(false)
   const [cambiado, setCambiado] = useState(false)
+  const [pedidos, setPedidos] = useState<{ id: number; numero: number }[]>([]) // pedidos vigentes del cliente, para «Reenviar resumen»
+
+  const cargarPedidos = useCallback(async () => {
+    const { data } = await clienteNavegador().from('alistamientos').select('id, numero').eq('lead_id', lead).is('cancelado_en', null)
+      .order('creado_en', { ascending: false }).limit(3)
+    setPedidos((data ?? []) as { id: number; numero: number }[])
+  }, [lead])
+  useEffect(() => { cargarPedidos() }, [cargarPedidos])
+
+  // El mismo botón de la pestaña Pedido: envía el «Resumen de tu pedido» sin iniciar la compra, sin botones y sin pedir pago.
+  async function reenviar(id: number, numero: number) {
+    if (!confirm(`¿Reenviar al cliente el resumen del pedido ${numeroPedido(numero)}? No inicia el bot de compra ni pide pago.`)) return
+    setOcupado(true)
+    const r = await reenviarResumen(id)
+    setOcupado(false)
+    setAviso({ error: r.error, ok: r.ok })
+  }
 
   function cargarDe(c: Carrito) {
     setBase(c); setItems(c.items); setTipo(c.tipo); setSinConfig(c.sin_configuracion); setCambiado(false)
@@ -85,7 +105,7 @@ export function CarritoCliente({ lead, alEnviar }: { lead: number; alEnviar?: ()
     setOcupado(false)
     if (r.carrito) cargarDe(r.carrito)
     setAviso({ error: r.error, ok: r.ok })
-    if (enviar && !r.error) alEnviar?.()
+    if (enviar && !r.error) { alEnviar?.(); cargarPedidos() }
   }
 
   if (!base) return <small className="muted">{aviso.error ?? 'Cargando el carrito…'}</small>
@@ -180,6 +200,16 @@ export function CarritoCliente({ lead, alEnviar }: { lead: number; alEnviar?: ()
           onClick={() => confirm('¿Vaciar el carrito?') && cambiar([])}>Vaciar</button>
         {cambiado && <small className="muted">Sin guardar</small>}
       </div>
+      {pedidos.length > 0 && (
+        <div className="row" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          {pedidos.map((p) => (
+            <button key={p.id} type="button" className="btn chico" disabled={ocupado}
+              title="Envía al cliente el «Resumen de tu pedido» ya creado; no inicia el bot de compra, no lleva botones y no pide pago"
+              onClick={() => reenviar(p.id, p.numero)}>🧾 Reenviar resumen{pedidos.length > 1 ? ` ${numeroPedido(p.numero)}` : ''}</button>
+          ))}
+          <small className="muted">Sin activar el bot de compra</small>
+        </div>
+      )}
       {base.enviado_en && (
         <small className="muted">Último envío: {new Date(base.enviado_en).toLocaleString('es-CO', { dateStyle: 'medium', timeStyle: 'short' })}
           {base.enviado_por ? ` por ${base.enviado_por}` : ''}</small>
