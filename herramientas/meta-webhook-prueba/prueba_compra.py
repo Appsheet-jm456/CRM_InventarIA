@@ -185,5 +185,44 @@ ok(cuerpo(m4[0]) == CONFIG["texto_cuentas"], "otro pedido (otros equipos o total
 compra.responder(st, "ya no quiero", "text")
 ok("cuentas_enviadas" not in st, "si cancela, la próxima compra vuelve a recibir los medios de pago")
 
+# 18. 12 nov 2026: un soporte (foto o PDF) de quien no tiene compra en el bot arma la compra con su equipo elegido y queda por validar
+flujo.equipo_por_codigo = lambda cod: next((dict(p, estado="Usado") for p in INVENTARIO if p["cod"].upper() == str(cod).upper()), None)
+CONFIG["validar_comprobante"] = True
+CONFIG["texto_soporte"] = "📄 Recibimos tu soporte."
+st = nuevo()
+ok(compra.soporte_sin_compra(st, {"etiquetas": []}, "") is None and "compra" not in st, "sin equipo elegido, el archivo sigue al asesor como siempre")
+st = nuevo()
+st["campos"]["Código producto"] = "100-102-1030-1"
+m, etq, paso, nota = compra.soporte_sin_compra(st, {"etiquetas": []}, "")
+c = st["compra"]
+ok(c["paso"] == "pago_por_confirmar" and c["sin_flujo"] and c["total"] == 1580000 and c["tipo"] == "cliente_final" and paso == "pago_por_confirmar",
+   "con equipo elegido: la compra queda en «pago por confirmar» con precio y configuración de la base")
+ok(st["pausa"] and "Comprobante-Por-Validar" in etq and cuerpo(m[0]) == "📄 Recibimos tu soporte.", "el cliente recibe el acuse y el chat va a la cola del asesor")
+ok(nota.startswith("⚠ Llegó sin que el cliente hiciera la compra por el bot") and "cliente final" in nota and "100-102-1030-1" in nota,
+   "la nota avisa al asesor que se armó sola, con el equipo y el tipo supuesto")
+ok(compra.soporte_sin_compra(st, {"etiquetas": []}, "") is None, "con una compra en curso no se arma otra")
+# tipo conocido: distribuidor no paga configuración
+st = nuevo()
+st["campos"]["Código producto"] = "100-102-1030-1"
+st["atributos"] = {"tipo_cliente": "Distribuidor"}
+db.atributos = lambda: {"tipo_cliente": {}}
+compra.soporte_sin_compra(st, {"etiquetas": []}, "")
+ok(st["compra"]["total"] == 1500000 and st["compra"]["tipo"] == "distribuidor", "distribuidor: sin configuración y sin la advertencia de tipo")
+# validado → sigue el despacho y las fotos de despacho de las próximas 48 h no abren otro pago
+st["compra"]["validacion"] = "validado"
+CONFIG["compra_bot_despues"] = None
+r = compra.resolver_validacion(st, {"etiquetas": []})
+ok(r is not None and r[1] == "validado" and not compra.activa(st) and st.get("compra_cerrada_en"), "validado: se cierra la compra y se anota la hora")
+st["campos"]["Código producto"] = "100-102-1030-1"
+ok(compra.soporte_sin_compra(st, {"etiquetas": []}, "") is None, "tras pagar, una foto de despacho no abre otro «Comprobante por validar»")
+st["compra_cerrada_en"] = "2026-11-01T00:00:00+00:00"
+ok(compra.soporte_sin_compra(st, {"etiquetas": []}, "") is not None, "pasadas 48 h, un soporte nuevo sí se arma")
+# no válido → se cierra y el cliente vuelve al bot (si reenvía el soporte, se arma de nuevo)
+st["compra"]["validacion"], st["compra"]["motivo"] = "rechazado", "no se ve el valor"
+r = compra.resolver_validacion(st, {"etiquetas": []})
+ok(r is not None and r[1] == "rechazado" and not compra.activa(st) and not st["pausa"] and "no se ve el valor" in cuerpo(r[0][0]),
+   "no válido: le dice el motivo, la compra se cierra y el bot vuelve a atender")
+ok(compra.soporte_sin_compra(st, {"etiquetas": []}, "") is not None, "si reenvía el soporte se arma otra vez")
+
 print(f"\n{n - fallos}/{n} en verde" if not fallos else f"\n✗ {fallos} en rojo")
 sys.exit(1 if fallos else 0)

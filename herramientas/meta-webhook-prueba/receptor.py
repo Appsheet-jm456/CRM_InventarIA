@@ -317,7 +317,7 @@ _candados = {}
 def cargar_estado(lead):
     guardado = lead.get("estado_bot") or {}
     st = flujo.estado_vacio()
-    st.update({k: v for k, v in guardado.items() if k in ("campos", "rango", "marcas", "valor", "compra", "pedido_previo", "cuentas_enviadas", "cotizacion", "agente", "volver_a")})
+    st.update({k: v for k, v in guardado.items() if k in ("campos", "rango", "marcas", "valor", "compra", "pedido_previo", "cuentas_enviadas", "compra_cerrada_en", "cotizacion", "agente", "volver_a")})
     st.update(nodo=lead["paso_menu"] or None, etapa=lead["etapa"], errores=lead["errores_bot"],
               pausa=lead["pausar_bot"], bot=lead.get("bot_id"))
     st["atributos"] = dict(lead.get("atributos") or {})  # datos de la ficha: las Preguntas y las marcas {dato} (F4·34)
@@ -343,7 +343,7 @@ def guardar_estado(lead, st, visible, nombre, del_cliente=True):
         "presupuesto": campos.get("Presupuesto", lead["presupuesto"]),
         "marca_interes": campos.get("Marca interés", lead["marca_interes"]),
         "cotiz_producto": campos.get("Código producto", lead["cotiz_producto"]),
-        "estado_bot": {k: st[k] for k in ("campos", "rango", "marcas", "valor", "compra", "pedido_previo", "cuentas_enviadas", "cotizacion", "agente", "volver_a") if k in st},
+        "estado_bot": {k: st[k] for k in ("campos", "rango", "marcas", "valor", "compra", "pedido_previo", "cuentas_enviadas", "compra_cerrada_en", "cotizacion", "agente", "volver_a") if k in st},
         "espera_vence_en": st.get("espera_hasta"), "espera_cuadro": st["nodo"] if st.get("espera_hasta") else None,
         # En el principal se guarda null: si el principal cambia, el cliente sigue al nuevo (RF-16).
         "bot_id": None if st.get("bot") in (None, db.principal()) else st["bot"],
@@ -929,6 +929,17 @@ def _contestar(numero, entrada, visible, nombre, tipo, meta_id, media=None, guar
                     db.actualizar_lead(lead["id"], {"retorno_pendiente": None})
                 except Exception as e:  # si falla, el mensaje sigue por donde iba
                     anotar(f"  ✗ la respuesta al mensaje automático falló: {e!r}")
+            # Un soporte de pago (foto o PDF) de quien no tiene compra en curso: se arma la compra con su equipo elegido y queda por validar.
+            if mensajes is None and tipo in ("image", "document") and not compra.activa(st) and not cotizacion.activa(st):
+                try:
+                    r = compra.soporte_sin_compra(st, lead, entrada)
+                except Exception as e:  # si falla, el archivo sigue como siempre (al asesor)
+                    anotar(f"  ✗ soporte sin compra falló: {e!r}")
+                    r = None
+                if r is not None:
+                    mensajes, etiquetas, paso_embudo, nota = r
+                    anotar("  💳 soporte sin compra en el bot → pago por confirmar")
+                    extras_de_compra(lead, etiquetas, paso_embudo, nota)
             # Una compra (F4·25) o una cotización (F4·26) en curso atienden primero: botones, datos, comprobante, cancelar.
             for nombre_flujo, modulo, icono in (("compra", compra, "🛒"), ("cotizacion", cotizacion, "📄")):
                 if mensajes is not None or not modulo.activa(st):

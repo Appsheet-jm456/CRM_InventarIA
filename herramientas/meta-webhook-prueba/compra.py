@@ -940,6 +940,39 @@ def _soporte_recibido(st, c, tipo, cfg):
     return [flujo.m_texto(texto)], ["Pago-Por-Confirmar", "Comprobante-Por-Validar"], "pago_por_confirmar", nota
 
 
+def soporte_sin_compra(st, lead, texto=""):
+    """12 nov 2026: el cliente manda una foto o un PDF sin tener una compra en el bot (pagó por fuera: el asesor le dio las cuentas por el
+    chat, o ya sabía cómo). Si tenía un equipo elegido, se arma la compra con él y queda en «pago por confirmar», como si hubiera pasado
+    por el flujo: el asesor ve la tarjeta «Comprobante por validar» y, al validar, sigue el despacho. Devuelve lo mismo que `responder`
+    o None si no aplica (sin equipo elegido, sin stock, o acaba de pagar: sus fotos de despacho no son otro pago)."""
+    if activa(st):
+        return None
+    try:
+        if datetime.now(timezone.utc) - datetime.fromisoformat(st.get("compra_cerrada_en")) < timedelta(hours=48):
+            return None
+    except (TypeError, ValueError):
+        pass
+    codigos = [k.strip() for k in str((st.get("campos") or {}).get("Código producto") or "").split(",") if k.strip()]
+    equipos = [p for p in (flujo.equipo_por_codigo(k) for k in codigos) if p]
+    if not equipos:
+        return None
+    cfg = _cfg()
+    tipo = flujo.tipo_cliente(st, lead)
+    items = [{"codigo": p["cod"], "equipo": f"{p['marca']} {p['modelo']}".strip(), "precio": p["precio"]} for p in equipos[:_maximo()]]
+    usados = any(flujo.lleva_configuracion(p.get("estado")) for p in equipos[:_maximo()])
+    final = (tipo or "cliente_final") == "cliente_final"
+    cargo = int(float(cfg.get("cargo_configuracion") or 0)) if final and usados else 0
+    c = {"paso": "esperando_pago", "sin_flujo": True, "desde": datetime.now(timezone.utc).isoformat(), "equipos": items,
+         "tipo": tipo or "cliente_final", "cargo": cargo, "total": sum(int(i["precio"]) for i in items) + cargo,
+         "codigo": items[0]["codigo"], "equipo": items[0]["equipo"], "precio": items[0]["precio"]}
+    st["compra"] = c
+    mensajes, etiquetas, paso, nota = _soporte_recibido(st, c, "media", cfg)
+    aviso = (f"⚠ Llegó sin que el cliente hiciera la compra por el bot: se armó con el equipo que tenía elegido ({_que_lleva(c)})"
+             + ("" if tipo else ", y como no se sabe si es distribuidor o cliente final se tomó cliente final")
+             + ". Confirma que sea un pago y que el equipo y el total sean los correctos; si no, pulsa ❌ No es válido o usa el abono. ")
+    return mensajes, etiquetas, paso, aviso + nota
+
+
 def resolver_validacion(st, lead=None):
     """Lo llama el receptor cuando una persona pulsó «Comprobante validado» o «No es válido» (la base ya lo registró).
     Devuelve (mensajes, resultado) o None si no hay una validación pendiente. Con el bot del cliente en el hilo."""
@@ -967,6 +1000,7 @@ def _validado(st, c):
     primero = [flujo.m_texto(texto)]
     _limpiar(st)
     st.pop("cuentas_enviadas", None)  # pagó: la próxima compra vuelve a recibir los medios de pago
+    st["compra_cerrada_en"] = datetime.now(timezone.utc).isoformat()  # sus fotos de despacho en las próximas 48 h no son otro pago
     st["pausa"] = False
     st["campos"]["Etiqueta"] = "Pago-Validado"
     listo = _salida(st, c, "listo")
@@ -998,6 +1032,10 @@ def _rechazado(st, c):
     cfg = _cfg()
     texto = _con_total((cfg.get("texto_rechazado") or "😕 No pudimos validar tu pago: {motivo}. Envíanos de nuevo el comprobante.")
                        .strip(), c).replace("{motivo}", (c.get("motivo") or "no lo pudimos verificar").rstrip(". ").lower())
+    if c.get("sin_flujo"):  # no venía de la compra del bot: se cierra y el cliente vuelve a donde estaba; si reenvía el soporte, se arma de nuevo
+        _limpiar(st)
+        st["pausa"] = False
+        return [flujo.m_texto(texto)]
     c["paso"] = "esperando_pago"
     for k in ("validacion", "comprobante_en"):
         c.pop(k, None)
