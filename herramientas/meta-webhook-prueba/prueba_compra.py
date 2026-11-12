@@ -88,12 +88,12 @@ st3 = dict(st, compra=dict(st["compra"]), campos=dict(st["campos"]))
 m, etq, paso, nota = compra.responder(st3, "asesor", "media")
 ok(paso == "pago_por_confirmar" and st3["pausa"], "una foto o PDF esperando el pago es el comprobante")
 
-# 6. Datos de envío mientras espera: se anotan, un solo recordatorio
+# 6. Datos de envío mientras espera: se anotan y cada mensaje recibe el recordatorio (12 nov 2026: antes solo el primero)
 st4 = dict(st, compra=dict(st["compra"]), campos=dict(st["campos"]))
 m1, _, p1, n1 = compra.responder(st4, "Juan Pérez, CC 1234567, Cali calle 5 # 3-2", "text")
 m2, _, p2, n2 = compra.responder(st4, "tel 3001234567", "text")
-ok(p1 is None and len(m1) == 1 and len(m2) == 0 and "Cali" in n1 and not st4.get("pausa"),
-   "datos de envío: se anotan para el asesor y el recordatorio del comprobante sale una sola vez")
+ok(p1 is None and len(m1) == 1 and len(m2) == 1 and "comprobante" in cuerpo(m2[0]) and "Cali" in n1 and not st4.get("pausa"),
+   "datos de envío: se anotan para el asesor y cada mensaje recibe el recordatorio del comprobante")
 
 # 7. Cancelar esperando el pago
 st5 = dict(st, compra=dict(st["compra"]), campos=dict(st["campos"]))
@@ -147,6 +147,43 @@ ok(compra.responder(st, "0", "text") is None and "compra" not in st, "«0» ante
 
 # 15. Recordatorio a las 12 h
 ok(compra.tiempo_cumplido(dict(espera_hasta="x"))[0]["text"]["body"] == CONFIG["texto_sigue_interesado"], "12 h sin respuesta: «¿Sigues interesado?»")
+
+# 16. 12 nov 2026: mientras espera el comprobante, cualquier otro mensaje recibe el recordatorio (antes solo el primero y luego silencio)
+st = nuevo()
+acciones.responder(st, "quiero comprar 100-102-1030-1", {"etiquetas": []})
+compra.responder(st, "compra-final", "interactive")
+compra.responder(st, "compra-si", "interactive")
+for k, texto in enumerate(("ya voy a comprar", "tienes equipos gamer?", "hola")):
+    m, etq, paso, nota = compra.responder(st, texto, "text")
+    ok(len(m) == 1 and "comprobante" in cuerpo(m[0]) and "JPG" in cuerpo(m[0]) and "escribió" in nota, f"otro mensaje #{k + 1} mientras espera el pago: recordatorio del comprobante, no silencio")
+CONFIG["texto_instructivo_pago"] = "📎 Envía tu comprobante en JPG o PDF; un asesor lo valida."
+m, *_ = compra.responder(st, "una pregunta", "text")
+ok(cuerpo(m[0]) == CONFIG["texto_instructivo_pago"], "el recordatorio usa el instructivo de Agente → Compra cuando existe")
+del CONFIG["texto_instructivo_pago"]
+
+# 17. Los medios de pago salen una sola vez por pedido, aunque el asesor tome el chat y vuelva a lanzar la compra
+st = nuevo()
+acciones.responder(st, "quiero comprar 100-102-1030-1", {"etiquetas": []})
+compra.responder(st, "compra-final", "interactive")
+m1, *_ = compra.responder(st, "compra-si", "interactive")
+ok(cuerpo(m1[0]) == CONFIG["texto_cuentas"] and "cuentas_enviadas" in st, "primera confirmación: envía los medios de pago y lo anota")
+compra.responder(st, "asesor", "text")  # el cliente (o el asesor) saca la compra del bot
+st["pausa"] = False
+acciones.responder(st, "quiero comprar 100-102-1030-1", {"etiquetas": []})
+compra.responder(st, "compra-final", "interactive")
+m2, etq, paso, nota = compra.responder(st, "compra-si", "interactive")
+ok(len(m2) == 1 and CONFIG["texto_cuentas"] not in cuerpo(m2[0]) and "Ya te enviamos" in cuerpo(m2[0]) and paso == "esperando_pago"
+   and st["compra"]["paso"] == "esperando_pago", "segunda confirmación del mismo pedido: no repite los medios de pago, recuerda el comprobante y sigue esperando")
+st["cuentas_enviadas"]["en"] = "2026-11-01T00:00:00+00:00"
+st["compra"]["paso"] = "confirmar"
+m3, *_ = compra.responder(st, "compra-si", "interactive")
+ok(cuerpo(m3[0]) == CONFIG["texto_cuentas"], "pasadas 24 h se vuelven a enviar")
+st["cuentas_enviadas"]["clave"] = "OTRO#1"
+st["compra"]["paso"] = "confirmar"
+m4, *_ = compra.responder(st, "compra-si", "interactive")
+ok(cuerpo(m4[0]) == CONFIG["texto_cuentas"], "otro pedido (otros equipos o total): sí se envían")
+compra.responder(st, "ya no quiero", "text")
+ok("cuentas_enviadas" not in st, "si cancela, la próxima compra vuelve a recibir los medios de pago")
 
 print(f"\n{n - fallos}/{n} en verde" if not fallos else f"\n✗ {fallos} en rojo")
 sys.exit(1 if fallos else 0)

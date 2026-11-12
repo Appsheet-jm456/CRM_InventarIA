@@ -169,6 +169,31 @@ def _resumen(c):
     return "\n".join(lineas)
 
 
+RECORDATORIO = ("📎 Para continuar, envíanos el *comprobante de pago* en foto (JPG) o PDF y un asesor lo valida. "
+                "Si tienes una duda, escribe *asesor*.")
+
+
+def _recordatorio_comprobante(cfg):
+    """Lo que se le dice al cliente que escribe otra cosa mientras se espera su comprobante: el instructivo de Agente → Compra
+    (qué hacer después de pagar) o, si está vacío, el texto de siempre."""
+    return (cfg.get("texto_instructivo_pago") or "").strip() or RECORDATORIO
+
+
+def _clave_pedido(c):
+    """Identifica el pedido para saber si ya se le enviaron los medios de pago: los códigos y el total."""
+    return "|".join(sorted(str(i["codigo"]).upper() for i in _items(c))) + f"#{int(float(c.get('total') or 0))}"
+
+
+def _cuentas_ya_enviadas(st, c):
+    """Los medios de pago de este pedido salieron hace menos de 24 h (aunque el asesor tomara el chat y volviera a lanzar la compra)."""
+    previo = st.get("cuentas_enviadas") or {}
+    try:
+        reciente = datetime.now(timezone.utc) - datetime.fromisoformat(previo.get("en")) < timedelta(hours=24)
+    except (TypeError, ValueError):
+        return False
+    return reciente and previo.get("clave") == _clave_pedido(c)
+
+
 def mensajes_cuentas(cuentas, fresco=False):
     """F4·49: los datos para pagar. Primero la imagen de los medios de pago (la de la ficha activa «Pagos» de Agente → Conocimiento, si
     tiene archivo) y después el texto aprobado. Sin imagen, solo el texto, como antes."""
@@ -541,21 +566,21 @@ def _responder(st, entrada, tipo, lead):
             return [flujo.m_texto(texto)], ["Pago-Por-Confirmar"], "pago_por_confirmar", nota
         if CANCELA.search(n):
             _limpiar(st)
+            st.pop("cuentas_enviadas", None)
             texto = (cfg.get("texto_cancelacion") or "Entendido. Si cambias de opinión, escríbenos.").strip()
             return [flujo.m_texto(texto)], ["Compra-Cancelada"], "cancelada", f"🛒 Compra cancelada por el cliente: {_que_lleva(c)}."
-        # Otra cosa (datos de envío, una pregunta): se anota para el asesor y se recuerda el comprobante una sola vez.
+        # Otra cosa (datos de envío, una pregunta): se anota para el asesor y, cada vez, se le recuerda que envíe el comprobante
+        # (antes solo la primera vez y después el bot se quedaba callado: 12 nov 2026).
         st["espera_hasta"] = (datetime.now(timezone.utc) + timedelta(hours=int(cfg.get("horas_sin_respuesta") or 12))).isoformat()
         nota = f"🛒 Mientras espera el pago, el cliente escribió: {entrada[:300]}"
-        if c.get("recordado"):
-            return [], [], None, nota
-        c["recordado"] = True
-        return [flujo.m_texto("✅ Anotado. Cuando hagas el pago, envíanos el *comprobante* por aquí. Si tienes una duda, escribe *asesor*.")], [], None, nota
+        return [flujo.m_texto(_recordatorio_comprobante(cfg))], [], None, nota
 
     # Antes de enviar las cuentas el cliente puede salir de la compra.
     if n in SALIR or entrada in ("0", "compra-cancelar") or CANCELA.search(n):
         _limpiar(st)
         if entrada == "compra-cancelar" or CANCELA.search(n):
             st.pop("pedido_previo", None)  # canceló: no se le vuelve a ofrecer
+            st.pop("cuentas_enviadas", None)
             return [flujo.m_texto((cfg.get("texto_cancelacion") or "Entendido.").strip())], ["Compra-Cancelada"], None, None
         return None  # «0» o «menú»: sigue por el menú
     if _carrito(c):
@@ -591,9 +616,14 @@ def _responder(st, entrada, tipo, lead):
                 nota = f"🛒 Confirmó la compra de {_que_lleva(c)} por {flujo.cop(c['total'])}. Falta enviarle las cuentas."
                 _limpiar(st)
                 return _asesor(st, motivo="Un asesor te envía los datos para pagar."), ["Compra-Iniciada"], "esperando_pago", nota
+            ya = _cuentas_ya_enviadas(st, c)  # los medios de pago salen una sola vez por pedido
             c["paso"] = "esperando_pago"
             c["cuentas_en"] = datetime.now(timezone.utc).isoformat()
             st["espera_hasta"] = (datetime.now(timezone.utc) + timedelta(hours=int(cfg.get("horas_sin_respuesta") or 12))).isoformat()
+            if ya:
+                nota = f"🛒 Confirmó otra vez {_que_lleva(c)} · total {flujo.cop(c['total'])}. Los medios de pago ya se le enviaron: se le recordó el comprobante."
+                return [flujo.m_texto("👆 Ya te enviamos los medios de pago arriba. " + _recordatorio_comprobante(cfg))], ["Compra-Iniciada"], "esperando_pago", nota
+            st["cuentas_enviadas"] = {"clave": _clave_pedido(c), "en": c["cuentas_en"]}
             nota = f"🛒 Cuentas enviadas: {_que_lleva(c)} · total {flujo.cop(c['total'])}. Esperando comprobante."
             return mensajes_cuentas(cuentas), ["Compra-Iniciada"], "esperando_pago", nota  # F4·49: imagen y luego el texto
         return _confirmar(st), [], None, None
@@ -936,6 +966,7 @@ def _validado(st, c):
         texto += f"\n\nQueda pendiente un saldo de *{flujo.cop(c['saldo'])}*."
     primero = [flujo.m_texto(texto)]
     _limpiar(st)
+    st.pop("cuentas_enviadas", None)  # pagó: la próxima compra vuelve a recibir los medios de pago
     st["pausa"] = False
     st["campos"]["Etiqueta"] = "Pago-Validado"
     listo = _salida(st, c, "listo")
