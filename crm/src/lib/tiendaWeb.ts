@@ -26,8 +26,10 @@ export async function publicadosTienda(url: string): Promise<Set<string> | null>
 export const enlaceProducto = (t: TiendaWeb, codigo: string) => `${t.url}/producto/${encodeURIComponent(codigo.trim())}`
 
 // El renglón que agrega el bot: la página del equipo si está publicado; si no, el catálogo web (ficha suelta).
-export function renglonWeb(t: TiendaWeb | null, publicados: Set<string> | null, codigo: string): string {
+// F4·75b: el enlace escrito a mano en el equipo manda sobre la búsqueda por código.
+export function renglonWeb(t: TiendaWeb | null, publicados: Set<string> | null, codigo: string, manual = ''): string {
   if (!t?.activa) return ''
+  if (manual) return t.texto_equipo.replace('{enlace}', manual)
   if (publicados?.has(codigo.trim().toLowerCase())) return t.texto_equipo.replace('{enlace}', enlaceProducto(t, codigo))
   return t.catalogo_url ? t.texto_catalogo.replace('{enlace}', t.catalogo_url) : ''
 }

@@ -63,6 +63,10 @@ export async function guardarProducto(_: Resultado, datos: FormData): Promise<Re
   const drive = String(datos.get('fotos_drive') ?? '').trim()
   if (drive && !ENLACE_DRIVE.test(drive)) return { error: 'El enlace de fotos tiene que ser de Google Drive (https://drive.google.com/…).' }
   fila.fotos_drive = drive
+  // F4·75b: enlace de la tienda web a mano (opcional); vacío = el bot lo busca solo por el código.
+  const web = String(datos.get('enlace_web') ?? '').trim()
+  if (web && !/^https:\/\/\S+$/.test(web)) return { error: 'El enlace de la tienda web tiene que empezar por https:// y no llevar espacios.' }
+  fila.enlace_web = web
   // RI-11: se revisan las tres fotos antes de guardar nada, para no dejar la ficha a medias.
   const archivos = [1, 2, 3].map((n) => { const f = datos.get(n === 1 ? 'foto_archivo' : `foto_archivo_${n}`); return f instanceof File && f.size > 0 ? f : null })
   for (const [i, f] of archivos.entries()) {

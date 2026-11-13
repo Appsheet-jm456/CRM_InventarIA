@@ -76,5 +76,13 @@ lista = agente.textos_con_equipos("Mira estos:", [
 ok(lista.count("🌐 Ver en la web") == 1 and "producto/100-102-1141" in lista and "🛒" not in lista,
    "RTW-07: en la lista de Avi solo el equipo publicado lleva su enlace")
 
+flujo.tienda = lambda: dict(TIENDA)
+ok(flujo.renglon_web({"cod": "999-999", "enlace_web": "https://ventasvirtualcolombia.com/producto/otro"}) ==
+   "🌐 Ver en la web: https://ventasvirtualcolombia.com/producto/otro", "RTW-09: el enlace escrito a mano manda, aunque no esté en la lista")
+ok(flujo.renglon_web({"cod": "999-999", "enlace_web": "https://x.co/a"}, respaldo=False).endswith("https://x.co/a"),
+   "RTW-09: en la lista de Avi también sale el enlace a mano")
+flujo.tienda = lambda: {**TIENDA, "activa": False}
+ok(flujo.renglon_web({"cod": "999-999", "enlace_web": "https://x.co/a"}) == "", "con la tienda apagada tampoco sale el enlace a mano")
+
 print(f"{'✗' if mal else '✓'} {bien}/{bien + mal}")
 sys.exit(1 if mal else 0)

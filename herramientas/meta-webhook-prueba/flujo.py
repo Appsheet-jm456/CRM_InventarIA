@@ -231,6 +231,8 @@ def renglon_web(p, respaldo=True):
         return ""
     if not t or not t.get("activa"):
         return ""
+    if p.get("enlace_web"):  # F4·75b: el enlace escrito a mano manda sobre la búsqueda por código
+        return t["texto_equipo"].replace("{enlace}", p["enlace_web"])
     cod = str(p.get("cod") or "").strip()
     if cod and cod.lower() in publicados(t):
         return t["texto_equipo"].replace("{enlace}", f"{t['url']}/producto/{urllib.parse.quote(cod)}")
@@ -248,6 +250,7 @@ def _equipo(p):
         "stock": p["stock"], "foto": _foto_de(p), "categoria": p.get("categoria") or "", "descripcion": p.get("descripcion") or "",
         "atributos": p.get("atributos") or {},  # F4·41: {clave: valor} de los atributos del producto
         "fotos_extra": p.get("fotos_extra") or [], "fotos_drive": p.get("fotos_drive") or "",  # F4·65
+        "enlace_web": p.get("enlace_web") or "",  # F4·75b: enlace de la tienda escrito a mano
     }
 
 

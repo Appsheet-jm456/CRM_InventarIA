@@ -73,3 +73,21 @@ En la **lista de Avi** (`agente.textos_con_equipos`) cada equipo publicado suma 
 2. Inventario → un equipo (por ejemplo 100-102-10352): ver el aviso «Aún no está publicado…» y, en la vista de WhatsApp, el renglón 🛒.
 3. Subir ese equipo a la tienda con el **mismo código**; a los 5 minutos la ficha del CRM muestra «🌐 Ver en la tienda web».
 4. Por WhatsApp pedir ese código: la ficha llega con «🌐 Ver en la web: …/producto/100-102-10352».
+
+## 7. Ajuste F4·75b: enlace escrito a mano (13 nov 2026) 🔵
+
+**Pedido del dueño:** poder poner el enlace **de forma manual**, con un **campo** en el equipo.
+
+- **Campo nuevo** en Inventario → un equipo → Editar: **«🌐 Enlace en la tienda web»** (`productos.enlace_web`, migración 0086, 3 pruebas SQL).
+  Opcional; solo `https://`. Ejemplo de ayuda: `https://ventasvirtualcolombia.com/producto/{código}`.
+- **Regla RTW-09:** si el campo tiene un enlace, **manda siempre** (aunque el equipo no aparezca en la lista de la tienda o tenga otro código
+  allá); si está vacío, el enlace se busca solo por el código como en RTW-01/02. El interruptor de la tienda (RTW-05) apaga también los manuales.
+- Sale con el mismo texto «🌐 Ver en la web: {enlace}» en la ficha del bot, en la lista de Avi y en el botón «🌐 Ver en la tienda web» de la ficha
+  del CRM (su ayuda dice si es manual o encontrado por código).
+- No se carga desde el Excel de inventario (se escribe en la ficha). `prueba_tienda_web.py` 14/14.
+
+| # | Dado / cuando | Entonces |
+|---|---|---|
+| RTW-09 | El equipo tiene un enlace escrito a mano | La ficha del bot y la del CRM usan ese enlace, publicado o no por código |
+| RTW-10 | Escribo un enlace sin https:// | La app no guarda y avisa «tiene que empezar por https://» |
+| RTW-11 | Borro el enlace manual y guardo | Vuelve la búsqueda automática por código |

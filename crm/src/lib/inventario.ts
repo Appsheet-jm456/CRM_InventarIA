@@ -18,6 +18,7 @@ export type Producto = {
   foto_ruta: string
   fotos_extra: string[] // Fotos 2 y 3 (F4·65, RI-11)
   fotos_drive: string // carpeta de Drive con más fotos (RI-13)
+  enlace_web: string // F4·75b: página en la tienda web escrita a mano ('' = se busca sola por el código)
   video: string
   atributos: Record<string, ValorAtributo>
   actualizado_en: string
@@ -60,7 +61,7 @@ export const aplicaA = (a: Pick<AtributoProducto, 'categorias'>, categoria: stri
   !a.categorias.length || a.categorias.some((c) => sinTildes(c) === sinTildes(categoria))
 
 export const COLUMNAS_PRODUCTO =
-  'id, codigo, categoria, descripcion, marca, modelo, procesador, generacion, ram, almacenamiento, estado, precio, stock, foto, foto_ruta, fotos_extra, fotos_drive, video, atributos, actualizado_en'
+  'id, codigo, categoria, descripcion, marca, modelo, procesador, generacion, ram, almacenamiento, estado, precio, stock, foto, foto_ruta, fotos_extra, fotos_drive, enlace_web, video, atributos, actualizado_en'
 
 export const CAMPOS_TEXTO = ['categoria', 'descripcion', 'marca', 'modelo', 'procesador', 'generacion', 'ram',
   'almacenamiento', 'estado', 'video'] as const

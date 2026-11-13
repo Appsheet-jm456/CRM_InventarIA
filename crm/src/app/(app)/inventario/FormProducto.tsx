@@ -125,6 +125,11 @@ export function FormProducto({ producto, foto, atributos }: { producto?: Product
           <label className="field">Carpeta de fotos en Drive
             <input name="fotos_drive" type="url" defaultValue={producto?.fotos_drive} placeholder="https://drive.google.com/drive/folders/…" />
           </label>
+          <label className="field span-2">🌐 Enlace en la tienda web
+            <input name="enlace_web" type="url" defaultValue={producto?.enlace_web}
+              placeholder={`https://ventasvirtualcolombia.com/producto/${producto?.codigo || 'código'}`} />
+            <small className="muted">Opcional. Vacío: el bot lo busca solo en la tienda por el código. Escrito: se envía siempre este.</small>
+          </label>
           <label className="field span-3">Descripción
             <input name="descripcion" defaultValue={producto?.descripcion} placeholder="Detalle del inventario: batería, pantalla, teclado…" />
           </label>
