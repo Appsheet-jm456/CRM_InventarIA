@@ -1,7 +1,7 @@
 # Filtro dinámico de Inventario → Equipos (F4·74)
 
-> **Estado:** 📝 documentada el 13 nov 2026 por pedido del dueño. **Sin construir:** el dueño avisa cuándo implementarla.
-> Decisiones pendientes del dueño en la sección 7.
+> **Estado:** 🔵 construida el 13 nov 2026 por pedido del dueño (migración 0084, atributo Táctil). Falta la prueba del dueño.
+> Las decisiones de la sección 7 se tomaron con la recomendación (el dueño dijo «implementa»); ver sección 9.
 
 **Pedido del dueño (13 nov 2026):** en Inventario → Equipos, un **filtro dinámico** para encontrar equipos por **tipo, marca, modelo,
 generación, procesador, RAM, disco y táctil (sí/no)**. Referencia visual: el panel «Filtros» de la tienda web
@@ -159,3 +159,20 @@ No hay dónde guardarlo. Se crea como **atributo del producto** (F4·41, Inventa
 - Que **Avi / el buscador del bot** también filtre por táctil, generación, RAM o disco (hoy usa su propio intérprete de filtros, `interprete.py`).
 - Guardar filtros favoritos por usuario.
 - Exportar a Excel lo que quedó filtrado.
+
+## 9. Construida (13 nov 2026) 🔵
+
+- **Migración 0084** (`0084_atributo_tactil.sql`, 2 pruebas SQL en verde): atributo `tactil` «Táctil» 👆, tipo Sí / No, orden 6. Aparece solo
+  en la ficha del equipo (Editar) como los demás atributos. **Ningún equipo está marcado todavía:** todos salen en «Sin dato» hasta llenarlo.
+- **`FiltroEquipos.tsx`** (componente de cliente) reemplaza el formulario de marca, procesador y stock; `page.tsx` solo trae los productos y
+  las tarjetas. Funciones de normalización en `lib/inventario.ts` (`familiaCpu`, `nombreCpu`, `generacionDe`, `ramDe`, `capacidadDisco`,
+  `tipoDisco`, `tactilDe`), revisadas contra los 65 equipos reales.
+- **Decisiones aplicadas (las recomendadas):** precio mínimo y máximo incluido; procesador por familia; disco en dos listas (capacidad y tipo);
+  selección múltiple; el filtro nuevo reemplaza al de arriba (el buscador queda).
+- **Detalles:** Modelo oculta las opciones en 0 (lista larga); las demás las muestran apagadas. Táctil muestra «Sin dato (n)» solo si hay
+  equipos sin marcar. Dirección: `q`, `tipo`, `marca`, `modelo`, `gen`, `cpu`, `ram`, `disco`, `dtipo`, `tactil`, `pmin`, `pmax`, `stock=todos`
+  (los enlaces viejos con `marca`, `cpu=i5` y `stock=todos` siguen sirviendo).
+- `tsc` y `npm run build` sin errores; app reiniciada. **No verificado en pantalla** (Claude no tiene sesión del CRM).
+
+**Para probarlo (dueño):** recargar Inventario → Equipos; tocar 🎚 Filtros; marcar LENOVO y ver que Generación y Modelo solo ofrecen lo de
+Lenovo; probar en el celular. Marcar Táctil = Sí en los equipos que lo sean (Editar → Táctil) y filtrar por Táctil → Sí.

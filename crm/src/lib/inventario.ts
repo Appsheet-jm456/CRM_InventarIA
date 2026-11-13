@@ -86,3 +86,43 @@ export function fotoDe(p: Pick<Producto, 'foto' | 'foto_ruta'>) {
 
 export const titulo = (p: Pick<Producto, 'marca' | 'modelo' | 'descripcion' | 'codigo'>) =>
   [p.marca, p.modelo].filter(Boolean).join(' ') || p.descripcion || p.codigo
+
+// F4·74 · Filtro dinámico de Equipos: valores normalizados al leer, sin cambiar la base. «Sin dato» si falta.
+export const SIN_DATO = 'Sin dato'
+
+// Familia del procesador: clave en minúsculas (compatible con el ?cpu=i5 de antes) y nombre para mostrar.
+export function familiaCpu(procesador: string): string {
+  const m = (procesador || '').match(/i[3579]|ryzen\s*\d|celeron|pentium|\bm[1-4]\b|xeon|athlon/i)
+  return m ? m[0].toLowerCase().replace(/\s+/, ' ') : ''
+}
+export function nombreCpu(clave: string): string {
+  if (!clave) return SIN_DATO
+  if (/^i\d$/.test(clave)) return `Core ${clave}`
+  if (/^m\d$/.test(clave)) return `Apple ${clave.toUpperCase()}`
+  return clave.replace(/\b\w/g, (c) => c.toUpperCase())
+}
+
+export const generacionDe = (g: string) => (g || '').match(/\d+/)?.[0] ?? ''
+
+// RAM y disco: capacidad en GB para ordenar y etiqueta corta («16GB», «1TB»).
+function capacidad(texto: string): { gb: number; etiqueta: string } | null {
+  const m = (texto || '').match(/(\d+(?:[.,]\d+)?)\s*(tb|gb)/i)
+  if (!m) return null
+  const n = Number(m[1].replace(',', '.'))
+  const tb = m[2].toLowerCase() === 'tb'
+  return { gb: tb ? n * 1024 : n, etiqueta: `${n}${tb ? 'TB' : 'GB'}` }
+}
+export const ramDe = (ram: string) => capacidad(ram)?.etiqueta ?? ''
+export const capacidadDisco = (disco: string) => capacidad(disco)?.etiqueta ?? ''
+export const gbDe = (etiqueta: string) => capacidad(etiqueta)?.gb ?? Number.MAX_SAFE_INTEGER
+export function tipoDisco(disco: string): string {
+  const t = (disco || '').toLowerCase()
+  if (/nvme|m\.2|pcie/.test(t)) return 'NVMe'
+  if (/ssd/.test(t)) return 'SSD'
+  if (/hdd|rpm|mecanic/.test(t)) return 'HDD'
+  return ''
+}
+export function tactilDe(atributos: Record<string, ValorAtributo> | null | undefined): string {
+  const v = atributos?.tactil
+  return v === true ? 'Sí' : v === false ? 'No' : ''
+}

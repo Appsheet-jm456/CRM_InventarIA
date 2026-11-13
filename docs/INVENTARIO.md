@@ -135,4 +135,4 @@ filtros entendidos, de dónde salieron (código, reglas o IA) y los códigos de 
 
 ## Filtro dinámico de equipos (F4·74)
 
-Documentada el 13 nov 2026, sin construir: filtros por tipo, marca, modelo, generación, procesador, RAM, disco y táctil en Inventario → Equipos. Detalle, criterios RFI-01 a RFI-15 y decisiones pendientes en [FILTRO-DINAMICO-INVENTARIO.md](FILTRO-DINAMICO-INVENTARIO.md).
+Construida el 13 nov 2026 (migración 0084, atributo Táctil), falta la prueba del dueño: filtros por tipo, marca, modelo, generación, procesador, RAM, disco y táctil en Inventario → Equipos. Detalle, criterios RFI-01 a RFI-15 y decisiones pendientes en [FILTRO-DINAMICO-INVENTARIO.md](FILTRO-DINAMICO-INVENTARIO.md).
