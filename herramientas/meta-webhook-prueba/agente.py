@@ -415,7 +415,9 @@ def catalogo_final(equipos):
 
 def textos_con_equipos(antes, equipos, despues, config, catalogo=""):
     """Los mensajes de una respuesta con lista: en uno solo, o un mensaje por equipo (RAG-41). El catálogo va después de los equipos."""
-    bloques = [armar_equipo(config.get("plantilla_equipo"), p) for p in equipos]
+    # F4·75: en una lista cada equipo publicado lleva su enlace web; los demás no (el catálogo ya va al final).
+    bloques = [armar_equipo(config.get("plantilla_equipo"), p) + (f"\n{w}" if (w := flujo.renglon_web(p, respaldo=False)) else "")
+               for p in equipos]
     if config.get("equipos_separados"):
         return [t for t in [antes, *bloques, catalogo, despues] if t]
     while len(bloques) > 1 and len("\n\n".join(t for t in [antes, *bloques, catalogo, despues] if t)) > 4096:

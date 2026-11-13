@@ -14,7 +14,10 @@ de prueba de Meta. No es el motor definitivo (F3·4).
 
 import re
 import threading
+import time
 import unicodedata
+import urllib.parse
+import urllib.request
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -188,9 +191,52 @@ def fotos_extra(p):
 
 
 def con_drive(texto, p):
-    """F4·65 (RI-14): el renglón «📷 Más fotos» al final de la ficha, si el equipo tiene carpeta de Drive y cabe."""
-    renglon = f"\n📷 Más fotos: {p['fotos_drive']}" if p.get("fotos_drive") else ""
-    return texto + renglon if len(texto + renglon) <= 1024 else texto
+    """Los renglones del final de la ficha de un equipo, cada uno si cabe en los 1.024 caracteres de WhatsApp:
+    F4·65 (RI-14) «📷 Más fotos» si tiene carpeta de Drive, y F4·75 «🌐 Ver en la web» (o el catálogo web)."""
+    for renglon in (f"📷 Más fotos: {p['fotos_drive']}" if p.get("fotos_drive") else "", renglon_web(p)):
+        if renglon and len(f"{texto}\n{renglon}") <= 1024:
+            texto = f"{texto}\n{renglon}"
+    return texto
+
+
+# F4·75 · Tienda web (ventasvirtualcolombia.com). La lista de publicados sale de los enlaces /producto/{código}
+# de la página {url}/productos (sin paginar), leída cada 5 minutos; si la tienda no responde se usa lo último leído.
+_TIENDA = {"t": 0.0, "url": None, "codigos": set()}
+
+
+def tienda():
+    filas = db._cacheado("tienda_web", "tienda_web?id=eq.1&select=*", 60)
+    return filas[0] if filas else None
+
+
+def publicados(t):
+    if time.time() - _TIENDA["t"] > 300 or _TIENDA["url"] != t["url"]:
+        _TIENDA["t"] = time.time()
+        try:
+            pedido = urllib.request.Request(f"{t['url']}/productos", headers={"User-Agent": "CRM-InventarIA/1.0"})
+            with urllib.request.urlopen(pedido, timeout=4) as r:
+                html = r.read(5_000_000).decode("utf-8", "ignore")
+            _TIENDA["codigos"] = {urllib.parse.unquote(c).strip().lower() for c in re.findall(r'href="/producto/([^"?#/]+)', html)}
+            _TIENDA["url"] = t["url"]
+        except Exception as e:  # la ficha sale igual, con el catálogo web
+            print(f"  ⚠️ tienda web sin responder: {e}", flush=True)
+    return _TIENDA["codigos"] if _TIENDA["url"] == t["url"] else set()
+
+
+def renglon_web(p, respaldo=True):
+    """«🌐 Ver en la web: …/producto/{código}» si el equipo está publicado; si no, el catálogo web (solo con `respaldo`)."""
+    try:
+        t = tienda()
+    except Exception:
+        return ""
+    if not t or not t.get("activa"):
+        return ""
+    cod = str(p.get("cod") or "").strip()
+    if cod and cod.lower() in publicados(t):
+        return t["texto_equipo"].replace("{enlace}", f"{t['url']}/producto/{urllib.parse.quote(cod)}")
+    if respaldo and t.get("catalogo_url"):
+        return t["texto_catalogo"].replace("{enlace}", t["catalogo_url"])
+    return ""
 
 
 def _equipo(p):

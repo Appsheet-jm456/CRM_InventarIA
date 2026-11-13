@@ -1070,3 +1070,7 @@ details.columnas > .panel { right: 0; top: calc(100% + 4px); min-width: 220px }
 .opcion small { color: var(--muted) }
 .opcion.sin { opacity: .45; cursor: default }
 .opcion input { width: 17px; height: 17px; accent-color: var(--accent) }
+/* F4·75 · Tienda web */
+.form-tienda { display: grid; gap: 12px; max-width: 720px }
+.form-tienda label:not(.solo-disponibles) { display: grid; gap: 4px; font-size: 13px; color: var(--muted) }
+.form-tienda input:not([type=checkbox]) { border: 1px solid var(--line); background: var(--bg); border-radius: 6px; padding: 8px 10px; font-size: 14px; color: var(--ink) }

@@ -3,15 +3,17 @@ import { notFound } from 'next/navigation'
 import { obtenerSesion, puede } from '@/lib/sesion'
 import { crearCliente } from '@/lib/supabase/server'
 import { COLUMNAS_ATRIBUTO, COLUMNAS_PRODUCTO, aplicaA, fotoDe, pesos, rutaArchivo, textoAtributo, titulo, type AtributoProducto, type Producto } from '@/lib/inventario'
+import { COLUMNAS_TIENDA, enlaceProducto, publicadosTienda, renglonWeb, type TiendaWeb } from '@/lib/tiendaWeb'
 import { FormProducto } from '../FormProducto'
 
 export default async function FichaEquipo({ params, searchParams }: { params: { id: string }; searchParams: { editar?: string; creado?: string } }) {
   const sesion = (await obtenerSesion())!
   const administra = puede(sesion, ['administrar_inventario'])
   const supabase = crearCliente()
-  const [{ data }, { data: defs }] = await Promise.all([
+  const [{ data }, { data: defs }, { data: tiendaFila }] = await Promise.all([
     supabase.from('productos').select(COLUMNAS_PRODUCTO).eq('id', Number(params.id)).maybeSingle(),
     supabase.from('producto_atributos').select(COLUMNAS_ATRIBUTO).is('archivado_en', null).order('orden').order('id'),
+    supabase.from('tienda_web').select(COLUMNAS_TIENDA).eq('id', 1).maybeSingle(),
   ])
   if (!data) notFound()
   const p = data as Producto
@@ -19,10 +21,16 @@ export default async function FichaEquipo({ params, searchParams }: { params: { 
   const foto = fotoDe(p)
   if (administra && searchParams.editar === '1') return <FormProducto producto={p} foto={foto} atributos={atributos} />
 
+  // F4·75: ¿el equipo ya tiene su página en la tienda web?
+  const tienda = tiendaFila as TiendaWeb | null
+  const publicados = tienda?.activa ? await publicadosTienda(tienda.url) : null
+  const enTienda = !!tienda && !!publicados?.has(p.codigo.trim().toLowerCase())
+  const web = renglonWeb(tienda, publicados, p.codigo)
+
   // La misma ficha que arma el bot (flujo.r11): así la ve el cliente por WhatsApp.
   const ficha = `💻 *${p.marca} ${p.modelo}* · Código ${p.codigo}\n${p.procesador} · ${p.ram} · ${p.almacenamiento}` +
     `${p.estado ? ` · ${p.estado}` : ''}\n💰 ${pesos(p.precio).replace(/\s/g, '')} · ${p.stock > 0 ? '✅ Disponible' : '❌ Agotado'}` +
-    (p.fotos_drive ? `\n📷 Más fotos: ${p.fotos_drive}` : '')
+    (p.fotos_drive ? `\n📷 Más fotos: ${p.fotos_drive}` : '') + (web ? `\n${web}` : '')
   const datos: [string, string][] = [
     ['Código', p.codigo], ['Categoría', p.categoria], ['Marca', p.marca], ['Modelo', p.modelo],
     ['Procesador', p.procesador], ['Generación', p.generacion], ['RAM', p.ram], ['Disco', p.almacenamiento], ['Estado', p.estado],
@@ -53,6 +61,11 @@ export default async function FichaEquipo({ params, searchParams }: { params: { 
               </div>
             )}
             {p.fotos_drive && <a className="btn chico" href={p.fotos_drive} target="_blank" rel="noreferrer">📷 Más fotos en Drive</a>}
+            {tienda?.activa && (enTienda
+              ? <a className="btn chico" href={enlaceProducto(tienda, p.codigo)} target="_blank" rel="noreferrer">🌐 Ver en la tienda web</a>
+              : <small className="muted">{publicados === null ? 'La tienda web no respondió: no se sabe si este equipo está publicado.'
+                : 'Aún no está publicado en la tienda web: el bot envía el catálogo web.'}{' '}
+                {tienda.catalogo_url && <a href={tienda.catalogo_url} target="_blank" rel="noreferrer">Ver catálogo web</a>}</small>)}
           </div>
           <div>
             <div className="precio-ficha mono">{pesos(p.precio)}</div>

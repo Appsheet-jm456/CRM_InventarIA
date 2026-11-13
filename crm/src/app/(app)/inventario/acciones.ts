@@ -351,3 +351,26 @@ export async function borrarCatalogo(id: number): Promise<Resultado> {
   catalogosCambiaron()
   return {}
 }
+
+// F4·75 · Tienda web: dirección, catálogo y textos del renglón que el bot pone al final de la ficha.
+export async function guardarTiendaWeb(_: Resultado, datos: FormData): Promise<Resultado> {
+  const texto = (k: string) => String(datos.get(k) ?? '').trim()
+  const url = texto('url').replace(/\/+$/, '')
+  const catalogo = texto('catalogo_url')
+  const tEquipo = texto('texto_equipo')
+  const tCatalogo = texto('texto_catalogo')
+  if (!/^https:\/\/[a-z0-9.-]+[a-z]$/i.test(url)) return { error: 'La dirección de la tienda debe ser como https://ventasvirtualcolombia.com (sin ruta al final).' }
+  if (catalogo && !/^https:\/\/\S+$/.test(catalogo)) return { error: 'El enlace del catálogo debe empezar por https://.' }
+  if (!tEquipo.includes('{enlace}') || !tCatalogo.includes('{enlace}')) return { error: 'Los dos textos deben llevar {enlace}, que es donde va el enlace.' }
+  if (tEquipo.length > 200 || tCatalogo.length > 200) return { error: 'Cada texto admite hasta 200 caracteres.' }
+  const supabase = crearCliente()
+  const { data: { user } } = await supabase.auth.getUser()
+  const { data, error } = await supabase.from('tienda_web').update({
+    activa: datos.get('activa') === 'on', url: url.toLowerCase(), catalogo_url: catalogo, texto_equipo: tEquipo, texto_catalogo: tCatalogo,
+    actualizado_en: new Date().toISOString(), actualizado_por: user?.id ?? null,
+  }).eq('id', 1).select('id')
+  if (error) return { error: `No se pudo guardar: ${error.message}` }
+  if (!data?.length) return { error: SIN_PERMISO }
+  revalidatePath('/inventario', 'layout')
+  return { ok: 'Guardado. El bot lo usa en menos de un minuto.' }
+}

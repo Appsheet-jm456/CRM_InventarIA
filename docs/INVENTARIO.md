@@ -136,3 +136,7 @@ filtros entendidos, de dónde salieron (código, reglas o IA) y los códigos de 
 ## Filtro dinámico de equipos (F4·74)
 
 Construida el 13 nov 2026 (migración 0084, atributo Táctil), falta la prueba del dueño: filtros por tipo, marca, modelo, generación, procesador, RAM, disco y táctil en Inventario → Equipos. Detalle, criterios RFI-01 a RFI-15 y decisiones pendientes en [FILTRO-DINAMICO-INVENTARIO.md](FILTRO-DINAMICO-INVENTARIO.md).
+
+## Enlace a la tienda web (F4·75)
+
+Construida el 13 nov 2026 (migración 0085): la ficha del equipo y la ficha del bot llevan el enlace a ventasvirtualcolombia.com/producto/{código} si está publicado, o el catálogo web. Detalle en [TIENDA-WEB-EN-FICHAS.md](TIENDA-WEB-EN-FICHAS.md).

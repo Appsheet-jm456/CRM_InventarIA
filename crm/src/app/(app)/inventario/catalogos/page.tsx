@@ -2,6 +2,8 @@ import { obtenerSesion, puede } from '@/lib/sesion'
 import { crearCliente } from '@/lib/supabase/server'
 import { rutaArchivo } from '@/lib/inventario'
 import { Pestanas } from '../Pestanas'
+import { COLUMNAS_TIENDA, publicadosTienda, type TiendaWeb } from '@/lib/tiendaWeb'
+import { FormTiendaWeb } from './FormTiendaWeb'
 import { AccionesCatalogo, FormCatalogo, type CatalogoEditable, type OpcionesCatalogo } from './FormCatalogo'
 
 // RI-15: categorías y marcas del inventario y de los catálogos, sin repetir la misma escrita de otra forma.
@@ -18,10 +20,13 @@ export default async function Catalogos() {
   const sesion = (await obtenerSesion())!
   const administra = puede(sesion, ['administrar_inventario'])
   const supabase = crearCliente()
-  const [{ data }, { data: productos }] = await Promise.all([
+  const [{ data }, { data: productos }, { data: tiendaFila }] = await Promise.all([
     supabase.from('catalogos').select('id, nombre, categoria, marca, tipo, archivo, url, todos, activo, mensaje').order('todos', { ascending: false }).order('id'),
     supabase.from('productos').select('categoria, marca').limit(2000),
+    supabase.from('tienda_web').select(COLUMNAS_TIENDA).eq('id', 1).maybeSingle(),
   ])
+  const tienda = tiendaFila as TiendaWeb | null
+  const publicados = tienda ? await publicadosTienda(tienda.url) : null
   const catalogos = (data ?? []) as CatalogoEditable[]
   const todos = catalogos.find((c) => c.todos && c.activo)
   const opciones: OpcionesCatalogo = {
@@ -60,6 +65,7 @@ export default async function Catalogos() {
         )}
       </section>
       {administra && <FormCatalogo opciones={opciones} />}
+      {tienda && <FormTiendaWeb tienda={tienda} publicados={publicados ? publicados.size : null} administra={administra} />}
     </>
   )
 }
