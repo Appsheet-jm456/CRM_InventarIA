@@ -80,6 +80,8 @@ export function FiltroEquipos({ productos, administra, inicial }: {
 }) {
   const [e, setE] = useState<Estado>(() => desdeDireccion(inicial))
   const [abierto, setAbierto] = useState(false)
+  const [abiertaFaceta, setAbiertaFaceta] = useState<string | null>(null) // una lista desplegada a la vez
+  const [buscaOpcion, setBuscaOpcion] = useState('')
 
   useEffect(() => {
     window.history.replaceState(null, '', `${window.location.pathname}${aDireccion(e)}`)
@@ -227,22 +229,52 @@ export function FiltroEquipos({ productos, administra, inicial }: {
               <button type="button" className="btn chico" onClick={() => setAbierto(false)} aria-label="Cerrar">✕</button>
             </div>
             <div className="filtros-cuerpo">
-              {FACETAS.map((fa) => (
-                <div key={fa.clave} className="faceta">
-                  <h4>{fa.nombre}</h4>
-                  <div className={`opciones${(opciones[fa.clave]?.length ?? 0) > 12 ? ' largas' : ''}`}>
-                    {(opciones[fa.clave] ?? []).map(({ valor, n }) => {
-                      const marcado = e.sel[fa.clave]?.includes(valor) ?? false
-                      return (
-                        <button key={valor} type="button" className={`pastilla${marcado ? ' activa' : ''}`} aria-pressed={marcado}
-                          disabled={n === 0 && !marcado} onClick={() => alternar(fa.clave, valor)}>
-                          {etiquetaDe(fa, valor)} <small>({n})</small>
-                        </button>
-                      )
-                    })}
+              {FACETAS.map((fa) => {
+                // F4·74b: cada lista es un selector cerrado («Todos ⌄», como la tienda web); al tocarlo se despliega con casillas.
+                const lista = opciones[fa.clave] ?? []
+                const elegidos = e.sel[fa.clave] ?? []
+                const total = lista.reduce((s, x) => s + x.n, 0)
+                const resumen = !elegidos.length ? `Todos (${total})`
+                  : elegidos.length <= 2 ? elegidos.map((v) => etiquetaDe(fa, v)).join(', ')
+                  : `${elegidos.length} seleccionados`
+                const desplegado = abiertaFaceta === fa.clave
+                const busca = sinTildes(buscaOpcion.trim())
+                const vistas = desplegado && busca ? lista.filter((x) => sinTildes(etiquetaDe(fa, x.valor)).includes(busca)) : lista
+                return (
+                  <div key={fa.clave} className="faceta">
+                    <h4>{fa.nombre}</h4>
+                    <button type="button" className={`selector${elegidos.length ? ' con-valor' : ''}`} aria-expanded={desplegado}
+                      onClick={() => { setAbiertaFaceta(desplegado ? null : fa.clave); setBuscaOpcion('') }}>
+                      <span>{resumen}</span><span className="flecha" aria-hidden>{desplegado ? '⌃' : '⌄'}</span>
+                    </button>
+                    {desplegado && (
+                      <div className="lista-opciones">
+                        {lista.length > 8 && (
+                          <input type="search" className="busca-opcion" placeholder={`Buscar ${fa.nombre.toLowerCase()}…`} value={buscaOpcion}
+                            onChange={(ev) => setBuscaOpcion(ev.target.value)} aria-label={`Buscar ${fa.nombre}`} />
+                        )}
+                        <div className="opciones-scroll">
+                          {vistas.map(({ valor, n }) => {
+                            const marcado = elegidos.includes(valor)
+                            return (
+                              <label key={valor} className={`opcion${n === 0 && !marcado ? ' sin' : ''}`}>
+                                <input type="checkbox" checked={marcado} disabled={n === 0 && !marcado} onChange={() => alternar(fa.clave, valor)} />
+                                <span>{etiquetaDe(fa, valor)}</span><small>{n}</small>
+                              </label>
+                            )
+                          })}
+                          {vistas.length === 0 && <small className="muted">Nada con «{buscaOpcion}».</small>}
+                        </div>
+                        {elegidos.length > 0 && (
+                          <button type="button" className="btn chico" onClick={() => setE((x) => ({ ...x, sel: { ...x.sel, [fa.clave]: [] } }))}>
+                            Quitar {fa.nombre.toLowerCase()}
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))}
+                )
+              })}
 
               <div className="faceta">
                 <h4>Táctil</h4>

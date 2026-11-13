@@ -176,3 +176,38 @@ No hay dónde guardarlo. Se crea como **atributo del producto** (F4·41, Inventa
 
 **Para probarlo (dueño):** recargar Inventario → Equipos; tocar 🎚 Filtros; marcar LENOVO y ver que Generación y Modelo solo ofrecen lo de
 Lenovo; probar en el celular. Marcar Táctil = Sí en los equipos que lo sean (Editar → Táctil) y filtrar por Táctil → Sí.
+
+## 10. Ajuste F4·74b: listas como selectores desplegables (13 nov 2026) 🔵
+
+**Pedido del dueño (captura del iPhone):** con todas las opciones a la vista como pastillas el panel se ve recargado (Modelo ocupa media
+pantalla). Que cada filtro sea **un botón tipo selector**, como en la tienda web, y que las opciones no salgan todas.
+
+**Cómo queda:**
+
+```
+MARCA
+[ Todos (54)                        ⌄ ]      ← cerrado: una sola línea
+MODELO
+[ Todos (54)                        ⌃ ]      ← al tocarlo se despliega debajo
+  ┌───────────────────────────────────────┐
+  │ 🔍 Buscar modelo…                      │   (solo si la lista tiene más de 8 opciones)
+  │ ☐ 5420                              2 │
+  │ ☐ 5490                              1 │
+  │ ☐ ELITEBOOK G6                      1 │   (máximo ~240 px, se desplaza)
+  └───────────────────────────────────────┘
+  [Quitar modelo]                              (solo si hay algo marcado)
+```
+
+- Cerrado, el selector dice **«Todos (n)»**; con una o dos opciones marcadas las nombra («LENOVO, DELL»); con más, «3 seleccionados».
+  Con algo marcado el borde se pone del color de la marca.
+- **Una lista abierta a la vez:** abrir otra cierra la anterior. Se sigue marcando varias opciones dentro de una lista (casillas).
+- Los contadores siguen siendo dinámicos y las opciones en 0 se ven apagadas (Modelo las oculta).
+- Táctil (Todos / Sí / No), Precio y Solo disponibles no cambian: son pocos y caben en una línea.
+- Sin migración; solo `FiltroEquipos.tsx` y `globals.css`.
+
+| # | Dado / cuando | Entonces |
+|---|---|---|
+| RFI-16 | Abro 🎚 Filtros | Cada filtro es un selector de una línea con «Todos (n)»; no se ve ninguna lista de opciones |
+| RFI-17 | Toco Modelo | Se despliega la lista con buscador; escribo «elite» y solo quedan los EliteBook |
+| RFI-18 | Marco LENOVO y DELL | El selector de Marca dice «LENOVO, DELL» con borde de color; al marcar una tercera dice «3 seleccionados» |
+| RFI-19 | Con Marca abierta toco Generación | Se cierra Marca y se abre Generación |

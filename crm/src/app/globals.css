@@ -1057,3 +1057,16 @@ details.columnas > .panel { right: 0; top: calc(100% + 4px); min-width: 220px }
 .rango-precio { display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; align-items: center }
 .rango-precio input { border: 1px solid var(--line); background: var(--bg); border-radius: 6px; padding: 8px 10px; font-size: 14px; color: var(--ink); min-width: 0 }
 .solo-disponibles { display: flex; gap: 8px; align-items: center; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; cursor: pointer }
+/* F4·74b · listas como selectores desplegables */
+.selector { width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 8px; border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 11px 14px; font-size: 15px; color: var(--ink); cursor: pointer; text-align: left }
+.selector span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.selector.con-valor { border-color: var(--accent); font-weight: 600 }
+.selector .flecha { color: var(--muted); font-size: 16px; line-height: 1 }
+.lista-opciones { margin-top: 6px; border: 1px solid var(--line); border-radius: 10px; padding: 8px; display: grid; gap: 6px; background: var(--surface-2) }
+.busca-opcion { border: 1px solid var(--line); background: var(--bg); border-radius: 6px; padding: 8px 10px; font-size: 14px; color: var(--ink); min-width: 0 }
+.opciones-scroll { max-height: 240px; overflow-y: auto; display: grid; gap: 2px; overscroll-behavior: contain }
+.opcion { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; padding: 8px 8px; border-radius: 6px; cursor: pointer; font-size: 14px }
+.opcion:hover { background: var(--surface) }
+.opcion small { color: var(--muted) }
+.opcion.sin { opacity: .45; cursor: default }
+.opcion input { width: 17px; height: 17px; accent-color: var(--accent) }
