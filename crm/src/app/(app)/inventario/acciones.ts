@@ -99,6 +99,9 @@ export async function guardarProducto(_: Resultado, datos: FormData): Promise<Re
   let productoId = id
   let fotoAnterior = String(datos.get('foto_ruta_actual') ?? '')
   if (id) {
+    // RI-02 (0087): quien administra el inventario puede cambiar el código; la base lo valida único y no vacío.
+    if (!codigo) return { error: 'El código no puede quedar vacío.' }
+    fila.codigo = codigo
     const { data, error } = await supabase.from('productos').update(fila).eq('id', id).select('id')
     if (error) return { error: mensaje(error) }
     if (!data?.length) return { error: SIN_PERMISO }
@@ -150,6 +153,18 @@ export async function guardarProducto(_: Resultado, datos: FormData): Promise<Re
   if (!id) redirect(`/inventario/${productoId}?creado=1`)
   revalidatePath(`/inventario/${id}`)
   return { ok: 'Cambios guardados.' }
+}
+
+// RI-02 (0087): borrar un equipo. El RLS exige `administrar_inventario`; las fotos del bucket se quitan después.
+export async function eliminarProducto(id: number): Promise<Resultado> {
+  const supabase = crearCliente()
+  const { data, error } = await supabase.from('productos').delete().eq('id', id).select('foto_ruta, fotos_extra')
+  if (error) return { error: mensaje(error) }
+  if (!data?.length) return { error: SIN_PERMISO }
+  const fotos = data.flatMap((p) => [p.foto_ruta, ...(p.fotos_extra ?? [])]).filter(Boolean) as string[]
+  if (fotos.length) await supabase.storage.from('productos').remove(fotos)
+  revalidatePath('/inventario')
+  redirect('/inventario?eliminado=1')
 }
 
 // --------------------------------------------------------------------------- //

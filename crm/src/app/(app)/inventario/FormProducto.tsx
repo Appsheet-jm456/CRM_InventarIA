@@ -1,11 +1,27 @@
 'use client'
 
 import Link from 'next/link'
-import { useState } from 'react'
+import { useState, useTransition } from 'react'
 import { useFormState, useFormStatus } from 'react-dom'
 import { Aviso } from '@/components/Aviso'
 import { aplicaA, rutaArchivo, type AtributoProducto, type Producto } from '@/lib/inventario'
-import { guardarProducto, type Resultado } from './acciones'
+import { eliminarProducto, guardarProducto, type Resultado } from './acciones'
+
+// RI-02 (0087): borrar el equipo, con confirmación. Para que deje de ofrecerse sin borrarlo basta stock 0.
+function Eliminar({ producto }: { producto: Producto }) {
+  const [pendiente, empezar] = useTransition()
+  const [error, setError] = useState('')
+  return (
+    <>
+      <button type="button" className="btn chico peligro" disabled={pendiente}
+        onClick={() => {
+          if (!confirm(`¿Eliminar el equipo ${producto.codigo}? Se borra del inventario con sus fotos y no se puede deshacer.\n\nSi solo se vendió, mejor déjalo en stock 0.`)) return
+          empezar(async () => { const r = await eliminarProducto(producto.id); if (r?.error) setError(r.error) })
+        }}>{pendiente ? 'Eliminando…' : 'Eliminar equipo'}</button>
+      {error && <span className="aviso bad" role="alert">{error}</span>}
+    </>
+  )
+}
 
 function Guardar({ nuevo }: { nuevo: boolean }) {
   const { pending } = useFormStatus()
@@ -83,11 +99,17 @@ export function FormProducto({ producto, foto, atributos }: { producto?: Product
   const visibles = atributos.filter((a) => aplicaA(a, categoria))
 
   return (
-    <form action={accion} className="panel">
+    <form action={accion} className="panel"
+      onSubmit={(e) => {
+        const nuevoCodigo = String(new FormData(e.currentTarget).get('codigo') ?? '').trim()
+        if (producto && nuevoCodigo && nuevoCodigo !== producto.codigo &&
+          !confirm(`¿Cambiar el código de ${producto.codigo} a ${nuevoCodigo}? El cliente y el bot lo encontrarán por el código nuevo.`)) e.preventDefault()
+      }}>
       <div className="panel-h">
         <div><h2>{nuevo ? 'Nuevo equipo' : `Editar ${producto.codigo}`}</h2>
-          <small>El código no cambia después (RI-02). Un equipo no se borra: se deja en stock 0.</small></div>
+          <small>El código es único. Si el equipo se vendió, déjalo en stock 0; eliminar lo borra del todo.</small></div>
         <div className="row">
+          {!nuevo && <Eliminar producto={producto} />}
           <Link className="btn chico" href={nuevo ? '/inventario' : `/inventario/${producto.id}`}>Cancelar</Link>
           <Guardar nuevo={nuevo} />
         </div>
@@ -105,7 +127,7 @@ export function FormProducto({ producto, foto, atributos }: { producto?: Product
         </div>
         <div className="form-panel">
           <label className="field">Código
-            <input name="codigo" defaultValue={producto?.codigo} readOnly={!nuevo} required={nuevo} placeholder="100-102-1041" className={nuevo ? '' : 'solo-lectura'} />
+            <input name="codigo" defaultValue={producto?.codigo} required placeholder="100-102-1041" />
           </label>
           {CAMPOS.map((c) => (
             <label key={c.nombre} className="field">{c.texto}

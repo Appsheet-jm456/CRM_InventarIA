@@ -35,15 +35,18 @@ reset role;
 select case when precio = 1000000 then 'ok' else 'not ok' end || ' 5 - el update del asesor no cambió nada'
 from productos where codigo = 'PR-0009-A';
 
--- El administrador edita; el código no cambia y la foto nueva borra el id de Meta
+-- El administrador edita; cambia el código (0087) y la foto nueva borra el id de Meta
 set local role authenticated;
 select set_config('request.jwt.claims', json_build_object('sub', :'admin', 'role', 'authenticated')::text, true);
 update productos set foto_meta_id = 'meta-viejo' where codigo = 'PR-0009-A';
 update productos set foto_ruta = '1/foto.jpg' where codigo = 'PR-0009-A';
 select case when foto_meta_id = '' then 'ok' else 'not ok' end || ' 6 - cambiar la foto borra el id de Meta'
 from productos where codigo = 'PR-0009-A';
-select case when pg_temp.falla($q$update productos set codigo = 'PR-0009-Z' where codigo = 'PR-0009-A'$q$)
-            then 'ok' else 'not ok' end || ' 7 - el código no cambia';
+-- RI-02 cambiada en 0087: el administrador sí puede cambiar el código (se devuelve para lo que sigue).
+update productos set codigo = 'PR-0009-Z' where codigo = 'PR-0009-A';
+select case when exists (select 1 from productos where codigo = 'PR-0009-Z') then 'ok' else 'not ok' end
+       || ' 7 - el administrador cambia el código (0087)';
+update productos set codigo = 'PR-0009-A' where codigo = 'PR-0009-Z';
 select case when pg_temp.falla($q$insert into productos (codigo, precio) values ('pr-0009-a', 1)$q$)
             then 'ok' else 'not ok' end || ' 8 - el código es único sin importar mayúsculas';
 select case when pg_temp.falla($q$update productos set stock = -1 where codigo = 'PR-0009-A'$q$)

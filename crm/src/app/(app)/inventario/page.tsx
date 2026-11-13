@@ -34,6 +34,7 @@ export default async function Inventario({ searchParams }: {
         </div>
       </section>
 
+      {searchParams.eliminado && <div className="aviso ok">Equipo eliminado del inventario.</div>}
       <FiltroEquipos productos={todos} administra={administra} inicial={searchParams} />
     </>
   )

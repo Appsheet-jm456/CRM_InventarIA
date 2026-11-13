@@ -11,8 +11,12 @@
 y los catálogos, y usa el chat. Crear, editar, subir fotos, cargar el Excel y administrar catálogos pide el
 permiso, y lo exige la base.
 
-**RI-02 · El código es único y no cambia.** Es la llave con la que empareja el Excel y la que el cliente
-escribe por WhatsApp. Un equipo no se borra: se deja en stock 0 (puede tener clientes que preguntaron por él).
+**RI-02 · El código es único (cambiada el 13 nov 2026, F4·76, migración 0087).** Es la llave con la que empareja el Excel
+y la que el cliente escribe por WhatsApp. Quien tiene `administrar_inventario` puede **cambiar el código** (con confirmación;
+la base rechaza uno repetido sin importar mayúsculas o vacío), **eliminar** el equipo (botón «Eliminar equipo» al editarlo:
+se borra con sus fotos y no se deshace) o **desactivarlo** dejándolo en stock 0, que es lo indicado si se vendió. Al cambiar
+el código, los videos del alistamiento y los carritos del asesor se llevan el nuevo; los pedidos y eventos cerrados guardan el
+código que tenían. Antes la regla decía que el código no cambiaba y que un equipo no se borraba.
 
 **RI-03 · Una foto principal por equipo** (JPG o PNG, hasta 5 MB; *WEBP retirado por F4·65*), en el bucket privado `productos`. Al
 cambiarla, el identificador de Meta se borra para que el bot suba la nueva. Sin foto subida, el bot usa el
@@ -34,7 +38,7 @@ devuelve filtros. La respuesta lista equipos de la base con stock; si nada cumpl
 |---|---|
 | `productos` + `foto_ruta`, `foto_meta_id`, `foto_meta_en` | La foto subida y su identificador en Meta |
 | Buckets `productos` y `catalogos` | Privados; leer, cualquier usuario activo; escribir, `administrar_inventario` |
-| RLS de escritura en `productos` y `catalogos` | `administrar_inventario` (alta y edición; sin borrar productos) |
+| RLS de escritura en `productos` y `catalogos` | `administrar_inventario` (alta y edición; borrar productos desde 0087) |
 | `cargar_inventario(productos jsonb, aplicar boolean)` | RI-04; la usan la app y `cargar_inventario.py` |
 
 ## Atributos del producto (F4·41)
