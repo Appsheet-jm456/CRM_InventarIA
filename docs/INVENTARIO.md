@@ -132,3 +132,7 @@ La app llama a `POST /interno/buscar` del receptor (127.0.0.1:8095) con el token
 (`.env.meta` y `crm/.env.local`). El receptor rechaza esa ruta si la petición llegó por el túnel. Responde los
 filtros entendidos, de dónde salieron (código, reglas o IA) y los códigos de los equipos; la app los lee de
 `productos` y los muestra como tarjetas con foto, precio y stock.
+
+## Filtro dinámico de equipos (F4·74)
+
+Documentada el 13 nov 2026, sin construir: filtros por tipo, marca, modelo, generación, procesador, RAM, disco y táctil en Inventario → Equipos. Detalle, criterios RFI-01 a RFI-15 y decisiones pendientes en [FILTRO-DINAMICO-INVENTARIO.md](FILTRO-DINAMICO-INVENTARIO.md).
